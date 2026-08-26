@@ -1,0 +1,93 @@
+.app {
+  min-height: 100vh;
+
+  padding: 40px;
+  padding-bottom: 100px; /* espacio para que el NavBar fijo no tape el contenido */
+
+  box-sizing: border-box;
+}
+
+.app-title {
+  margin: 0 0 8px;
+
+  font-family: "Nata Sans", sans-serif;
+
+  font-size: 32px;
+  font-weight: 700;
+
+  color: #000000;
+}
+
+.app-description {
+  margin: 0 0 30px;
+
+  font-family: "Nata Sans", sans-serif;
+
+  font-size: 16px;
+  font-weight: 400;
+
+  color: #505050;
+}
+
+
+/* ========================================
+   CONTENEDOR DE TARJETAS DE MASCOTAS
+======================================== */
+
+.cards-container {
+  display: flex;
+
+  flex-wrap: wrap;
+
+  gap: 20px;
+
+  align-items: flex-start;
+}
+
+
+/* ========================================
+   CONTENEDOR DE TARJETAS DE VETERINARIAS
+======================================== */
+
+.vets-container {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 16px;
+
+  align-items: flex-start;
+}
+
+
+/* ========================================
+   SECCIONES PLACEHOLDER
+======================================== */
+
+.placeholder-section {
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  min-height: 200px;
+
+  font-family: "Nata Sans", sans-serif;
+  font-size: 18px;
+
+  color: #66557e;
+}
+
+
+/* ========================================
+   NAVBAR FIJO ABAJO
+======================================== */
+
+.navbar {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+
+  z-index: 100;
+}
