@@ -1,5 +1,5 @@
-import StatusTag from "src/assets/components/StatusTag.jsx";
-import "src/assets/components/PetCard.css";
+import StatusTag from "./StatusTag.jsx";
+import "./PetCard.css";
 
 function PetCard({
   status = "Perdido",

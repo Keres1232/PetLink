@@ -1,3 +1,7 @@
+/* ========================================
+   TARJETA PRINCIPAL
+======================================== */
+
 .pet-card {
   display: flex;
 
@@ -16,15 +20,15 @@
   border-radius: 15px;
   border: 1px solid #e1d9ec;
 
-  background: #fff;
+  background: #ffffff;
 
   box-sizing: border-box;
 }
 
 
-/* -------------------------
+/* ========================================
    FOTO / PLACEHOLDER
-------------------------- */
+======================================== */
 
 .pet-card__photo {
   width: 162px;
@@ -45,16 +49,20 @@
 
 .pet-card__photo span {
   font-family: "Nata Sans", sans-serif;
+
   font-size: 10px;
+  font-style: normal;
   font-weight: 600;
+
+  line-height: normal;
 
   color: #505050;
 }
 
 
-/* -------------------------
-   INFORMACIÓN
-------------------------- */
+/* ========================================
+   INFORMACIÓN DE LA MASCOTA
+======================================== */
 
 .pet-card__info {
   display: flex;
@@ -72,9 +80,9 @@
 }
 
 
-/* -------------------------
+/* ========================================
    ETIQUETA DE ESTADO
-------------------------- */
+======================================== */
 
 .status-tag {
   display: inline-flex;
@@ -89,44 +97,52 @@
   border-radius: 27px;
 
   font-family: "Nata Sans", sans-serif;
+
   font-size: 10px;
   font-style: normal;
   font-weight: 600;
+
   line-height: normal;
 
-  color: #000;
+  color: #000000;
 
   box-sizing: border-box;
 }
 
 
-/* Estado: Perdido */
+/* ========================================
+   ESTADOS
+======================================== */
+
+/* Perdido */
 .status-lost {
   background: #ffb7b7;
 }
 
-
-/* Estados adicionales */
+/* Encontrado */
 .status-found {
   background: #b7e8ff;
 }
 
+/* Adopción */
 .status-adoption {
   background: #d8b7ff;
 }
 
+/* Rescatado */
 .status-rescued {
   background: #b7f0c0;
 }
 
+/* Estado desconocido */
 .status-default {
   background: #e5e5e5;
 }
 
 
-/* -------------------------
+/* ========================================
    NOMBRE
-------------------------- */
+======================================== */
 
 .pet-card__name {
   margin: 0;
@@ -137,18 +153,20 @@
   align-items: center;
 
   font-family: "Nata Sans", sans-serif;
+
   font-size: 15px;
   font-style: normal;
   font-weight: 600;
+
   line-height: normal;
 
-  color: #000;
+  color: #000000;
 }
 
 
-/* -------------------------
+/* ========================================
    UBICACIÓN
-------------------------- */
+======================================== */
 
 .pet-card__location {
   margin: 0;
@@ -161,9 +179,11 @@
   align-self: stretch;
 
   font-family: "Nata Sans", sans-serif;
+
   font-size: 10px;
   font-style: normal;
   font-weight: 600;
+
   line-height: normal;
 
   color: #505050;

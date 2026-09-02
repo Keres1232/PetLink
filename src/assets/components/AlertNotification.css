@@ -1,0 +1,163 @@
+@import url('https://fonts.googleapis.com/css2?family=Kodchasan:wght@700&family=Nata+Sans:wght@600;700&display=swap');
+
+/* ========================================
+   TARJETA PRINCIPAL (Notificaciones_recientes)
+======================================== */
+
+.alert-card {
+  display: flex;
+
+  width: 331px;
+  height: 131px;
+
+  padding: 8px 0 3px 11px;
+
+  flex-direction: column;
+  align-items: flex-start;
+
+  gap: 3px;
+
+  border-radius: 15px;
+  border: 1px solid #ff6e6e;
+
+  background: rgba(255, 202, 202, 0.55);
+
+  box-sizing: border-box;
+}
+
+
+/* ========================================
+   HEADER (Alert Icon + Alerta)
+======================================== */
+
+.alert-card__header {
+  display: flex;
+
+  width: 302px;
+
+  padding: 0 3px 0 7px;
+
+  align-items: flex-start;
+
+  gap: 14px;
+
+  box-sizing: border-box;
+}
+
+
+/* ========================================
+   ÍCONO
+======================================== */
+
+.alert-card__icon {
+  display: flex;
+
+  flex-shrink: 0;
+
+  align-items: center;
+  justify-content: center;
+
+  width: 34px;
+  height: 34px;
+}
+
+
+/* ========================================
+   TEXTO
+======================================== */
+
+.alert-card__text {
+  display: flex;
+  align-items: center;
+
+  width: 225px;
+  height: 79px;
+
+  margin: 0;
+  padding: 5px;
+
+  box-sizing: border-box;
+
+  color: #000000;
+
+  font-family: "Nata Sans", sans-serif;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: normal;
+}
+
+.alert-card__text strong {
+  font-weight: 700;
+}
+
+
+/* ========================================
+   OPCIONES / BOTONES
+======================================== */
+
+.alert-card__actions {
+  display: flex;
+
+  width: 302px;
+  height: 27px;
+
+  padding: 0 27px 0 60px;
+
+  align-items: flex-end;
+
+  gap: 40px;
+
+  flex-shrink: 0;
+
+  box-sizing: border-box;
+}
+
+.alert-card__btn {
+  display: flex;
+
+  height: 24px;
+
+  justify-content: center;
+  align-items: center;
+
+  gap: 10px;
+
+  flex-shrink: 0;
+
+  border-radius: 10px;
+  border: 1px solid #913131;
+  background: #e89e9e;
+
+  cursor: pointer;
+
+  color: #000000;
+
+  font-family: "Kodchasan", sans-serif;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: normal;
+
+  box-sizing: border-box;
+}
+
+.alert-card__btn:focus {
+  outline: none;
+}
+
+.alert-card__btn:active {
+  transform: scale(0.96);
+}
+
+/* Botón "Ver detalle" */
+.alert-card__btn--detail {
+  width: 87px;
+  padding: 5px 7px 4px 6px;
+}
+
+/* Botón "No es mi zona" */
+.alert-card__btn--not-my-area {
+  width: 95px;
+  padding: 5px 0 4px 6px;
+}

@@ -1,0 +1,113 @@
+@import url('https://fonts.googleapis.com/css2?family=Nata+Sans:wght@400;500;600;700&display=swap');
+
+.navbar {
+  display: flex;
+  width: 100%;
+  max-width: 393px;
+  height: 62px;
+
+  padding: 1px 8px;
+
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 32px;
+
+  box-sizing: border-box;
+
+  border: 1px solid #E1D9EC;
+  background: #FFFFFF;
+
+  font-family: "Nata Sans", sans-serif;
+}
+
+/* Cada opción de navegación */
+
+.nav-item {
+  display: flex;
+
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  gap: 2px;
+
+  padding: 0;
+  margin: 0;
+
+  border: none;
+  background: transparent;
+
+  cursor: pointer;
+
+  color: #66557E;
+
+  font-family: "Nata Sans", sans-serif;
+
+  flex-shrink: 0;
+}
+
+/* Icono */
+
+.nav-icon {
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  height: 26px;
+}
+
+/* Texto */
+
+.nav-label {
+  display: flex;
+
+  justify-content: center;
+  align-items: center;
+
+  min-height: 16px;
+
+  font-family: "Nata Sans", sans-serif;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 16px;
+
+  color: #66557E;
+
+  white-space: nowrap;
+}
+
+/* Elemento activo */
+
+.nav-item.active .nav-label {
+  color: #AE77FF;
+}
+
+/* Hover */
+
+.nav-item:hover .nav-label {
+  color: #AE77FF;
+}
+
+/* Efecto al presionar */
+
+.nav-item:active {
+  transform: scale(0.95);
+}
+
+/* Evita el borde azul predeterminado */
+
+.nav-item:focus {
+  outline: none;
+}
+
+/* Responsive */
+
+@media (max-width: 393px) {
+  .navbar {
+    gap: 0;
+    justify-content: space-around;
+  }
+}

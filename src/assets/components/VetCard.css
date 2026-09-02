@@ -1,0 +1,201 @@
+@import url('https://fonts.googleapis.com/css2?family=Kodchasan:wght@700&family=Nata+Sans:wght@400;600&display=swap');
+
+/* ========================================
+   TARJETA PRINCIPAL (Card2)
+======================================== */
+
+.vet-card {
+  display: flex;
+
+  width: 347px;
+  height: 67px;
+
+  padding: 5px 0 0 2px;
+
+  flex-direction: column;
+  align-items: flex-start;
+
+  gap: 10px;
+
+  border-radius: 12px;
+  border: 1px solid #e9e3f9;
+
+  background: #ffffff;
+
+  box-sizing: border-box;
+}
+
+
+/* ========================================
+   CONTENEDOR INTERNO (Info_CompletaCard)
+======================================== */
+
+.vet-card__content {
+  display: flex;
+
+  width: 339px;
+
+  padding: 3px 4px;
+
+  align-items: center;
+
+  gap: 61px;
+
+  box-sizing: border-box;
+}
+
+
+/* ========================================
+   BLOQUE FOTO + INFO (Card1)
+======================================== */
+
+.vet-card__main {
+  display: flex;
+
+  width: 222px;
+  height: 50px;
+
+  align-items: center;
+
+  gap: 10px;
+
+  flex-shrink: 0;
+}
+
+
+/* ========================================
+   FOTO
+======================================== */
+
+.vet-card__photo {
+  width: 58px;
+  height: 50px;
+
+  flex-shrink: 0;
+}
+
+
+/* ========================================
+   INFO (Nombre + Ubicación)
+======================================== */
+
+.vet-card__info {
+  display: flex;
+
+  width: 160px;
+
+  padding: 2px 0;
+
+  flex-direction: column;
+  align-items: flex-start;
+
+  box-sizing: border-box;
+}
+
+/* Nombre */
+
+.vet-card__name {
+  display: flex;
+
+  height: 21px;
+
+  justify-content: center;
+  align-items: center;
+
+  gap: 10px;
+
+  margin: 0;
+
+  width: 172px;
+
+  color: #000000;
+
+  font-family: "Kodchasan", sans-serif;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: normal;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Ubicación */
+
+.vet-card__location {
+  display: flex;
+
+  padding: 0 3px;
+
+  align-items: flex-end;
+
+  gap: 3px;
+
+  align-self: stretch;
+
+  margin: 0;
+
+  width: 143px;
+  height: 13px;
+
+  color: #a8a8a8;
+
+  font-family: "Nata Sans", sans-serif;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  box-sizing: border-box;
+}
+
+
+/* ========================================
+   BOTÓN LLAMAR
+======================================== */
+
+.vet-card__call {
+  display: flex;
+
+  padding: 5px 12px;
+
+  align-items: center;
+
+  gap: 10px;
+
+  border: none;
+  background: transparent;
+
+  cursor: pointer;
+
+  flex-shrink: 0;
+}
+
+.vet-card__call-icon {
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  width: 29px;
+  height: 26px;
+
+  border-radius: 50%;
+
+  background: #ae77ff;
+
+  flex-shrink: 0;
+}
+
+.vet-card__call:active .vet-card__call-icon {
+  transform: scale(0.92);
+}
+
+.vet-card__call:focus {
+  outline: none;
+}
