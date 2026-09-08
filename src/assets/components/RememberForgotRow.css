@@ -1,0 +1,36 @@
+.remember-forgot {
+  display: flex;
+  padding: 3px 6px 3px 15px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  align-self: stretch;
+}
+
+.remember-forgot__check {
+  display: flex;
+  padding: 1px 0;
+  align-items: center;
+  gap: 6px;
+  color: #7C7589;
+  font-family: "Nata Sans", sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.remember-forgot__link {
+  display: flex;
+  padding: 3px 0 4px 0;
+  justify-content: center;
+  align-items: center;
+  color: #7519FF;
+  font-family: "Nata Sans", sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  background: none;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+}

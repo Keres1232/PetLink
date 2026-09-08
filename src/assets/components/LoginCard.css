@@ -1,0 +1,95 @@
+.login-card {
+  display: flex;
+  width: 100%;
+  max-width: 317px;
+  padding: 24px 20px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  border-radius: 19px;
+  background: #FFF;
+  box-sizing: border-box;
+}
+
+.login-card__completa {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.login-card__btn-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  align-self: stretch;
+}
+
+.login-card__superior {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  align-self: stretch;
+}
+
+.login-card__inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+  align-self: stretch;
+}
+
+.login-card__signup {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  color: #7C7589;
+  font-family: "Nata Sans", sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.login-card__signup a {
+  color: #AE77FF;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.register-card__terms {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 3px 6px;
+  align-self: stretch;
+  color: #7C7589;
+  font-family: "Nata Sans", sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.register-card__terms input {
+  margin-top: 2px;
+}
+
+.login-card__signup-link {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: #AE77FF;
+  font-family: "Nata Sans", sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.login-card__signup-link:hover {
+  text-decoration: underline;
+}
