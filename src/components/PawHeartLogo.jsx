@@ -1,4 +1,4 @@
-import logo from "../svg/Logo.svg";
+import logo from "../assets/svg/Logo.svg";
 
 function PawHeartLogo({ size = 120 }) {
   return <img src={logo} alt="PetLink" width={size} style={{ height: "auto" }} />;

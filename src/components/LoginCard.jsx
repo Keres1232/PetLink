@@ -1,18 +1,17 @@
 import { useState } from "react";
-import { User, Mail, Lock } from "lucide-react";
+import { Mail, Lock } from "lucide-react";
 import FormField from "./FormField.jsx";
+import RememberForgotRow from "./RememberForgotRow.jsx";
 import PrimaryButton from "./PrimaryButton.jsx";
 import "./LoginCard.css";
 
-function RegisterCard({ onSwitchToLogin }) {
-  const [name, setName] = useState("");
+function LoginCard({ onSwitchToRegister, onSubmit }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [remember, setRemember] = useState(false);
 
   const handleSubmit = () => {
-    if (!acceptedTerms) return;
-    console.log({ name, email, password });
+    onSubmit?.({ email: email.trim(), password, remember });
   };
 
   return (
@@ -21,13 +20,6 @@ function RegisterCard({ onSwitchToLogin }) {
         <div className="login-card__btn-group">
           <div className="login-card__superior">
             <div className="login-card__inputs">
-              <FormField
-                label="Nombre"
-                icon={<User size={16} />}
-                placeholder="¿Cómo te llamas?"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
               <FormField
                 label="Correo electrónico"
                 icon={<Mail size={16} />}
@@ -46,23 +38,20 @@ function RegisterCard({ onSwitchToLogin }) {
               />
             </div>
 
-            <label className="register-card__terms">
-              <input
-                type="checkbox"
-                checked={acceptedTerms}
-                onChange={() => setAcceptedTerms(!acceptedTerms)}
-              />
-              <span>Acepto los Términos de uso y la Política de privacidad de PetLink.</span>
-            </label>
+            <RememberForgotRow
+              remember={remember}
+              onToggleRemember={() => setRemember(!remember)}
+              onForgotPassword={() => console.log("Ir a recuperar contraseña")}
+            />
           </div>
 
-          <PrimaryButton onClick={handleSubmit}>Crear cuenta</PrimaryButton>
+          <PrimaryButton onClick={handleSubmit}>Iniciar sesión</PrimaryButton>
         </div>
 
         <p className="login-card__signup">
-          ¿Ya tienes cuenta?{" "}
-          <button type="button" className="login-card__signup-link" onClick={onSwitchToLogin}>
-            Inicia sesión
+          ¿No tienes cuenta?{" "}
+          <button type="button" className="login-card__signup-link" onClick={onSwitchToRegister}>
+            Regístrate
           </button>
         </p>
       </div>
@@ -70,4 +59,4 @@ function RegisterCard({ onSwitchToLogin }) {
   );
 }
 
-export default RegisterCard;
+export default LoginCard;

@@ -5,13 +5,23 @@ function PetCard({
   status = "Perdido",
   name = "Nombre",
   location = "Ubicación · hoy",
+  photoUrl = "",
+  onClick = () => {},
 }) {
   return (
-    <article className="pet-card">
+    <article className="pet-card" onClick={onClick}>
 
       {/* Placeholder de la fotografía */}
       <div className="pet-card__photo">
-        <span>Foto</span>
+        {photoUrl ? (
+          <img
+            src={photoUrl}
+            alt={name}
+            style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "inherit" }}
+          />
+        ) : (
+          <span>Foto</span>
+        )}
       </div>
 
       {/* Información de la mascota */}

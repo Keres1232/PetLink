@@ -1,5 +1,5 @@
-import likesIcon from "../svg/Likes.svg";
-import commentsIcon from "../svg/uil_comments.svg";
+import likesIcon from "../assets/svg/Likes.svg";
+import commentsIcon from "../assets/svg/uil_comments.svg";
 import "./ForumPost.css";
 
 function ForumPost({
@@ -9,8 +9,10 @@ function ForumPost({
   question = "¿Alguien sabe qué puedo darle a mi perrita, tiene mucha comezón?",
   likes = 0,
   replies = 0,
-  avatarUrl,
-  onClick,
+  avatarUrl = "",
+  liked = false,
+  onLike = () => {},
+  onClick = () => {},
 }) {
   return (
     <article className="forum-post" onClick={onClick}>
@@ -44,14 +46,22 @@ function ForumPost({
       {/* Interacciones */}
       <div className="forum-post__interactions">
 
-        <div className="forum-post__likes">
+        <button
+          type="button"
+          className={`forum-post__likes ${liked ? "forum-post__likes--active" : ""}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onLike?.();
+          }}
+          aria-label={liked ? "Quitar me gusta" : "Me gusta"}
+        >
           <img
             src={likesIcon}
-            alt="Me gusta"
+            alt=""
             className="forum-post__icon"
           />
           <span className="forum-post__count">{likes}</span>
-        </div>
+        </button>
 
         <div className="forum-post__comments">
           <img

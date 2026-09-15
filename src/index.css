@@ -1,4 +1,41 @@
-@import url("https://fonts.googleapis.com/css2?family=Nata+Sans:wght@400;600;700&display=swap");
+:root {
+  --pc-bg: #ede7fa;
+  --pc-surface: #fafafc;
+  --pc-surface-strong: #ffffff;
+  --pc-input: #e3dcf6;
+  --pc-border: #e2dbf1;
+
+  --pc-primary: #ae77ff;
+  --pc-primary-strong: #7519ff;
+  --pc-primary-soft: #d9c2ff;
+  --pc-on-primary: #ffffff;
+
+  --pc-text: #14101c;
+  --pc-muted: #66557e;
+  --pc-muted-soft: #8f86a3;
+
+  --pc-lost: #f6c6ba;
+  --pc-lost-text: #8a3d2c;
+  --pc-found: #c4d6f7;
+  --pc-found-text: #2c4a86;
+  --pc-vet: #f3d9a4;
+  --pc-vet-text: #7a5410;
+  --pc-shelter: #c9ecd9;
+  --pc-shelter-text: #1f6b45;
+  --pc-question: #e4c8f4;
+  --pc-question-text: #6b21a8;
+  --pc-adopt: #f9d0e0;
+  --pc-adopt-text: #9d2c60;
+
+  --pc-radius-lg: 20px;
+  --pc-radius: 14px;
+  --pc-radius-sm: 10px;
+
+  --pc-font-body: "Nata Sans", system-ui, sans-serif;
+  --pc-font-display: "Kodchasan", "Nata Sans", system-ui, sans-serif;
+
+  --pc-shadow: 0 2px 10px rgba(60, 30, 110, 0.06);
+}
 
 * {
   box-sizing: border-box;
@@ -8,15 +45,144 @@ html,
 body,
 #root {
   margin: 0;
-
   min-width: 320px;
   min-height: 100vh;
 }
 
 body {
-  font-family: "Nata Sans", sans-serif;
+  font-family: var(--pc-font-body);
+  background: var(--pc-bg);
+  color: var(--pc-text);
+  -webkit-font-smoothing: antialiased;
+}
 
-  background: #f7f5f9;
+h1,
+h2,
+h3 {
+  font-family: var(--pc-font-display);
+  margin: 0;
+}
 
-  color: #000000;
+button {
+  font-family: inherit;
+}
+
+a {
+  color: var(--pc-primary-strong);
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+.pc-title {
+  font-family: var(--pc-font-display);
+  font-weight: 700;
+  font-size: 22px;
+  color: var(--pc-text);
+}
+
+.pc-section-title {
+  font-family: var(--pc-font-display);
+  font-weight: 700;
+  font-size: 20px;
+}
+
+.pc-muted {
+  color: var(--pc-muted);
+}
+
+.pc-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  border-radius: 999px;
+  background: var(--pc-surface-strong);
+  color: var(--pc-primary);
+  font-weight: 600;
+  font-size: 13px;
+  padding: 8px 14px;
+  cursor: pointer;
+  box-shadow: var(--pc-shadow);
+}
+
+.pc-pill-btn:hover {
+  background: #f3edff;
+}
+
+.pc-outline-btn {
+  border: 1.5px solid var(--pc-primary);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--pc-primary-strong);
+  font-weight: 600;
+  font-size: 13px;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+.pc-outline-btn:hover {
+  background: #f3edff;
+}
+
+.pc-badge {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.pc-badge--lost { background: var(--pc-lost); color: var(--pc-lost-text); }
+.pc-badge--found { background: var(--pc-found); color: var(--pc-found-text); }
+.pc-badge--vet { background: var(--pc-vet); color: var(--pc-vet-text); }
+.pc-badge--shelter { background: var(--pc-shelter); color: var(--pc-shelter-text); }
+.pc-badge--question { background: var(--pc-question); color: var(--pc-question-text); }
+.pc-badge--adopt { background: var(--pc-adopt); color: var(--pc-adopt-text); }
+
+.pc-card {
+  background: var(--pc-surface);
+  border-radius: var(--pc-radius);
+  box-shadow: var(--pc-shadow);
+}
+
+.pc-input {
+  width: 100%;
+  border: none;
+  border-radius: var(--pc-radius-sm);
+  background: var(--pc-input);
+  padding: 13px 14px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--pc-text);
+}
+
+.pc-input::placeholder {
+  color: var(--pc-muted-soft);
+}
+
+.pc-input:focus {
+  outline: 2px solid var(--pc-primary);
+  outline-offset: 1px;
+}
+
+.pc-field-label {
+  display: block;
+  font-weight: 700;
+  font-size: 15px;
+  margin: 0 0 8px;
+}
+
+.pc-field {
+  margin-bottom: 16px;
+}
+
+.pc-error-text {
+  color: #c02626;
+  font-size: 13px;
+  font-weight: 600;
 }

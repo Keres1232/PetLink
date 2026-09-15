@@ -1,17 +1,18 @@
 import { useState } from "react";
-import { Mail, Lock } from "lucide-react";
+import { User, Mail, Lock } from "lucide-react";
 import FormField from "./FormField.jsx";
-import RememberForgotRow from "./RememberForgotRow.jsx";
 import PrimaryButton from "./PrimaryButton.jsx";
 import "./LoginCard.css";
 
-function LoginCard({ onSwitchToRegister }) {
+function RegisterCard({ onSwitchToLogin, onSubmit }) {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const handleSubmit = () => {
-    console.log({ email, password, remember });
+    if (!acceptedTerms) return;
+    onSubmit?.({ name: name.trim(), email: email.trim(), password });
   };
 
   return (
@@ -20,6 +21,13 @@ function LoginCard({ onSwitchToRegister }) {
         <div className="login-card__btn-group">
           <div className="login-card__superior">
             <div className="login-card__inputs">
+              <FormField
+                label="Nombre"
+                icon={<User size={16} />}
+                placeholder="¿Cómo te llamas?"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
               <FormField
                 label="Correo electrónico"
                 icon={<Mail size={16} />}
@@ -38,20 +46,23 @@ function LoginCard({ onSwitchToRegister }) {
               />
             </div>
 
-            <RememberForgotRow
-              remember={remember}
-              onToggleRemember={() => setRemember(!remember)}
-              onForgotPassword={() => console.log("Ir a recuperar contraseña")}
-            />
+            <label className="register-card__terms">
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={() => setAcceptedTerms(!acceptedTerms)}
+              />
+              <span>Acepto los Términos de uso y la Política de privacidad de PetClue.</span>
+            </label>
           </div>
 
-          <PrimaryButton onClick={handleSubmit}>Iniciar sesión</PrimaryButton>
+          <PrimaryButton onClick={handleSubmit}>Crear cuenta</PrimaryButton>
         </div>
 
         <p className="login-card__signup">
-          ¿No tienes cuenta?{" "}
-          <button type="button" className="login-card__signup-link" onClick={onSwitchToRegister}>
-            Regístrate
+          ¿Ya tienes cuenta?{" "}
+          <button type="button" className="login-card__signup-link" onClick={onSwitchToLogin}>
+            Inicia sesión
           </button>
         </p>
       </div>
@@ -59,4 +70,4 @@ function LoginCard({ onSwitchToRegister }) {
   );
 }
 
-export default LoginCard;
+export default RegisterCard;
