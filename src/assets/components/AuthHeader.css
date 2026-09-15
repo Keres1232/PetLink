@@ -1,17 +1,16 @@
 .auth-header__back {
   position: absolute;
-  top: 24px;
-  left: 20px;
+  top: clamp(16px, 4vw, 24px);
+  left: clamp(12px, 4vw, 20px);
   width: 36px;
   height: 36px;
   border-radius: 50%;
   background: #FFF;
-  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  flex-shrink: 0;
 }
 
 .auth-header__hero {
@@ -20,14 +19,22 @@
   align-items: center;
   margin-top: 40px;
   margin-bottom: 24px;
+  padding: 0 16px;
+  text-align: center;
+}
+
+.auth-header__hero img {
+  width: clamp(80px, 25vw, 120px);
+  height: auto;
 }
 
 .auth-header__title {
   margin: 12px 0 4px;
   color: #7519FF;
   font-family: "Kodchasan", sans-serif;
-  font-size: 22px;
+  font-size: clamp(18px, 5vw, 22px);
   font-weight: 700;
+  text-align: center;
 }
 
 .auth-header__subtitle {

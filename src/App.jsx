@@ -7,14 +7,13 @@ function App() {
 
   return (
     <div
-      style={{
-        display: "flex",
-        justifyContent: "center",
-        padding: "40px 0",
-        background: "#1a1a1a",
-        minHeight: "100vh",
-      }}
-    >
+  style={{
+    display: "flex",
+    justifyContent: "center",
+    minHeight: "100vh",
+    background: "#1a1a1a",
+  }}
+>
       {authView === "login" ? (
         <LoginScreen
           onBack={() => console.log("Volver")}
