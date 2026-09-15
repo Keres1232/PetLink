@@ -82,7 +82,10 @@ export async function createPost(input: {
   content: string;
   imageUrl?: string | null;
 }): Promise<void> {
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+  if (!userId) throw new Error("No hay sesión activa.");
   const { error } = await supabase.from("posts").insert({
+    user_id: userId,
     type: input.type,
     content: input.content,
     image_url: input.imageUrl ?? null,
@@ -102,7 +105,9 @@ export async function listComments(postId: string): Promise<CommentRow[]> {
 }
 
 export async function addComment(postId: string, text: string): Promise<void> {
-  const { error } = await supabase.from("comments").insert({ post_id: postId, text });
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+  if (!userId) throw new Error("No hay sesión activa.");
+  const { error } = await supabase.from("comments").insert({ post_id: postId, user_id: userId, text });
   if (error) throw error;
 }
 
@@ -150,7 +155,10 @@ export async function createPet(input: {
   birthDate: string | null;
   photoUrl: string | null;
 }): Promise<void> {
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+  if (!userId) throw new Error("No hay sesión activa.");
   const { error } = await supabase.from("pets").insert({
+    user_id: userId,
     name: input.name,
     species_id: input.speciesId,
     description: input.description,

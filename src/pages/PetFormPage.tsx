@@ -39,7 +39,8 @@ export default function PetFormPage() {
         photoUrl,
       });
       navigate("/perfil");
-    } catch {
+    } catch (err) {
+      console.error("createPet falló:", err);
       setError("No pudimos inscribir a tu mascota. Intenta de nuevo.");
       setBusy(false);
     }
