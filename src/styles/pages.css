@@ -236,6 +236,20 @@
   margin-bottom: 18px;
 }
 
+.place-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: var(--pc-radius-sm);
+  background: #f3edff;
+  color: var(--pc-primary-strong);
+  font-size: 13px;
+  font-weight: 600;
+  flex-wrap: wrap;
+}
+
 .pc-toggle {
   flex: 1;
   border: 1.5px solid var(--pc-border);

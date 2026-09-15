@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CircleMarker, MapContainer, TileLayer, useMapEvents } from "react-leaflet";
-import { Crosshair } from "lucide-react";
+import { Crosshair, MapPin } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 import PrimaryButton from "../components/PrimaryButton.jsx";
 import { LoadingState } from "../components/ui/States";
+import { useUserLocation } from "../hooks/useUserLocation";
 import { createAlert, myPets } from "../lib/api";
+import { reverseGeocode } from "../lib/geocode";
 import { getUserPoint } from "../lib/geo";
 import type { GeoPoint, Pet } from "../lib/types";
 import "../styles/pages.css";
@@ -26,14 +28,39 @@ export default function ReportPage() {
   const [pets, setPets] = useState<Pet[]>([]);
   const [description, setDescription] = useState("");
   const [point, setPoint] = useState<GeoPoint | null>(null);
+  const [place, setPlace] = useState<string | null>(null);
+  const [placeBusy, setPlaceBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const { point: userPoint, loading: locLoading, requestConsent } = useUserLocation();
 
   useEffect(() => {
-    void getUserPoint().then(setPoint);
     void myPets().then(setPets).catch(() => setPets([]));
   }, []);
+
+  useEffect(() => {
+    if (!locLoading && !point && userPoint) setPoint(userPoint);
+  }, [locLoading, point, userPoint]);
+
+  useEffect(() => {
+    if (!point) return;
+    let active = true;
+    setPlaceBusy(true);
+    void reverseGeocode(point).then((name) => {
+      if (!active) return;
+      setPlace(name);
+      setPlaceBusy(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, [point]);
+
+  async function useMyLocation() {
+    const granted = await requestConsent();
+    if (granted) setPoint(await getUserPoint());
+  }
 
   const submit = useCallback(async () => {
     if (!point) {
@@ -146,10 +173,28 @@ export default function ReportPage() {
             type="button"
             className="pc-pill-btn"
             style={{ marginTop: 10 }}
-            onClick={() => void getUserPoint().then(setPoint)}
+            onClick={() => void useMyLocation()}
           >
             <Crosshair size={15} /> Usar mi ubicación
           </button>
+
+          {point && (
+            <div className="place-hint">
+              <MapPin size={14} />
+              <span>
+                {placeBusy ? "Buscando el lugar…" : place ?? "Ubicación seleccionada"}
+              </span>
+              {place && !description.trim() && (
+                <button
+                  type="button"
+                  className="pc-outline-btn"
+                  onClick={() => setDescription(place)}
+                >
+                  Usar como descripción
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {error && (

@@ -5,28 +5,25 @@ import PetCard from "../components/PetCard.jsx";
 import PrimaryButton from "../components/PrimaryButton.jsx";
 import { EmptyState, LoadingState } from "../components/ui/States";
 import { useAuth } from "../contexts/AuthContext";
-import { getPrivateProfile, myPets, updateSettings } from "../lib/api";
-import { requestGeoConsent } from "../lib/geo";
+import { useUserLocation } from "../hooks/useUserLocation";
+import { myPets } from "../lib/api";
 import { dayLabel } from "../lib/format";
-import type { Pet, PrivateProfile } from "../lib/types";
+import type { Pet } from "../lib/types";
 import "../styles/pages.css";
 
 export default function ProfilePage() {
   const navigate = useNavigate();
   const { profile, signOut } = useAuth();
+  const { radius, consent, requestConsent, saveRadius } = useUserLocation();
   const [pets, setPets] = useState<Pet[]>([]);
-  const [settings, setSettings] = useState<PrivateProfile | null>(null);
-  const [radius, setRadius] = useState(5000);
+  const [radiusInput, setRadiusInput] = useState(5000);
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [myPetsList, priv] = await Promise.all([myPets(), getPrivateProfile()]);
-      setPets(myPetsList);
-      setSettings(priv);
-      setRadius(priv?.alert_radius_m ?? 5000);
+      setPets(await myPets());
     } finally {
       setLoading(false);
     }
@@ -36,8 +33,12 @@ export default function ProfilePage() {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    setRadiusInput(radius);
+  }, [radius]);
+
   async function saveSettings() {
-    await updateSettings({ alertRadiusM: radius });
+    await saveRadius(radiusInput);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   }
@@ -116,8 +117,8 @@ export default function ProfilePage() {
               min={500}
               max={20000}
               step={500}
-              value={radius}
-              onChange={(e) => setRadius(Number(e.target.value))}
+              value={radiusInput}
+              onChange={(e) => setRadiusInput(Number(e.target.value))}
             />
             <PrimaryButton onClick={() => void saveSettings()} type="button">
               Guardar
@@ -132,9 +133,9 @@ export default function ProfilePage() {
             <button
               type="button"
               className="pc-outline-btn"
-              onClick={() => void requestGeoConsent()}
+              onClick={() => void requestConsent()}
             >
-              {settings?.geolocation_consent ? "Actualizar ubicación" : "Dar permiso de ubicación"}
+              {consent ? "Actualizar ubicación" : "Dar permiso de ubicación"}
             </button>
           </div>
 

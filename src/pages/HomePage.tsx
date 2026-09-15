@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell, Heart, Map as MapIcon, MessageCircle } from "lucide-react";
 import AlertNotification from "../components/AlertNotification.jsx";
@@ -6,11 +6,12 @@ import PetCard from "../components/PetCard.jsx";
 import ForumPost from "../components/ForumPost.jsx";
 import { EmptyState, ErrorState, LoadingState } from "../components/ui/States";
 import { useAuth } from "../contexts/AuthContext";
+import { useUserLocation } from "../hooks/useUserLocation";
 import { getFeed, reportsNear } from "../lib/api";
-import { getUserPoint, hasGeoConsent, requestGeoConsent } from "../lib/geo";
+import { hasGeoDecision } from "../lib/geo";
 import { dayLabel, distanceLabel, timeAgo } from "../lib/format";
 import { supabase } from "../lib/supabase";
-import type { FeedItem, Pet, ReportNear } from "../lib/types";
+import type { FeedItem, GeoPoint, Pet, ReportNear } from "../lib/types";
 import "../styles/pages.css";
 
 export default function HomePage() {
@@ -23,15 +24,15 @@ export default function HomePage() {
   const [adoption, setAdoption] = useState<Pet[]>([]);
   const [alertDismissed, setAlertDismissed] = useState(false);
   const [showAllAdoption, setShowAllAdoption] = useState(false);
+  const { point, radius, consent, loading: locLoading, requestConsent } = useUserLocation();
+  const askedRef = useRef(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (origin: GeoPoint, radiusM: number) => {
     setLoading(true);
     setError(null);
     try {
-      if (!hasGeoConsent()) await requestGeoConsent();
-      const point = await getUserPoint();
       const [near, posts, adoptionPets] = await Promise.all([
-        reportsNear(point, 5000, 8),
+        reportsNear(origin, radiusM, 8),
         getFeed({ limit: 3 }),
         supabase
           .from("pets")
@@ -52,8 +53,15 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (!locLoading) void load(point, radius);
+  }, [locLoading, point, radius, load]);
+
+  useEffect(() => {
+    if (!locLoading && !consent && !hasGeoDecision() && !askedRef.current) {
+      askedRef.current = true;
+      void requestConsent();
+    }
+  }, [locLoading, consent, requestConsent]);
 
   const geoAlert = reports.find((r) => r.type === "lost");
   const found = reports.filter((r) => r.type === "found").slice(0, 4);
@@ -77,7 +85,7 @@ export default function HomePage() {
       </header>
 
       {loading && <LoadingState label="Cargando tu comunidad…" />}
-      {!loading && error && <ErrorState message={error} onRetry={() => void load()} />}
+      {!loading && error && <ErrorState message={error} onRetry={() => void load(point, radius)} />}
 
       {!loading && !error && (
         <>

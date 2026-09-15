@@ -3,8 +3,8 @@ import { CircleMarker, MapContainer, Popup, TileLayer, useMap } from "react-leaf
 import { MapPin, Phone } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 import { EmptyState, ErrorState, LoadingState } from "../components/ui/States";
+import { useUserLocation } from "../hooks/useUserLocation";
 import { placesNear, reportsNear } from "../lib/api";
-import { getUserPoint } from "../lib/geo";
 import { distanceLabel, dayLabel } from "../lib/format";
 import { DEFAULT_CENTER, type GeoPoint, type PlaceNear, type ReportNear } from "../lib/types";
 import "../styles/pages.css";
@@ -38,29 +38,32 @@ export default function MapPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [focus, setFocus] = useState<GeoPoint | null>(null);
+  const { point, radius, loading: locLoading } = useUserLocation();
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const point = await getUserPoint();
-      setCenter(point);
-      const [r, p] = await Promise.all([
-        reportsNear(point, 8000, 30),
-        placesNear(point, 8000),
-      ]);
-      setReports(r);
-      setPlaces(p);
-    } catch {
-      setError("No pudimos cargar el mapa.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const load = useCallback(
+    async (origin: GeoPoint, radiusM: number) => {
+      setLoading(true);
+      setError(null);
+      try {
+        setCenter(origin);
+        const [r, p] = await Promise.all([
+          reportsNear(origin, radiusM, 30),
+          placesNear(origin, radiusM),
+        ]);
+        setReports(r);
+        setPlaces(p);
+      } catch {
+        setError("No pudimos cargar el mapa.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (!locLoading) void load(point, radius);
+  }, [locLoading, point, radius, load]);
 
   const visibleReports = reports.filter((r) =>
     filter === "todo" ? true : filter === "lost" ? r.type === "lost" : filter === "found" ? r.type === "found" : false
@@ -93,7 +96,7 @@ export default function MapPage() {
       </div>
 
       {loading && <LoadingState label="Buscando cerca de ti…" />}
-      {!loading && error && <ErrorState message={error} onRetry={() => void load()} />}
+      {!loading && error && <ErrorState message={error} onRetry={() => void load(point, radius)} />}
 
       {!loading && !error && (
         <div className="map-layout">

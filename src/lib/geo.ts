@@ -6,6 +6,11 @@ export function hasGeoConsent(): boolean {
   return localStorage.getItem(CONSENT_KEY) === "yes";
 }
 
+/** true si el usuario ya decidió (aceptó o rechazó) en este navegador. */
+export function hasGeoDecision(): boolean {
+  return localStorage.getItem(CONSENT_KEY) !== null;
+}
+
 export function setGeoConsent(consent: boolean): void {
   localStorage.setItem(CONSENT_KEY, consent ? "yes" : "no");
 }
