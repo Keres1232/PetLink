@@ -8,25 +8,9 @@ const AlertIcon = () => (
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
   >
-    <circle
-      cx="12"
-      cy="12"
-      r="9"
-      stroke="#000000"
-      strokeWidth="2"
-    />
-    <path
-      d="M12 7V13"
-      stroke="#000000"
-      strokeWidth="2"
-      strokeLinecap="round"
-    />
-    <circle
-      cx="12"
-      cy="16.5"
-      r="1"
-      fill="#000000"
-    />
+    <circle cx="12" cy="12" r="9" stroke="#7519FF" strokeWidth="2" />
+    <path d="M12 7V13" stroke="#7519FF" strokeWidth="2" strokeLinecap="round" />
+    <circle cx="12" cy="16.5" r="1" fill="#7519FF" />
   </svg>
 );
 
@@ -38,23 +22,18 @@ function AlertNotification({
 }) {
   return (
     <article className="alert-card">
-
-      {/* Icono + texto */}
       <div className="alert-card__header">
-
         <div className="alert-card__icon">
           <AlertIcon />
         </div>
 
-        <p className="alert-card__text">
-          <strong>{title}</strong> {description}
-        </p>
-
+        <div className="alert-card__text">
+          <p className="alert-card__title">{title}</p>
+          <p className="alert-card__description">{description}</p>
+        </div>
       </div>
 
-      {/* Botones de acción */}
       <div className="alert-card__actions">
-
         <button
           type="button"
           className="alert-card__btn alert-card__btn--detail"
@@ -70,9 +49,7 @@ function AlertNotification({
         >
           No es mi zona
         </button>
-
       </div>
-
     </article>
   );
 }

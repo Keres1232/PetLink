@@ -5,6 +5,7 @@
   justify-content: space-between;
   gap: 12px;
   align-self: stretch;
+  flex-wrap: wrap;
 }
 
 .remember-forgot__check {

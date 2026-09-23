@@ -5,13 +5,18 @@ import RememberForgotRow from "./RememberForgotRow.jsx";
 import PrimaryButton from "./PrimaryButton.jsx";
 import "./LoginCard.css";
 
-function LoginCard({ onSwitchToRegister }) {
+function LoginCard({ onSwitchToRegister, onLoginSuccess }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
 
   const handleSubmit = () => {
-    console.log({ email, password, remember });
+    if (!email || !password) {
+      alert("Ingresa tu correo y contraseña.");
+      return;
+    }
+    console.log("Sesión iniciada:", { email, password, remember });
+    onLoginSuccess(email);
   };
 
   return (
