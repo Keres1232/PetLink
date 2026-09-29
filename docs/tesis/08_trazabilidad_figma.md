@@ -72,6 +72,8 @@ User flow vet · Interfaz vet"*. Es decir, **los flujos de administración y vet
 no tienen diseño**.
 
 **Estado:** la **base de datos ya los soporta completos** (roles `vet/foundation/admin`,
-`vet_applications`, `verify_clinic`, `conversations/messages`, moderación, `appointments`) y
-fueron ejercitados en el arnés `web-test/`; su UI final queda como trabajo futuro dependiente
-del diseño Figma (doc 01 §1.2).
+`vet_applications`, `verify_clinic`, `conversations/messages`, moderación, `appointments`).
+Además, la **interfaz admin ya está implementada en la web** (`/admin`, acceso solo por rol)
+con 4 colas: moderación de publicaciones, solicitudes de veterinario/fundación, verificación
+de clínicas y denuncias de comentarios — cubriendo la mayor parte de *"Interfaz admin"*.
+Queda pendiente el **flujo/interfaz veterinaria** (dependiente del diseño Figma).

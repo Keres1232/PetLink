@@ -19,7 +19,7 @@ el rebrand se aplicó en la web (títulos, textos, README de producto).
 | `owner` | Dueño de mascota (usuario base) | Implementado |
 | `vet` | Veterinario verificado (gestiona clínica y citas) | BD lista; UI en Figma pendiente ("User flow vet") |
 | `foundation` | Fundación/refugio verificado | BD lista; UI pendiente |
-| `admin` | Moderación de contenido y verificaciones | BD + panel en `web-test`; UI web final pendiente |
+| `admin` | Moderación de contenido y verificaciones | Panel en web (`/admin`, 4 colas) |
 
 > El propio Figma (texto `2117:1115`) declara pendientes los flujos admin/vet; esta tesis
 > justifica que **la base de datos ya los soporta** (roles, verificaciones, mensajería,
@@ -34,6 +34,9 @@ el rebrand se aplicó en la web (títulos, textos, README de producto).
 - Notificaciones (Realtime + navegación por tipo).
 - Perfil (mascotas, radio de alertas, consentimiento de ubicación).
 - Cuenta (cambio de correo/contraseña) y Ayuda (FAQ + guías validadas).
+- **Panel de administración** (`/admin`, guardia por rol): moderación de publicaciones,
+  solicitudes de veterinario/fundación, clínicas pendientes de verificación y denuncias de
+  comentarios.
 
 ## 1.4 Stack tecnológico
 

@@ -148,7 +148,6 @@ reportes, adopción, cuenta, moderación) y, con ≥3 caracteres, consulta `sear
 (debounce 350 ms) mostrando guías validadas con su nivel de urgencia y validador.
 
 ## 6.11 Privacidad de ubicación (transversal)
-
 1. Primer uso (Home): si el navegador no tiene decisión previa, se pide el permiso
    (una sola vez; `hasGeoDecision` evita repetir).
 2. Aceptar → `geolocation_consent = true` en `private_profiles` + `set_my_location(punto, radio)`.
@@ -157,3 +156,20 @@ reportes, adopción, cuenta, moderación) y, con ≥3 caracteres, consulta `sear
 
 *Justificación:* consentimiento explícito, granular y revocable; el radio decide qué
 notificaciones se generan (`notify_on_report` lo usa en el `ST_DWithin`).
+
+## 6.12 Panel de administración
+
+**Ruta:** `/admin` (guardia `AdminArea`: `profile.role === 'admin'`; cualquier otro rol es
+redirigido a `/`).
+
+1. Cuatro colas con contador en pestañas: **Publicaciones** (`get_moderation_queue` →
+   `moderate_post`: publicar/rechazar), **Solicitudes vet** (`vet_applications` →
+   `review_vet_application`), **Clínicas pendientes** (`verify_clinic`),
+   **Denuncias de comentarios** (`comment_reports` → `moderate_comment` +
+   `resolve_comment_reports`).
+2. Cada acción muestra estado de envío (`busyId`) y aviso de resultado
+   (`notice`/`actionError`), y refresca la cola.
+
+*Justificación:* una sola pantalla para todo el trabajo de staff; **cada acción invoca una
+RPC que revalida el rol en el servidor** (defensa en profundidad: ocultar la ruta no es
+seguridad; la BD vuelve a comprobar).
