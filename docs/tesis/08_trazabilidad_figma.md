@@ -73,7 +73,15 @@ no tienen diseño**.
 
 **Estado:** la **base de datos ya los soporta completos** (roles `vet/foundation/admin`,
 `vet_applications`, `verify_clinic`, `conversations/messages`, moderación, `appointments`).
-Además, la **interfaz admin ya está implementada en la web** (`/admin`, acceso solo por rol)
-con 4 colas: moderación de publicaciones, solicitudes de veterinario/fundación, verificación
-de clínicas y denuncias de comentarios — cubriendo la mayor parte de *"Interfaz admin"*.
-Queda pendiente el **flujo/interfaz veterinaria** (dependiente del diseño Figma).
+Además, **ambas interfaces están implementadas en la web**:
+
+- **Interfaz admin** (`/admin`, acceso solo por rol) con 4 colas: moderación de
+  publicaciones (aprobar/rechazar), solicitudes de veterinario/fundación (revisar con
+  documento), verificación de clínicas y denuncias de comentarios.
+- **Flujo profesional** (`/verificacion` + `/mi-clinica`): solicitud con documento privado y
+  gestión de la propia clínica/refugio, publicada en el mapa solo tras la verificación admin
+  (migraciones `0030`/`0031`).
+
+Los flujos funcionales cubren lo que el Figma aún no diseña visualmente (el *look* final del
+flujo vet queda como trabajo de diseño futuro; la funcionalidad está operativa y documentada
+en el doc 06 §6.13).

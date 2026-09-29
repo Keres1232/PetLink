@@ -13,6 +13,7 @@ import ChipGroup from "../components/ui/ChipGroup";
 import { EmptyState, ErrorState, LoadingState } from "../components/ui/States";
 import {
   getModerationQueue,
+  getVetDocumentUrl,
   listCommentReports,
   listPendingClinics,
   listPendingVetApplications,
@@ -60,6 +61,22 @@ export default function AdminPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [docBusy, setDocBusy] = useState<string | null>(null);
+
+  async function openDocument(pathOrUrl: string) {
+    setDocBusy(pathOrUrl);
+    setActionError(null);
+    try {
+      const url = await getVetDocumentUrl(pathOrUrl);
+      if (url) {
+        window.open(url, "_blank", "noopener");
+      } else {
+        setActionError("No pudimos abrir el documento.");
+      }
+    } finally {
+      setDocBusy(null);
+    }
+  }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -271,14 +288,15 @@ export default function AdminPage() {
                 </div>
               </div>
               {v.support_document_url ? (
-                <a
+                <button
+                  type="button"
                   className="admin-item__doc"
-                  href={v.support_document_url}
-                  target="_blank"
-                  rel="noreferrer"
+                  disabled={docBusy === v.support_document_url}
+                  onClick={() => void openDocument(v.support_document_url as string)}
                 >
-                  <ExternalLink size={14} /> Ver documento de soporte
-                </a>
+                  <ExternalLink size={14} />{" "}
+                  {docBusy === v.support_document_url ? "Abriendo…" : "Ver documento de soporte"}
+                </button>
               ) : (
                 <p className="pc-muted admin-item__meta">Sin documento adjunto</p>
               )}

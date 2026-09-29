@@ -664,3 +664,44 @@
 .feed-alert-link:hover {
   background: #f3edff;
 }
+
+/* ---------- Verificación profesional / Mi clínica ---------- */
+
+.pro-status {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  background: #f3edff;
+  border-radius: var(--pc-radius-sm);
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+
+.pro-status__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--pc-primary-soft);
+  color: var(--pc-primary-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pro-status__title {
+  margin: 0;
+  font-weight: 700;
+  font-size: 14.5px;
+}
+
+.pro-status__meta {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+}
+
+.pro-hint {
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+}

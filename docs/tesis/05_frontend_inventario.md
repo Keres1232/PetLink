@@ -22,7 +22,9 @@
 | `/configuracion/correo` | `ChangeEmailPage` | Protegida | Re-auth + `updateUser({email})` (confirmación por enlace) |
 | `/configuracion/contrasena` | `ChangePasswordPage` | Protegida | Re-auth + `updateUser({password})` + `signOut({scope:'others'})` |
 | `/ayuda` | `AyudaPage` | Protegida | FAQ local + `search_guides` (debounce 350 ms) |
-| `/admin` | `AdminPage` | Solo rol `admin` (`AdminArea`) | `get_moderation_queue` + `moderate_post`, `vet_applications` + `review_vet_application`, clínicas + `verify_clinic`, `comment_reports` + `moderate_comment` |
+| `/admin` | `AdminPage` | Solo rol `admin` (`AdminArea`) | `get_moderation_queue` + `moderate_post`, `vet_applications` + `review_vet_application` (+ documento vía `get_vet_document_url`), clínicas + `verify_clinic`, `comment_reports` + `moderate_comment` |
+| `/verificacion` | `VetApplicationPage` | Protegida | `myVetApplication`, `submitVetApplication` (vet/foundation), `uploadVetDocument` (bucket privado) |
+| `/mi-clinica` | `MyClinicPage` | Protegida (rol profesional; si no, CTA a `/verificacion`) | `myClinic`, `createMyClinic`, `updateMyClinic`; estado *pendiente/verificada* |
 | `*` | — | — | Redirige a `/` |
 
 **Rutas protegidas:** `ProtectedArea` (redirige a `/login` sin sesión) y `PublicArea`

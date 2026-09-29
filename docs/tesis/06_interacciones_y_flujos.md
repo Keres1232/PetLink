@@ -173,3 +173,28 @@ redirigido a `/`).
 *Justificación:* una sola pantalla para todo el trabajo de staff; **cada acción invoca una
 RPC que revalida el rol en el servidor** (defensa en profundidad: ocultar la ruta no es
 seguridad; la BD vuelve a comprobar).
+
+## 6.13 Flujo profesional (veterinario / fundación)
+
+**Rutas:** `/verificacion` y `/mi-clinica`.
+
+1. **Solicitar verificación** (`/verificacion`): el usuario elige *Veterinario/a* o
+   *Refugio o fundación*, sube un **documento de soporte** (tarjeta profesional o registro
+   de fundación) a `vet-documents` — bucket **privado**, solo el solicitante y los admins
+   pueden leerlo (`0031`). La RPC `apply_as_vet`/`apply_as_foundation` crea la solicitud
+   pendiente; si el usuario ya tenía una, la página muestra su estado.
+2. **Revisión admin** (`/admin` → *Veterinarios*): el admin **abre el documento con URL
+   firmada** (`get_vet_document_url`) y **Aprueba o Rechaza**. Al aprobar, el perfil pasa a
+   `role = vet|foundation` con `vet_status = verified` (transaccional en
+   `review_vet_application`).
+3. **Mi clínica** (`/mi-clinica`): el profesional crea o edita **su** página (nombre,
+   teléfono, dirección y punto en el mapa; el tipo lo determina el rol: clínica o refugio).
+   Mientras esté pendiente muestra "Pendiente de verificación" y **no aparece en el mapa
+   público**: `places_near` y la política de lectura solo exponen registros verificados
+   (`0030`); el creador sí ve la suya.
+4. **Verificación admin** (`/admin` → *Clínicas*): **Verificar** sella `verified`,
+   `verified_by` y `verified_at` (auditoría) y la página pasa a ser pública en el mapa.
+
+*Justificación:* separa "solicitar" de "ser verificado" (nadie se auto-verifica), hace
+efectiva la verificación (el público solo ve lo verificado) y protege los documentos
+profesionales (bucket privado + lectura admin con URL firmada).

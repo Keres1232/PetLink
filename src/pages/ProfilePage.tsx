@@ -122,6 +122,17 @@ export default function ProfilePage() {
             <span>Contraseña</span>
             <ChevronRight size={18} />
           </button>
+          {profile?.role === "vet" || profile?.role === "foundation" ? (
+            <button type="button" className="account-row" onClick={() => navigate("/mi-clinica")}>
+              <span>Mi clínica</span>
+              <ChevronRight size={18} />
+            </button>
+          ) : (
+            <button type="button" className="account-row" onClick={() => navigate("/verificacion")}>
+              <span>Solicitar ser veterinario o refugio</span>
+              <ChevronRight size={18} />
+            </button>
+          )}
           <button type="button" className="account-row" onClick={() => navigate("/ayuda")}>
             <span>Ayuda y soporte</span>
             <ChevronRight size={18} />

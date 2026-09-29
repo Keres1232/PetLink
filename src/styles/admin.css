@@ -118,10 +118,21 @@
   font-weight: 600;
   font-size: 13.5px;
   text-decoration: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  align-self: flex-start;
 }
 
 .admin-item__doc:hover {
   text-decoration: underline;
+}
+
+.admin-item__doc:disabled {
+  opacity: 0.55;
+  cursor: wait;
 }
 
 .admin-item__actions {

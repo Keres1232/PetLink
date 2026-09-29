@@ -17,8 +17,8 @@ el rebrand se aplicó en la web (títulos, textos, README de producto).
 | Rol | Descripción | Estado |
 |---|---|---|
 | `owner` | Dueño de mascota (usuario base) | Implementado |
-| `vet` | Veterinario verificado (gestiona clínica y citas) | BD lista; UI en Figma pendiente ("User flow vet") |
-| `foundation` | Fundación/refugio verificado | BD lista; UI pendiente |
+| `vet` | Veterinario verificado (gestiona su clínica y perfil profesional) | Implementado (`/verificacion` + `/mi-clinica`) |
+| `foundation` | Fundación/refugio verificado | Implementado (`/verificacion` + `/mi-clinica`, tipo refugio) |
 | `admin` | Moderación de contenido y verificaciones | Panel en web (`/admin`, 4 colas) |
 
 > El propio Figma (texto `2117:1115`) declara pendientes los flujos admin/vet; esta tesis
@@ -37,6 +37,9 @@ el rebrand se aplicó en la web (títulos, textos, README de producto).
 - **Panel de administración** (`/admin`, guardia por rol): moderación de publicaciones,
   solicitudes de veterinario/fundación, clínicas pendientes de verificación y denuncias de
   comentarios.
+- **Flujo profesional** (`/verificacion` + `/mi-clinica`): solicitud de verificación con
+  documento privado, y creación/edición de la propia clínica o refugio (oculta del mapa
+  público hasta que un admin la verifica).
 
 ## 1.4 Stack tecnológico
 

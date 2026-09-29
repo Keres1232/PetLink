@@ -165,4 +165,14 @@ export interface CommentReport {
   reporter?: { name: string } | null;
 }
 
+export interface MyClinic {
+  id: string;
+  name: string;
+  address: string | null;
+  phone: string | null;
+  kind: string;
+  verified: boolean;
+  created_at: string;
+}
+
 export const DEFAULT_CENTER: GeoPoint = { lat: 4.67, lon: -74.04 };

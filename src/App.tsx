@@ -18,6 +18,8 @@ import ChangeEmailPage from "./pages/ChangeEmailPage";
 import ChangePasswordPage from "./pages/ChangePasswordPage";
 import AyudaPage from "./pages/AyudaPage";
 import AdminPage from "./pages/AdminPage";
+import VetApplicationPage from "./pages/VetApplicationPage";
+import MyClinicPage from "./pages/MyClinicPage";
 
 function FullLoading() {
   return (
@@ -88,6 +90,8 @@ export default function App() {
             <Route path="/configuracion/correo" element={<ChangeEmailPage />} />
             <Route path="/configuracion/contrasena" element={<ChangePasswordPage />} />
             <Route path="/ayuda" element={<AyudaPage />} />
+            <Route path="/verificacion" element={<VetApplicationPage />} />
+            <Route path="/mi-clinica" element={<MyClinicPage />} />
             <Route
               path="/admin"
               element={

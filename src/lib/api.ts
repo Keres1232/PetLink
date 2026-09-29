@@ -6,6 +6,7 @@ import type {
   GeoPoint,
   GuideRow,
   ModerationPost,
+  MyClinic,
   NotificationRow,
   PendingClinic,
   Pet,
@@ -485,5 +486,94 @@ export async function resolveCommentReports(
     .from("comment_reports")
     .update({ status })
     .eq("comment_id", commentId);
+  if (error) throw error;
+}
+
+// ---------------------------------------------------------------
+// Verificación profesional (vet / fundación) y mi clínica
+// ---------------------------------------------------------------
+
+export async function uploadVetDocument(file: File): Promise<string> {
+  const userId = (await supabase.auth.getUser()).data.user?.id ?? "anon";
+  const path = `${userId}/${Date.now()}-${file.name.replace(/[^\w.-]/g, "_")}`;
+  const { error } = await supabase.storage
+    .from("vet-documents")
+    .upload(path, file, { cacheControl: "3600", upsert: false });
+  if (error) throw error;
+  return path;
+}
+
+export async function getVetDocumentUrl(pathOrUrl: string): Promise<string | null> {
+  if (/^https?:\/\//.test(pathOrUrl)) return pathOrUrl;
+  const { data, error } = await supabase.storage
+    .from("vet-documents")
+    .createSignedUrl(pathOrUrl, 3600);
+  if (error) return null;
+  return data.signedUrl;
+}
+
+export async function myVetApplication(): Promise<VetApplication | null> {
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+  if (!userId) return null;
+  const { data, error } = await supabase
+    .from("vet_applications")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as VetApplication | null) ?? null;
+}
+
+export async function submitVetApplication(
+  role: "vet" | "foundation",
+  documentPath: string
+): Promise<void> {
+  const rpc = role === "foundation" ? "apply_as_foundation" : "apply_as_vet";
+  const { error } = await supabase.rpc(rpc, { p_document_url: documentPath });
+  if (error) throw error;
+}
+
+export async function myClinic(): Promise<MyClinic | null> {
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+  if (!userId) return null;
+  const { data, error } = await supabase
+    .from("vet_clinics")
+    .select("id, name, address, phone, kind, verified, created_at")
+    .eq("created_by", userId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as MyClinic | null) ?? null;
+}
+
+export async function createMyClinic(input: {
+  name: string;
+  address: string;
+  phone: string | null;
+  point: GeoPoint;
+  kind: "clinic" | "shelter";
+}): Promise<void> {
+  const { error } = await supabase.rpc("create_clinic", {
+    p_name: input.name,
+    p_address: input.address,
+    p_phone: input.phone,
+    p_lat: input.point.lat,
+    p_lon: input.point.lon,
+    p_kind: input.kind,
+  });
+  if (error) throw error;
+}
+
+export async function updateMyClinic(
+  clinicId: string,
+  patch: { name?: string; address?: string; phone?: string | null }
+): Promise<void> {
+  const { error } = await supabase
+    .from("vet_clinics")
+    .update(patch)
+    .eq("id", clinicId);
   if (error) throw error;
 }

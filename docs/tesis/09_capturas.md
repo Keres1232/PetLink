@@ -84,8 +84,9 @@ las solicitudes de la comunidad:
   botones **Aprobar / Rechazar** (los posts de usuario pasan por moderación; las alertas se
   publican al instante por urgencia).
 - **Veterinarios (1)**: solicitudes de verificación (`vet_applications`, rol objetivo
-  `vet`/`foundation`) con documento soporte; **Aprobar** habilita al usuario como veterinario
-  verificado (puede escribir guías y crear su clínica) y **Rechazar** cierra la solicitud.
+  `vet`/`foundation`) con documento soporte abierto mediante **URL firmada**; **Aprobar**
+  habilita al usuario como veterinario verificado (puede escribir guías y crear su clínica)
+  y **Rechazar** cierra la solicitud.
 
 | Clínicas por verificar | Comentarios reportados |
 |---|---|
@@ -100,3 +101,20 @@ las solicitudes de la comunidad:
 > datos sembrados para la demostración (mascotas, notificaciones, una clínica pendiente).
 > Cada acción del panel invoca una RPC que **revalida el rol en el servidor**
 > (defensa en profundidad, ver docs 03 y 06 §6.12).
+
+## 9.5 Flujo profesional (veterinario / fundación)
+
+| Solicitar verificación (móvil) | Mi clínica (móvil, pendiente de verificación) |
+|---|---|
+| ![Verificación](capturas/21-verificacion.png) | ![Mi clínica](capturas/22-mi-clinica.png) |
+
+- **Solicitar verificación** (`/verificacion`): el usuario elige *Veterinario/a* o
+  *Refugio o fundación* y sube su **documento de soporte** a un bucket **privado** (solo el
+  solicitante y el equipo de moderación pueden verlo). Al aprobarse, el perfil cambia a rol
+  profesional.
+- **Mi clínica** (`/mi-clinica`): el profesional registra nombre, teléfono, dirección y
+  ubicación. Mientras está **pendiente de verificación** no aparece en el mapa público; tras
+  la verificación del admin (captura 19) queda visible para toda la comunidad.
+
+> La captura **18 (Veterinarios)** fue actualizada con el botón *"Ver documento de soporte"*,
+> que ahora abre el documento con URL firmada (requiere la política `0031`).
