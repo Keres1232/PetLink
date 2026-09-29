@@ -47,6 +47,7 @@ body,
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 body {
@@ -54,6 +55,7 @@ body {
   background: var(--pc-bg);
   color: var(--pc-text);
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
 h1,
