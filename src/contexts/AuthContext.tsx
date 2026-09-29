@@ -27,19 +27,26 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [sessionLoading, setSessionLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(true);
 
   const loadProfile = useCallback(async (userId: string | null) => {
+    setProfileLoading(true);
     if (!userId) {
       setProfile(null);
+      setProfileLoading(false);
       return;
     }
-    const { data } = await supabase
-      .from("profiles")
-      .select("id, name, role, vet_status, created_at")
-      .eq("id", userId)
-      .maybeSingle();
-    setProfile((data as Profile | null) ?? null);
+    try {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, name, role, vet_status, created_at")
+        .eq("id", userId)
+        .maybeSingle();
+      setProfile((data as Profile | null) ?? null);
+    } finally {
+      setProfileLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -47,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
       setSession(data.session);
-      setLoading(false);
+      setSessionLoading(false);
       void loadProfile(data.session?.user.id ?? null);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
@@ -59,6 +66,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       sub.subscription.unsubscribe();
     };
   }, [loadProfile]);
+
+  const loading = sessionLoading || profileLoading;
 
   const signIn = useCallback(async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
