@@ -70,14 +70,24 @@ export default function NotificationsPage() {
         return;
       }
       if (n.type === "post_reply" && n.reference_id) {
-        const comment = await getCommentById(n.reference_id);
-        if (comment) navigate(`/comunidad?post=${comment.post_id}&comment=${comment.id}`);
+        const comment = await getCommentById(n.reference_id).catch(() => null);
+        if (comment) {
+          navigate(`/comunidad?post=${comment.post_id}&comment=${comment.id}`);
+        } else {
+          navigate("/comunidad");
+        }
         return;
       }
-      if (n.type === "geo_alert" && n.reference_id) {
-        const post = await getPostByReportId(n.reference_id);
+      if (n.type === "geo_alert") {
+        const post = n.reference_id
+          ? await getPostByReportId(n.reference_id).catch(() => null)
+          : null;
         navigate(
-          post ? `/comunidad?post=${post.id}` : `/mapa?report=${n.reference_id}`
+          post
+            ? `/comunidad?post=${post.id}`
+            : n.reference_id
+              ? `/mapa?report=${n.reference_id}`
+              : "/mapa"
         );
         return;
       }

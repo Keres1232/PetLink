@@ -113,7 +113,7 @@ export async function createPost(input: {
 export async function listComments(postId: string): Promise<CommentRow[]> {
   const { data, error } = await supabase
     .from("comments")
-    .select("id, post_id, user_id, text, created_at, is_hidden, author:profiles(name)")
+    .select("id, post_id, user_id, text, created_at, is_hidden, author:profiles!comments_user_id_fkey(name)")
     .eq("post_id", postId)
     .eq("is_hidden", false)
     .order("created_at", { ascending: true });
@@ -255,7 +255,7 @@ export async function getPostById(id: string): Promise<FeedItem | null> {
   const { data, error } = await supabase
     .from("posts")
     .select(
-      "id, user_id, pet_id, type, content, image_url, report_id, created_at, author:profiles(name)"
+      "id, user_id, pet_id, type, content, image_url, report_id, created_at, author:profiles!posts_user_id_fkey(name)"
     )
     .eq("id", id)
     .maybeSingle();
@@ -324,7 +324,7 @@ export async function getPostByReportId(reportId: string): Promise<FeedItem | nu
 export async function getCommentById(id: string): Promise<CommentRow | null> {
   const { data, error } = await supabase
     .from("comments")
-    .select("id, post_id, user_id, text, created_at, is_hidden, author:profiles(name)")
+    .select("id, post_id, user_id, text, created_at, is_hidden, author:profiles!comments_user_id_fkey(name)")
     .eq("id", id)
     .maybeSingle();
   if (error) throw error;
