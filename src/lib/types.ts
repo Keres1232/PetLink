@@ -46,6 +46,9 @@ export interface FeedItem {
   type: string;
   content: string;
   image_url: string | null;
+  report_id: string | null;
+  longitude: number | null;
+  latitude: number | null;
   author_name: string;
   tags: string[];
   comment_count: number;
@@ -64,6 +67,7 @@ export interface ReportNear {
   pet_photo_url: string | null;
   photos: string[];
   lost_at: string | null;
+  post_id: string | null;
   distance_m: number;
   longitude: number;
   latitude: number;
@@ -95,7 +99,7 @@ export interface CommentRow {
 export interface NotificationRow {
   id: string;
   user_id: string;
-  type: "geo_alert" | "post_reply" | "pet_reminder";
+  type: "geo_alert" | "post_reply" | "pet_reminder" | "post_like";
   title: string;
   body: string | null;
   reference_id: string | null;

@@ -122,7 +122,9 @@ export default function HomePage() {
                     name={r.pet_name ?? r.species_name ?? "Mascota"}
                     location={`${r.description || "Cerca de ti"} · ${dayLabel(r.created_at).toLowerCase()}`}
                     photoUrl={r.pet_photo_url ?? undefined}
-                    onClick={() => navigate("/mapa")}
+                    onClick={() =>
+                      r.post_id ? navigate(`/comunidad?post=${r.post_id}`) : navigate("/mapa")
+                    }
                   />
                 ))}
               </div>
@@ -209,6 +211,9 @@ export default function HomePage() {
                   name={r.pet_name ?? r.species_name ?? "Mascota"}
                   location={`${r.description || "Cerca de ti"} · ${dayLabel(r.created_at).toLowerCase()}`}
                   photoUrl={r.pet_photo_url ?? undefined}
+                  onClick={() =>
+                    r.post_id ? navigate(`/comunidad?post=${r.post_id}`) : navigate("/mapa")
+                  }
                 />
               ))}
             </div>
@@ -226,6 +231,9 @@ export default function HomePage() {
                   name={r.pet_name ?? r.species_name ?? "Mascota"}
                   location={`${r.description || "Cerca de ti"} · ${dayLabel(r.created_at).toLowerCase()}`}
                   photoUrl={r.pet_photo_url ?? undefined}
+                  onClick={() =>
+                    r.post_id ? navigate(`/comunidad?post=${r.post_id}`) : navigate("/mapa")
+                  }
                 />
               ))}
             </div>

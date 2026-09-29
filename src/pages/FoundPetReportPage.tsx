@@ -7,7 +7,7 @@ import PrimaryButton from "../components/PrimaryButton.jsx";
 import ChipGroup from "../components/ui/ChipGroup";
 import PhotoPickerModal from "../components/ui/PhotoPickerModal";
 import { useUserLocation } from "../hooks/useUserLocation";
-import { createAlert, listSpecies, uploadPhotos } from "../lib/api";
+import { createAlert, getPostByReportId, listSpecies, uploadPhotos } from "../lib/api";
 import { searchPlace } from "../lib/geocode";
 import type { GeoPoint, PetSex, PetSize, Species } from "../lib/types";
 import "../components/report/report.css";
@@ -83,7 +83,7 @@ export default function FoundPetReportPage() {
         .filter(Boolean)
         .join(" · ");
 
-      await createAlert({
+      const reportId = await createAlert({
         petId: null,
         type: "found",
         description,
@@ -95,7 +95,8 @@ export default function FoundPetReportPage() {
         ageEstimate: ageEstimate.trim() || null,
         photos: photoUrls,
       });
-      navigate("/mapa");
+      const post = await getPostByReportId(reportId).catch(() => null);
+      navigate(post ? `/comunidad?post=${post.id}` : "/mapa");
     } catch (err) {
       console.error("createAlert (found) falló:", err);
       setError("No pudimos publicar la alerta. Intenta de nuevo.");

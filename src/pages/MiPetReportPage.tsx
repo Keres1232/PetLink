@@ -7,7 +7,7 @@ import PhotoGridField from "../components/report/PhotoGridField";
 import PrimaryButton from "../components/PrimaryButton.jsx";
 import { LoadingState } from "../components/ui/States";
 import { useUserLocation } from "../hooks/useUserLocation";
-import { createAlert, myPets, uploadPhotos } from "../lib/api";
+import { createAlert, getPostByReportId, myPets, uploadPhotos } from "../lib/api";
 import { searchPlace } from "../lib/geocode";
 import type { GeoPoint, Pet } from "../lib/types";
 import "../components/report/report.css";
@@ -77,7 +77,7 @@ export default function MiPetReportPage() {
         .join(" · ");
       const lostAt = new Date(`${date}T${time}:00`).toISOString();
 
-      await createAlert({
+      const reportId = await createAlert({
         petId: petId || null,
         type: "lost",
         description: description || "Mascota perdida",
@@ -85,7 +85,8 @@ export default function MiPetReportPage() {
         photos: photoUrls,
         lostAt,
       });
-      navigate("/mapa");
+      const post = await getPostByReportId(reportId).catch(() => null);
+      navigate(post ? `/comunidad?post=${post.id}` : "/mapa");
     } catch (err) {
       console.error("createAlert (lost) falló:", err);
       setError("No pudimos publicar la alerta. Intenta de nuevo.");

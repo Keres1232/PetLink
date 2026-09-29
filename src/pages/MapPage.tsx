@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { CircleMarker, MapContainer, Popup, TileLayer, useMap } from "react-leaflet";
 import { MapPin, Phone } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 import { EmptyState, ErrorState, LoadingState } from "../components/ui/States";
 import { useUserLocation } from "../hooks/useUserLocation";
-import { placesNear, reportsNear } from "../lib/api";
+import { getReportById, placesNear, reportsNear } from "../lib/api";
 import { distanceLabel, dayLabel } from "../lib/format";
 import { DEFAULT_CENTER, type GeoPoint, type PlaceNear, type ReportNear } from "../lib/types";
 import "../styles/pages.css";
@@ -31,6 +32,8 @@ function FlyTo({ point }: { point: GeoPoint | null }) {
 }
 
 export default function MapPage() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [filter, setFilter] = useState<Filter>("todo");
   const [center, setCenter] = useState<GeoPoint>(DEFAULT_CENTER);
   const [reports, setReports] = useState<ReportNear[]>([]);
@@ -38,6 +41,8 @@ export default function MapPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [focus, setFocus] = useState<GeoPoint | null>(null);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  const deepLinkHandled = useRef(false);
   const { point, radius, loading: locLoading } = useUserLocation();
 
   const load = useCallback(
@@ -64,6 +69,27 @@ export default function MapPage() {
   useEffect(() => {
     if (!locLoading) void load(point, radius);
   }, [locLoading, point, radius, load]);
+
+  // Deep link desde notificaciones/feed: /mapa?report=<id>
+  useEffect(() => {
+    if (locLoading || loading || deepLinkHandled.current) return;
+    deepLinkHandled.current = true;
+    const reportId = searchParams.get("report");
+    if (!reportId) return;
+    void (async () => {
+      const rep = await getReportById(reportId).catch(() => null);
+      if (!rep) return;
+      setFocus({ lat: rep.latitude, lon: rep.longitude });
+      setReports((prev) => (prev.some((r) => r.id === rep.id) ? prev : [rep, ...prev]));
+      setHighlightId(rep.id);
+      setTimeout(() => {
+        document
+          .querySelector(`[data-report-id="${rep.id}"]`)
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 150);
+      setTimeout(() => setHighlightId(null), 2600);
+    })();
+  }, [locLoading, loading, searchParams]);
 
   const visibleReports = reports.filter((r) =>
     filter === "todo" ? true : filter === "lost" ? r.type === "lost" : filter === "found" ? r.type === "found" : false
@@ -159,8 +185,13 @@ export default function MapPage() {
                     <button
                       key={r.id}
                       type="button"
-                      className="map-row"
-                      onClick={() => setFocus({ lat: r.latitude, lon: r.longitude })}
+                      data-report-id={r.id}
+                      className={`map-row ${highlightId === r.id ? "flash-highlight" : ""}`}
+                      onClick={() =>
+                        r.post_id
+                          ? navigate(`/comunidad?post=${r.post_id}`)
+                          : setFocus({ lat: r.latitude, lon: r.longitude })
+                      }
                     >
                       {r.pet_photo_url ? (
                         <img className="map-row__thumb" src={r.pet_photo_url} alt="" />

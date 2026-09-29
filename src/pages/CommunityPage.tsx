@@ -1,15 +1,26 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { MapPin } from "lucide-react";
 import ForumPost from "../components/ForumPost.jsx";
 import PrimaryButton from "../components/PrimaryButton.jsx";
 import ChipGroup from "../components/ui/ChipGroup";
 import { EmptyState, ErrorState, LoadingState } from "../components/ui/States";
-import { addComment, createPost, getFeed, listComments, togglePostLike, uploadPhoto } from "../lib/api";
+import {
+  addComment,
+  createPost,
+  getCommentById,
+  getFeed,
+  getPostById,
+  listComments,
+  togglePostLike,
+  uploadPhoto,
+} from "../lib/api";
 import { timeAgo } from "../lib/format";
 import { supabase } from "../lib/supabase";
 import type { CommentRow, FeedItem } from "../lib/types";
 import "../styles/pages.css";
 
-type FilterValue = "all" | "question" | "tip" | "story" | "found";
+type FilterValue = "all" | "question" | "tip" | "story" | "found" | "alert";
 
 const FILTERS: { value: FilterValue; label: string }[] = [
   { value: "all", label: "Todo" },
@@ -17,6 +28,7 @@ const FILTERS: { value: FilterValue; label: string }[] = [
   { value: "tip", label: "Consejos" },
   { value: "story", label: "Historias" },
   { value: "found", label: "Encontradas" },
+  { value: "alert", label: "Alertas" },
 ];
 
 const TYPE_LABELS: Record<string, string> = {
@@ -24,16 +36,21 @@ const TYPE_LABELS: Record<string, string> = {
   tip: "Consejo",
   story: "Historia",
   found: "Encontrada",
+  alert: "Alerta",
   post: "Post",
   experience: "Experiencia",
   meme: "Meme",
 };
 
 export default function CommunityPage() {
+  const [searchParams] = useSearchParams();
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterValue>("all");
+  const [highlightPost, setHighlightPost] = useState<string | null>(null);
+  const [highlightComment, setHighlightComment] = useState<string | null>(null);
+  const deepLinkHandled = useRef(false);
 
   const [draft, setDraft] = useState("");
   const [draftType, setDraftType] = useState("question");
@@ -61,6 +78,54 @@ export default function CommunityPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Deep links desde notificaciones: /comunidad?post=<id>&comment=<id>
+  useEffect(() => {
+    if (loading || deepLinkHandled.current) return;
+    const postParam = searchParams.get("post");
+    const commentParam = searchParams.get("comment");
+    if (!postParam && !commentParam) {
+      deepLinkHandled.current = true;
+      return;
+    }
+    deepLinkHandled.current = true;
+    void (async () => {
+      let targetId = postParam;
+      if (!targetId && commentParam) {
+        const c = await getCommentById(commentParam).catch(() => null);
+        targetId = c?.post_id ?? null;
+      }
+      if (!targetId) return;
+      const post = await getPostById(targetId).catch(() => null);
+      if (post) {
+        setFeed((prev) => (prev.some((f) => f.id === post.id) ? prev : [post, ...prev]));
+      }
+      setOpenPost(targetId);
+      setCommentDraft("");
+      setComments(await listComments(targetId).catch(() => []));
+      setHighlightPost(targetId);
+      setHighlightComment(commentParam);
+    })();
+  }, [loading, searchParams]);
+
+  useEffect(() => {
+    if (!openPost) return;
+    const scroll = setTimeout(() => {
+      document
+        .querySelector(`[data-post-id="${openPost}"]`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 150);
+    return () => clearTimeout(scroll);
+  }, [openPost, comments.length]);
+
+  useEffect(() => {
+    if (!highlightPost) return;
+    const clear = setTimeout(() => {
+      setHighlightPost(null);
+      setHighlightComment(null);
+    }, 2400);
+    return () => clearTimeout(clear);
+  }, [highlightPost]);
 
   useEffect(() => {
     const channel = supabase
@@ -209,7 +274,11 @@ export default function CommunityPage() {
 
       <div className="home__feed">
         {feed.map((item) => (
-          <div key={item.id}>
+          <div
+            key={item.id}
+            data-post-id={item.id}
+            className={highlightPost === item.id ? "flash-highlight" : undefined}
+          >
             <ForumPost
               userName={item.author_name}
               timeAgo={timeAgo(item.created_at)}
@@ -224,6 +293,11 @@ export default function CommunityPage() {
             {item.image_url && (
               <img className="forum-post__image" src={item.image_url} alt="" style={{ marginTop: 8 }} />
             )}
+            {item.type === "alert" && item.report_id && (
+              <Link className="feed-alert-link" to={`/mapa?report=${item.report_id}`}>
+                <MapPin size={14} /> Ver en mapa
+              </Link>
+            )}
             {openPost === item.id && (
               <div className="comments-panel">
                 <div className="comments-panel__list">
@@ -233,7 +307,11 @@ export default function CommunityPage() {
                     </p>
                   )}
                   {comments.map((c) => (
-                    <div key={c.id} className="comment-row">
+                    <div
+                      key={c.id}
+                      data-comment-id={c.id}
+                      className={`comment-row ${highlightComment === c.id ? "flash-highlight" : ""}`}
+                    >
                       <p className="comment-row__author">
                         {c.author?.name ?? "Alguien"}{" "}
                         <span className="comment-row__time">{timeAgo(c.created_at)}</span>

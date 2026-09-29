@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
-import { Bell, CalendarDays, MapPin, MessageCircle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Bell, CalendarDays, Heart, MapPin, MessageCircle } from "lucide-react";
 import { EmptyState, ErrorState, LoadingState } from "../components/ui/States";
-import { listNotifications, markNotificationRead } from "../lib/api";
+import {
+  getCommentById,
+  getPostByReportId,
+  listNotifications,
+  markNotificationRead,
+} from "../lib/api";
 import { timeAgo } from "../lib/format";
 import { supabase } from "../lib/supabase";
 import type { NotificationRow } from "../lib/types";
@@ -10,10 +16,12 @@ import "../styles/pages.css";
 const TYPE_ICONS: Record<string, typeof Bell> = {
   geo_alert: MapPin,
   post_reply: MessageCircle,
+  post_like: Heart,
   pet_reminder: CalendarDays,
 };
 
 export default function NotificationsPage() {
+  const navigate = useNavigate();
   const [items, setItems] = useState<NotificationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -48,12 +56,36 @@ export default function NotificationsPage() {
     };
   }, [load]);
 
-  async function handleOpen(id: string) {
-    setItems((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
+  async function handleOpen(n: NotificationRow) {
+    setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, is_read: true } : x)));
     try {
-      await markNotificationRead(id);
+      await markNotificationRead(n.id);
     } catch {
       /* la marca de leído no es crítica */
+    }
+
+    try {
+      if (n.type === "post_like" && n.reference_id) {
+        navigate(`/comunidad?post=${n.reference_id}`);
+        return;
+      }
+      if (n.type === "post_reply" && n.reference_id) {
+        const comment = await getCommentById(n.reference_id);
+        if (comment) navigate(`/comunidad?post=${comment.post_id}&comment=${comment.id}`);
+        return;
+      }
+      if (n.type === "geo_alert" && n.reference_id) {
+        const post = await getPostByReportId(n.reference_id);
+        navigate(
+          post ? `/comunidad?post=${post.id}` : `/mapa?report=${n.reference_id}`
+        );
+        return;
+      }
+      if (n.type === "pet_reminder") {
+        navigate("/perfil");
+      }
+    } catch {
+      /* si no se puede resolver el destino, la notificación queda como leída */
     }
   }
 
@@ -91,7 +123,7 @@ export default function NotificationsPage() {
               key={n.id}
               type="button"
               className={`notif-row ${n.is_read ? "" : "notif-row--unread"}`}
-              onClick={() => void handleOpen(n.id)}
+              onClick={() => void handleOpen(n)}
             >
               <span className="notif-row__icon">
                 <Icon size={18} />

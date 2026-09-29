@@ -244,6 +244,93 @@ export async function uploadPhoto(
   return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
 }
 
+export async function getReportById(id: string): Promise<ReportNear | null> {
+  const { data, error } = await supabase.rpc("report_by_id", { p_id: id });
+  if (error) throw error;
+  const rows = (data as ReportNear[]) ?? [];
+  return rows[0] ?? null;
+}
+
+export async function getPostById(id: string): Promise<FeedItem | null> {
+  const { data, error } = await supabase
+    .from("posts")
+    .select(
+      "id, user_id, pet_id, type, content, image_url, report_id, created_at, author:profiles(name)"
+    )
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+
+  const row = data as unknown as {
+    id: string;
+    user_id: string;
+    pet_id: string | null;
+    type: string;
+    content: string;
+    image_url: string | null;
+    report_id: string | null;
+    created_at: string;
+    author: { name: string } | null;
+  };
+
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+  const [comments, likes, mine] = await Promise.all([
+    supabase
+      .from("comments")
+      .select("id", { count: "exact", head: true })
+      .eq("post_id", id)
+      .eq("is_hidden", false),
+    supabase.from("post_likes").select("id", { count: "exact", head: true }).eq("post_id", id),
+    userId
+      ? supabase
+          .from("post_likes")
+          .select("post_id", { count: "exact", head: true })
+          .eq("post_id", id)
+          .eq("user_id", userId)
+      : Promise.resolve({ count: 0 }),
+  ]);
+
+  return {
+    id: row.id,
+    user_id: row.user_id,
+    pet_id: row.pet_id,
+    type: row.type,
+    content: row.content,
+    image_url: row.image_url,
+    report_id: row.report_id,
+    longitude: null,
+    latitude: null,
+    author_name: row.author?.name ?? "Usuario",
+    tags: [],
+    comment_count: comments.count ?? 0,
+    like_count: likes.count ?? 0,
+    liked_by_me: (mine.count ?? 0) > 0,
+    created_at: row.created_at,
+  };
+}
+
+export async function getPostByReportId(reportId: string): Promise<FeedItem | null> {
+  const { data, error } = await supabase
+    .from("posts")
+    .select("id")
+    .eq("report_id", reportId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return getPostById((data as { id: string }).id);
+}
+
+export async function getCommentById(id: string): Promise<CommentRow | null> {
+  const { data, error } = await supabase
+    .from("comments")
+    .select("id, post_id, user_id, text, created_at, is_hidden, author:profiles(name)")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as unknown as CommentRow) ?? null;
+}
+
 export async function uploadPhotos(
   files: File[],
   bucket: "pet-photos" | "post-images"
