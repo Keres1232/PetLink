@@ -162,7 +162,11 @@ export default function MapPage() {
                       className="map-row"
                       onClick={() => setFocus({ lat: r.latitude, lon: r.longitude })}
                     >
-                      <span className="map-row__thumb" aria-hidden="true" />
+                      {r.pet_photo_url ? (
+                        <img className="map-row__thumb" src={r.pet_photo_url} alt="" />
+                      ) : (
+                        <span className="map-row__thumb" aria-hidden="true" />
+                      )}
                       <span className="map-row__info">
                         <span className="map-row__title">
                           {r.pet_name ?? "Mascota"} · {r.type === "lost" ? "Perdido" : "Encontrado"}

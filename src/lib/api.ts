@@ -3,6 +3,7 @@ import type {
   CommentRow,
   FeedItem,
   GeoPoint,
+  GuideRow,
   NotificationRow,
   Pet,
   PlaceNear,
@@ -65,6 +66,14 @@ export async function createAlert(input: {
   type: "lost" | "found";
   description: string;
   point: GeoPoint;
+  speciesId?: string | null;
+  sex?: "male" | "female" | "unknown" | null;
+  breed?: string | null;
+  color?: string | null;
+  size?: "small" | "medium" | "large" | null;
+  ageEstimate?: string | null;
+  photos?: string[];
+  lostAt?: string | null;
 }): Promise<string> {
   const { data, error } = await supabase.rpc("create_alert", {
     p_pet_id: input.petId,
@@ -72,6 +81,14 @@ export async function createAlert(input: {
     p_description: input.description,
     p_lat: input.point.lat,
     p_lon: input.point.lon,
+    p_species_id: input.speciesId ?? null,
+    p_sex: input.sex ?? null,
+    p_breed: input.breed ?? null,
+    p_color: input.color ?? null,
+    p_size: input.size ?? null,
+    p_age_estimate: input.ageEstimate ?? null,
+    p_photos: input.photos ?? [],
+    p_lost_at: input.lostAt ?? null,
   });
   if (error) throw error;
   return data as string;
@@ -154,6 +171,10 @@ export async function createPet(input: {
   description: string | null;
   birthDate: string | null;
   photoUrl: string | null;
+  sex?: "male" | "female" | "unknown" | null;
+  breed?: string | null;
+  color?: string | null;
+  size?: "small" | "medium" | "large" | null;
 }): Promise<void> {
   const userId = (await supabase.auth.getUser()).data.user?.id;
   if (!userId) throw new Error("No hay sesión activa.");
@@ -164,6 +185,10 @@ export async function createPet(input: {
     description: input.description,
     birth_date: input.birthDate,
     photo_url: input.photoUrl,
+    sex: input.sex ?? null,
+    breed: input.breed ?? null,
+    color: input.color ?? null,
+    size: input.size ?? null,
     status: "active",
   });
   if (error) throw error;
@@ -217,4 +242,54 @@ export async function uploadPhoto(
   });
   if (error) throw error;
   return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+}
+
+export async function uploadPhotos(
+  files: File[],
+  bucket: "pet-photos" | "post-images"
+): Promise<string[]> {
+  const urls: string[] = [];
+  for (const file of files) {
+    urls.push(await uploadPhoto(file, bucket));
+  }
+  return urls;
+}
+
+export async function changeEmail(input: {
+  currentEmail: string;
+  currentPassword: string;
+  newEmail: string;
+}): Promise<string | null> {
+  const reauth = await supabase.auth.signInWithPassword({
+    email: input.currentEmail,
+    password: input.currentPassword,
+  });
+  if (reauth.error) return "Tu contrase�a actual no es correcta.";
+  const { error } = await supabase.auth.updateUser({ email: input.newEmail });
+  return error ? error.message : null;
+}
+
+export async function changePassword(input: {
+  email: string;
+  currentPassword: string;
+  newPassword: string;
+}): Promise<string | null> {
+  const reauth = await supabase.auth.signInWithPassword({
+    email: input.email,
+    password: input.currentPassword,
+  });
+  if (reauth.error) return "Tu contrase�a actual no es correcta.";
+  const { error } = await supabase.auth.updateUser({ password: input.newPassword });
+  if (error) return error.message;
+  await supabase.auth.signOut({ scope: "others" });
+  return null;
+}
+
+export async function searchGuides(query: string, limit = 10): Promise<GuideRow[]> {
+  const { data, error } = await supabase.rpc("search_guides", {
+    p_q: query.trim() || null,
+    p_limit: limit,
+  });
+  if (error) throw error;
+  return data as GuideRow[];
 }

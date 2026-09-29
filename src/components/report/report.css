@@ -1,0 +1,216 @@
+/* ---------- Campos compartidos de reportes ---------- */
+
+.location-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.location-actions .place-hint {
+  margin-top: 0;
+}
+
+.location-map {
+  height: 200px;
+  border-radius: var(--pc-radius);
+  overflow: hidden;
+  margin-top: 12px;
+  background: #e6e0f0;
+}
+
+.location-help {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 10px;
+}
+
+.photo-grid__item {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: var(--pc-radius-sm);
+  overflow: hidden;
+  background: var(--pc-input);
+}
+
+.photo-grid__item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photo-grid__remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(20, 10, 40, 0.65);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.photo-grid__add {
+  aspect-ratio: 1;
+  border: 1.5px dashed var(--pc-primary);
+  border-radius: var(--pc-radius-sm);
+  background: #f3edff;
+  color: var(--pc-primary-strong);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.photo-grid__add:hover {
+  background: #eadfff;
+}
+
+/* ---------- Selector de reporte (Frame 21) ---------- */
+
+.report-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.report-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  text-align: left;
+  border: none;
+  border-radius: var(--pc-radius);
+  background: var(--pc-surface);
+  box-shadow: var(--pc-shadow);
+  padding: 16px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.report-option:hover {
+  background: #f3edff;
+}
+
+.report-option__icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--pc-primary-soft);
+  color: var(--pc-primary-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.report-option__text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.report-option__text strong {
+  font-size: 15px;
+}
+
+.report-option__text small {
+  color: var(--pc-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.report-option--link {
+  background: transparent;
+  box-shadow: none;
+  color: var(--pc-primary-strong);
+  font-weight: 700;
+  font-size: 14px;
+  justify-content: center;
+  align-items: center;
+}
+
+.report-option--link:hover {
+  background: #f3edff;
+}
+
+.report-subtitle {
+  margin: 0 0 16px;
+  color: var(--pc-muted);
+  font-size: 14px;
+}
+
+/* ---------- Fecha y hora ---------- */
+
+.datetime-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 10px;
+}
+
+/* ---------- Foto principal (encontré mascota) ---------- */
+
+.found-main-photo {
+  width: 100%;
+}
+
+.found-main-photo__empty,
+.found-main-photo__preview {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--pc-radius);
+  cursor: pointer;
+  font-family: inherit;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.found-main-photo__empty {
+  border: 1.5px dashed var(--pc-primary);
+  background: #f3edff;
+  color: var(--pc-primary-strong);
+  flex-direction: column;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.found-main-photo__empty:hover {
+  background: #eadfff;
+}
+
+.found-main-photo__preview {
+  border: none;
+  background: var(--pc-input);
+}
+
+.found-main-photo__preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.report-option--active {
+  border: 1.5px solid var(--pc-primary);
+  background: #f3edff;
+}

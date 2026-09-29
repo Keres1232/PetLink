@@ -1,0 +1,63 @@
+.pet-select {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  border: 1.5px solid var(--pc-border);
+  border-radius: var(--pc-radius);
+  background: var(--pc-surface);
+  padding: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+
+.pet-select:hover {
+  border-color: var(--pc-primary-soft);
+}
+
+.pet-select--selected {
+  border-color: var(--pc-primary);
+  background: #f3edff;
+}
+
+.pet-select__photo {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  background: var(--pc-input);
+  color: var(--pc-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.pet-select__photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pet-select__info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pet-select__info strong {
+  font-size: 15px;
+}
+
+.pet-select__info small {
+  color: var(--pc-muted);
+  font-size: 13px;
+}
+
+.pet-select__check {
+  color: var(--pc-primary-strong);
+  flex-shrink: 0;
+}

@@ -121,6 +121,7 @@ export default function HomePage() {
                     status={r.type === "lost" ? "Perdido" : "Encontrado"}
                     name={r.pet_name ?? r.species_name ?? "Mascota"}
                     location={`${r.description || "Cerca de ti"} · ${dayLabel(r.created_at).toLowerCase()}`}
+                    photoUrl={r.pet_photo_url ?? undefined}
                     onClick={() => navigate("/mapa")}
                   />
                 ))}
@@ -207,6 +208,7 @@ export default function HomePage() {
                   status="Encontrado"
                   name={r.pet_name ?? r.species_name ?? "Mascota"}
                   location={`${r.description || "Cerca de ti"} · ${dayLabel(r.created_at).toLowerCase()}`}
+                  photoUrl={r.pet_photo_url ?? undefined}
                 />
               ))}
             </div>
@@ -223,6 +225,7 @@ export default function HomePage() {
                   status="Perdido"
                   name={r.pet_name ?? r.species_name ?? "Mascota"}
                   location={`${r.description || "Cerca de ti"} · ${dayLabel(r.created_at).toLowerCase()}`}
+                  photoUrl={r.pet_photo_url ?? undefined}
                 />
               ))}
             </div>

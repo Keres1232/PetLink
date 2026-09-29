@@ -1,217 +1,55 @@
-import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CircleMarker, MapContainer, TileLayer, useMapEvents } from "react-leaflet";
-import { Crosshair, MapPin } from "lucide-react";
-import "leaflet/dist/leaflet.css";
-import PrimaryButton from "../components/PrimaryButton.jsx";
-import { LoadingState } from "../components/ui/States";
-import { useUserLocation } from "../hooks/useUserLocation";
-import { createAlert, myPets } from "../lib/api";
-import { reverseGeocode } from "../lib/geocode";
-import { getUserPoint } from "../lib/geo";
-import type { GeoPoint, Pet } from "../lib/types";
-import "../styles/pages.css";
-
-function PointPicker({ onPick }: { onPick: (p: GeoPoint) => void }) {
-  useMapEvents({
-    click(e) {
-      onPick({ lat: e.latlng.lat, lon: e.latlng.lng });
-    },
-  });
-  return null;
-}
+import { MessageCircle, PawPrint, Search } from "lucide-react";
+import "../components/report/report.css";
 
 export default function ReportPage() {
   const navigate = useNavigate();
-  const [type, setType] = useState<"lost" | "found">("lost");
-  const [petId, setPetId] = useState("");
-  const [pets, setPets] = useState<Pet[]>([]);
-  const [description, setDescription] = useState("");
-  const [point, setPoint] = useState<GeoPoint | null>(null);
-  const [place, setPlace] = useState<string | null>(null);
-  const [placeBusy, setPlaceBusy] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
-  const { point: userPoint, loading: locLoading, requestConsent } = useUserLocation();
-
-  useEffect(() => {
-    void myPets().then(setPets).catch(() => setPets([]));
-  }, []);
-
-  useEffect(() => {
-    if (!locLoading && !point && userPoint) setPoint(userPoint);
-  }, [locLoading, point, userPoint]);
-
-  useEffect(() => {
-    if (!point) return;
-    let active = true;
-    setPlaceBusy(true);
-    void reverseGeocode(point).then((name) => {
-      if (!active) return;
-      setPlace(name);
-      setPlaceBusy(false);
-    });
-    return () => {
-      active = false;
-    };
-  }, [point]);
-
-  async function useMyLocation() {
-    const granted = await requestConsent();
-    if (granted) setPoint(await getUserPoint());
-  }
-
-  const submit = useCallback(async () => {
-    if (!point) {
-      setError("Marca en el mapa el lugar del avistamiento.");
-      return;
-    }
-    if (description.trim().length < 5) {
-      setError("Cuéntanos un poco más (mínimo 5 caracteres).");
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    try {
-      await createAlert({
-        petId: petId || null,
-        type,
-        description: description.trim(),
-        point,
-      });
-      setSuccess(true);
-      setTimeout(() => navigate("/mapa"), 900);
-    } catch {
-      setError("No pudimos crear la alerta. Intenta de nuevo.");
-    } finally {
-      setBusy(false);
-    }
-  }, [point, description, petId, type, navigate]);
 
   return (
     <div>
       <div className="pc-page-header">
-        <button type="button" className="pc-back-btn" onClick={() => navigate(-1)} aria-label="Volver">
-          ‹
+        <h1 className="pc-title">¿Qué quieres reportar?</h1>
+      </div>
+      <p className="report-subtitle">Elige la opción que corresponde a tu situación.</p>
+
+      <div className="report-options">
+        <button
+          type="button"
+          className="report-option"
+          onClick={() => navigate("/reportar/mi-mascota")}
+        >
+          <span className="report-option__icon">
+            <PawPrint size={22} />
+          </span>
+          <span className="report-option__text">
+            <strong>Se perdió mi mascota</strong>
+            <small>Publica una alerta para que la comunidad te ayude a buscarla</small>
+          </span>
         </button>
-        <h1 className="pc-title">Reportar</h1>
-        <span style={{ width: 42 }} />
+
+        <button
+          type="button"
+          className="report-option"
+          onClick={() => navigate("/reportar/encontrada")}
+        >
+          <span className="report-option__icon">
+            <Search size={22} />
+          </span>
+          <span className="report-option__text">
+            <strong>Encontré una mascota</strong>
+            <small>Reporta una mascota perdida que encontraste en tu zona</small>
+          </span>
+        </button>
+
+        <button
+          type="button"
+          className="report-option report-option--link"
+          onClick={() => navigate("/comunidad")}
+        >
+          <MessageCircle size={16} style={{ marginRight: 8 }} />
+          Prefiero solo publicar en la comunidad
+        </button>
       </div>
-
-      <div className="pc-form-card">
-        <div className="pc-toggle-row" role="group" aria-label="Tipo de reporte">
-          <button
-            type="button"
-            className={`pc-toggle ${type === "lost" ? "active" : ""}`}
-            onClick={() => setType("lost")}
-          >
-            Mascota perdida
-          </button>
-          <button
-            type="button"
-            className={`pc-toggle ${type === "found" ? "active" : ""}`}
-            onClick={() => setType("found")}
-          >
-            Mascota encontrada
-          </button>
-        </div>
-
-        {pets.length > 0 && (
-          <div className="pc-field">
-            <label className="pc-field-label" htmlFor="report-pet">
-              ¿Es una de tus mascotas? (opcional)
-            </label>
-            <select
-              id="report-pet"
-              className="pc-select"
-              value={petId}
-              onChange={(e) => setPetId(e.target.value)}
-            >
-              <option value="">Ninguna / no lo sé</option>
-              {pets.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        <div className="pc-field">
-          <label className="pc-field-label" htmlFor="report-desc">
-            Descripción y lugar
-          </label>
-          <textarea
-            id="report-desc"
-            className="pc-textarea"
-            placeholder="Ej: Parque de Usaquén, perrito café con collar rojo…"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </div>
-
-        <div className="pc-field">
-          <span className="pc-field-label">Ubicación del avistamiento</span>
-          <div className="map-canvas" style={{ height: 220 }}>
-            {point && (
-              <MapContainer center={[point.lat, point.lon]} zoom={14} style={{ height: "100%", width: "100%" }}>
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                  url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-                <PointPicker onPick={setPoint} />
-                <CircleMarker
-                  center={[point.lat, point.lon]}
-                  radius={9}
-                  pathOptions={{ color: "#7519ff", fillColor: "#ae77ff", fillOpacity: 0.9 }}
-                />
-              </MapContainer>
-            )}
-          </div>
-          <button
-            type="button"
-            className="pc-pill-btn"
-            style={{ marginTop: 10 }}
-            onClick={() => void useMyLocation()}
-          >
-            <Crosshair size={15} /> Usar mi ubicación
-          </button>
-
-          {point && (
-            <div className="place-hint">
-              <MapPin size={14} />
-              <span>
-                {placeBusy ? "Buscando el lugar…" : place ?? "Ubicación seleccionada"}
-              </span>
-              {place && !description.trim() && (
-                <button
-                  type="button"
-                  className="pc-outline-btn"
-                  onClick={() => setDescription(place)}
-                >
-                  Usar como descripción
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-
-        {error && (
-          <p className="pc-error-text" role="alert">
-            {error}
-          </p>
-        )}
-        {success && <p className="pc-muted">¡Alerta creada! Redirigiendo al mapa…</p>}
-
-        <div className="pc-form-actions">
-          <PrimaryButton onClick={() => void submit()} type="button">
-            {busy ? "Enviando…" : "Publicar alerta"}
-          </PrimaryButton>
-        </div>
-      </div>
-
-      {!point && <LoadingState label="Obteniendo tu ubicación…" />}
     </div>
   );
 }

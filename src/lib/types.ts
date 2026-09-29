@@ -1,4 +1,6 @@
 export type Role = "owner" | "vet" | "admin" | "foundation";
+export type PetSex = "male" | "female" | "unknown";
+export type PetSize = "small" | "medium" | "large";
 
 export interface Profile {
   id: string;
@@ -29,6 +31,10 @@ export interface Pet {
   photo_url: string | null;
   description: string | null;
   birth_date: string | null;
+  sex: PetSex | null;
+  breed: string | null;
+  color: string | null;
+  size: PetSize | null;
   created_at: string;
   species?: Species | null;
 }
@@ -55,6 +61,9 @@ export interface ReportNear {
   description: string;
   pet_name: string | null;
   species_name: string | null;
+  pet_photo_url: string | null;
+  photos: string[];
+  lost_at: string | null;
   distance_m: number;
   longitude: number;
   latitude: number;
@@ -97,6 +106,17 @@ export interface NotificationRow {
 export interface GeoPoint {
   lat: number;
   lon: number;
+}
+
+export interface GuideRow {
+  id: string;
+  symptom: string;
+  species_name: string | null;
+  urgency_level: string | null;
+  recommendation: string;
+  validated_by: string | null;
+  validated_at: string | null;
+  source_count: number;
 }
 
 export const DEFAULT_CENTER: GeoPoint = { lat: 4.67, lon: -74.04 };

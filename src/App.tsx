@@ -8,10 +8,15 @@ import RegisterPage from "./pages/RegisterPage";
 import HomePage from "./pages/HomePage";
 import MapPage from "./pages/MapPage";
 import ReportPage from "./pages/ReportPage";
+import MiPetReportPage from "./pages/MiPetReportPage";
+import FoundPetReportPage from "./pages/FoundPetReportPage";
 import CommunityPage from "./pages/CommunityPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import ProfilePage from "./pages/ProfilePage";
 import PetFormPage from "./pages/PetFormPage";
+import ChangeEmailPage from "./pages/ChangeEmailPage";
+import ChangePasswordPage from "./pages/ChangePasswordPage";
+import AyudaPage from "./pages/AyudaPage";
 
 function FullLoading() {
   return (
@@ -66,10 +71,15 @@ export default function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/mapa" element={<MapPage />} />
             <Route path="/reportar" element={<ReportPage />} />
+            <Route path="/reportar/mi-mascota" element={<MiPetReportPage />} />
+            <Route path="/reportar/encontrada" element={<FoundPetReportPage />} />
             <Route path="/comunidad" element={<CommunityPage />} />
             <Route path="/notificaciones" element={<NotificationsPage />} />
             <Route path="/perfil" element={<ProfilePage />} />
             <Route path="/mascotas/nueva" element={<PetFormPage />} />
+            <Route path="/configuracion/correo" element={<ChangeEmailPage />} />
+            <Route path="/configuracion/contrasena" element={<ChangePasswordPage />} />
+            <Route path="/ayuda" element={<AyudaPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

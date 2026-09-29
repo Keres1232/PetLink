@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, PawPrint, Plus } from "lucide-react";
+import { ChevronRight, LogOut, PawPrint, Plus } from "lucide-react";
 import PetCard from "../components/PetCard.jsx";
 import PrimaryButton from "../components/PrimaryButton.jsx";
 import { EmptyState, LoadingState } from "../components/ui/States";
@@ -100,6 +100,32 @@ export default function ProfilePage() {
               photoUrl={p.photo_url ?? undefined}
             />
           ))}
+        </div>
+      </section>
+
+      <section className="home__section">
+        <h2 className="pc-section-title" style={{ marginBottom: 12 }}>Cuenta</h2>
+        <div className="account-list">
+          <button
+            type="button"
+            className="account-row"
+            onClick={() => navigate("/configuracion/correo")}
+          >
+            <span>Correo electrónico</span>
+            <ChevronRight size={18} />
+          </button>
+          <button
+            type="button"
+            className="account-row"
+            onClick={() => navigate("/configuracion/contrasena")}
+          >
+            <span>Contraseña</span>
+            <ChevronRight size={18} />
+          </button>
+          <button type="button" className="account-row" onClick={() => navigate("/ayuda")}>
+            <span>Ayuda y soporte</span>
+            <ChevronRight size={18} />
+          </button>
         </div>
       </section>
 

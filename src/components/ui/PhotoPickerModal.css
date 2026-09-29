@@ -1,0 +1,116 @@
+.photo-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.photo-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  border: none;
+  padding: 0;
+  background: rgba(20, 10, 40, 0.45);
+  cursor: pointer;
+}
+
+.photo-modal__sheet {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  background: var(--pc-surface-strong);
+  border-radius: var(--pc-radius-lg) var(--pc-radius-lg) 0 0;
+  padding: 18px 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: photo-modal-in 0.18s ease-out;
+}
+
+@keyframes photo-modal-in {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.photo-modal__title {
+  font-size: 17px;
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.photo-modal__option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-sm);
+  background: var(--pc-surface);
+  padding: 13px 14px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.photo-modal__option:hover {
+  background: #f3edff;
+  border-color: var(--pc-primary);
+}
+
+.photo-modal__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--pc-primary-soft);
+  color: var(--pc-primary-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.photo-modal__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.photo-modal__text strong {
+  font-size: 15px;
+}
+
+.photo-modal__text small {
+  color: var(--pc-muted);
+  font-size: 12.5px;
+}
+
+.photo-modal__cancel {
+  border: none;
+  background: transparent;
+  color: var(--pc-muted);
+  font-weight: 700;
+  font-size: 14px;
+  padding: 12px;
+  cursor: pointer;
+}
+
+.photo-modal__cancel:hover {
+  color: #c02626;
+}
+
+@media (min-width: 700px) {
+  .photo-modal {
+    align-items: center;
+  }
+
+  .photo-modal__sheet {
+    border-radius: var(--pc-radius-lg);
+  }
+}
