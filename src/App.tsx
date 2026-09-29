@@ -17,6 +17,7 @@ import PetFormPage from "./pages/PetFormPage";
 import ChangeEmailPage from "./pages/ChangeEmailPage";
 import ChangePasswordPage from "./pages/ChangePasswordPage";
 import AyudaPage from "./pages/AyudaPage";
+import AdminPage from "./pages/AdminPage";
 
 function FullLoading() {
   return (
@@ -37,6 +38,13 @@ function PublicArea({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return <FullLoading />;
   if (user) return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
+function AdminArea({ children }: { children: ReactNode }) {
+  const { profile, loading } = useAuth();
+  if (loading) return <FullLoading />;
+  if (profile?.role !== "admin") return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
@@ -80,6 +88,14 @@ export default function App() {
             <Route path="/configuracion/correo" element={<ChangeEmailPage />} />
             <Route path="/configuracion/contrasena" element={<ChangePasswordPage />} />
             <Route path="/ayuda" element={<AyudaPage />} />
+            <Route
+              path="/admin"
+              element={
+                <AdminArea>
+                  <AdminPage />
+                </AdminArea>
+              }
+            />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

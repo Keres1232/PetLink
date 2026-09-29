@@ -21,14 +21,16 @@ const ROUTE_TO_NAV: Record<string, string> = {
   "/reportar": "report",
   "/comunidad": "community",
   "/perfil": "profile",
+  "/admin": "admin",
 };
 
-const SIDEBAR_ITEMS = [
+const SIDEBAR_ITEMS: { id: string; label: string; path: string; adminOnly?: boolean }[] = [
   { id: "home", label: "Inicio", path: "/" },
   { id: "map", label: "Mapa", path: "/mapa" },
   { id: "report", label: "Reportar", path: "/reportar" },
   { id: "community", label: "Comunidad", path: "/comunidad" },
   { id: "profile", label: "Perfil", path: "/perfil" },
+  { id: "admin", label: "Administración", path: "/admin", adminOnly: true },
 ];
 
 export default function AppLayout() {
@@ -76,16 +78,18 @@ export default function AppLayout() {
         </button>
 
         <nav className="pc-sidebar__nav" aria-label="Navegación principal">
-          {SIDEBAR_ITEMS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className={`pc-sidebar__item ${active === item.id ? "active" : ""}`}
-              onClick={() => navigate(item.path)}
-            >
-              {item.label}
-            </button>
-          ))}
+          {SIDEBAR_ITEMS.filter((item) => !item.adminOnly || profile?.role === "admin").map(
+            (item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={`pc-sidebar__item ${active === item.id ? "active" : ""}`}
+                onClick={() => navigate(item.path)}
+              >
+                {item.label}
+              </button>
+            )
+          )}
           <button
             type="button"
             className="pc-sidebar__item"

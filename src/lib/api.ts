@@ -1,15 +1,19 @@
 import { supabase } from "./supabase";
 import type {
+  CommentReport,
   CommentRow,
   FeedItem,
   GeoPoint,
   GuideRow,
+  ModerationPost,
   NotificationRow,
+  PendingClinic,
   Pet,
   PlaceNear,
   PrivateProfile,
   ReportNear,
   Species,
+  VetApplication,
 } from "./types";
 
 export async function getFeed(opts?: {
@@ -379,4 +383,107 @@ export async function searchGuides(query: string, limit = 10): Promise<GuideRow[
   });
   if (error) throw error;
   return data as GuideRow[];
+}
+
+// ---------------------------------------------------------------
+// Admin (solo funciona con role = 'admin' por RLS/RPC)
+// ---------------------------------------------------------------
+
+export async function getModerationQueue(
+  status = "under_review"
+): Promise<ModerationPost[]> {
+  const { data, error } = await supabase.rpc("get_moderation_queue", {
+    p_status: status,
+  });
+  if (error) throw error;
+  return data as ModerationPost[];
+}
+
+export async function moderatePost(
+  postId: string,
+  status: "published" | "rejected"
+): Promise<void> {
+  const { error } = await supabase.rpc("moderate_post", {
+    p_post_id: postId,
+    p_status: status,
+  });
+  if (error) throw error;
+}
+
+export async function listPendingVetApplications(): Promise<VetApplication[]> {
+  const { data, error } = await supabase
+    .from("vet_applications")
+    .select("*, applicant:profiles!vet_applications_user_id_fkey(name)")
+    .eq("status", "pending")
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return data as unknown as VetApplication[];
+}
+
+export async function reviewVetApplication(
+  applicationId: string,
+  approved: boolean
+): Promise<void> {
+  const { error } = await supabase.rpc("review_vet_application", {
+    p_application_id: applicationId,
+    p_approved: approved,
+  });
+  if (error) throw error;
+}
+
+export async function listPendingClinics(): Promise<PendingClinic[]> {
+  const { data, error } = await supabase
+    .from("vet_clinics")
+    .select(
+      "id, name, address, kind, created_by, created_at, creator:profiles!vet_clinics_created_by_fkey(name)"
+    )
+    .eq("verified", false)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return data as unknown as PendingClinic[];
+}
+
+export async function verifyClinic(
+  clinicId: string,
+  approved: boolean
+): Promise<void> {
+  const { error } = await supabase.rpc("verify_clinic", {
+    p_clinic_id: clinicId,
+    p_approved: approved,
+  });
+  if (error) throw error;
+}
+
+export async function listCommentReports(): Promise<CommentReport[]> {
+  const { data, error } = await supabase
+    .from("comment_reports")
+    .select(
+      "*, comment:comments!comment_reports_comment_id_fkey(text), reporter:profiles!comment_reports_reporter_id_fkey(name)"
+    )
+    .eq("status", "pending")
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return data as unknown as CommentReport[];
+}
+
+export async function moderateComment(
+  commentId: string,
+  hidden: boolean
+): Promise<void> {
+  const { error } = await supabase.rpc("moderate_comment", {
+    p_comment_id: commentId,
+    p_hidden: hidden,
+  });
+  if (error) throw error;
+}
+
+export async function resolveCommentReports(
+  commentId: string,
+  status: "resolved" | "dismissed"
+): Promise<void> {
+  const { error } = await supabase
+    .from("comment_reports")
+    .update({ status })
+    .eq("comment_id", commentId);
+  if (error) throw error;
 }

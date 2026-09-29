@@ -123,4 +123,46 @@ export interface GuideRow {
   source_count: number;
 }
 
+export interface ModerationPost {
+  id: string;
+  user_id: string;
+  type: string;
+  content: string;
+  image_url: string | null;
+  author_name: string;
+  moderation_status: string;
+  created_at: string;
+}
+
+export interface VetApplication {
+  id: string;
+  user_id: string;
+  support_document_url: string | null;
+  status: string;
+  target_role: string | null;
+  created_at: string;
+  applicant?: { name: string } | null;
+}
+
+export interface PendingClinic {
+  id: string;
+  name: string;
+  address: string | null;
+  kind: string;
+  created_by: string | null;
+  created_at: string;
+  creator?: { name: string } | null;
+}
+
+export interface CommentReport {
+  id: string;
+  comment_id: string;
+  reporter_id: string;
+  reason: string | null;
+  status: string;
+  created_at: string;
+  comment?: { text: string } | null;
+  reporter?: { name: string } | null;
+}
+
 export const DEFAULT_CENTER: GeoPoint = { lat: 4.67, lon: -74.04 };

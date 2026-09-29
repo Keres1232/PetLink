@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronRight, LogOut, PawPrint, Plus } from "lucide-react";
+import { ChevronRight, LogOut, PawPrint, Plus, ShieldCheck } from "lucide-react";
 import PetCard from "../components/PetCard.jsx";
 import PrimaryButton from "../components/PrimaryButton.jsx";
 import { EmptyState, LoadingState } from "../components/ui/States";
@@ -126,6 +126,14 @@ export default function ProfilePage() {
             <span>Ayuda y soporte</span>
             <ChevronRight size={18} />
           </button>
+          {profile?.role === "admin" && (
+            <button type="button" className="account-row" onClick={() => navigate("/admin")}>
+              <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <ShieldCheck size={16} /> Administración
+              </span>
+              <ChevronRight size={18} />
+            </button>
+          )}
         </div>
       </section>
 
