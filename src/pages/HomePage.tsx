@@ -91,8 +91,19 @@ export default function HomePage() {
         <>
           {geoAlert && !alertDismissed && (
             <AlertNotification
-              description={`Se reportó ${geoAlert.pet_name ? `a ${geoAlert.pet_name}` : "una mascota"} perdido a ${distanceLabel(geoAlert.distance_m)} de tu ubicación${geoAlert.description ? `, en ${geoAlert.description}` : ""}.`}
-              onViewDetail={() => navigate("/mapa")}
+              description={
+                `${
+                  geoAlert.pet_name
+                    ? `Se perdió ${geoAlert.pet_name}`
+                    : "Se perdió una mascota"
+                } a ${distanceLabel(geoAlert.distance_m)} de tu ubicación.` +
+                (geoAlert.description ? ` Detalles: ${geoAlert.description}.` : "")
+              }
+              onViewDetail={() =>
+                geoAlert.post_id
+                  ? navigate(`/comunidad?post=${geoAlert.post_id}`)
+                  : navigate("/mapa")
+              }
               onNotMyArea={() => setAlertDismissed(true)}
             />
           )}

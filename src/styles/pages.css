@@ -36,6 +36,10 @@
   margin-bottom: 26px;
 }
 
+.home .alert-card {
+  margin-bottom: 24px;
+}
+
 .home__section-header {
   display: flex;
   align-items: center;
@@ -73,6 +77,11 @@
 
   .home__title {
     font-size: 30px;
+  }
+
+  /* En desktop la campana vive en el topbar del layout */
+  .home__bell {
+    display: none;
   }
 }
 
