@@ -22,6 +22,7 @@
 | 06 | [Interacciones y flujos](06_interacciones_y_flujos.md) | Flujos end-to-end (auth, alertas, comunidad, notificaciones…) |
 | 07 | [Decisiones de diseño](07_decisiones_de_diseno.md) | ADRs: cada decisión técnica con su justificación |
 | 08 | [Trazabilidad Figma](08_trazabilidad_figma.md) | Pantalla Figma → ruta → datos → reglas |
+| 09 | [Capturas de la aplicación](09_capturas.md) | 20 capturas reales (móvil + desktop + panel de moderación/admin) |
 
 ## Documentos existentes relacionados
 
@@ -35,6 +36,6 @@
 Cada documento está numerado para mapear directo a capítulos:
 
 - **Capítulo de diseño de base de datos** → docs 02, 03, 04 (+ `DATA_DICTIONARY.md`).
-- **Capítulo de desarrollo web / interfaz** → docs 05, 08.
-- **Capítulo de interacciones y validación funcional** → doc 06.
+- **Capítulo de desarrollo web / interfaz** → docs 05, 08, 09 (capturas como evidencia).
+- **Capítulo de interacciones y validación funcional** → doc 06 (+ capturas del panel admin en doc 09 §9.4).
 - **Capítulo de decisiones y justificación metodológica** → doc 07.
