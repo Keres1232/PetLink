@@ -1,0 +1,66 @@
+/* Franja_botones */
+.map-filters {
+  display: flex;
+
+  padding: 10px 16px;
+
+  align-items: flex-start;
+
+  gap: 10px;
+
+  overflow-x: auto;
+
+  scrollbar-width: none; /* Firefox */
+}
+
+.map-filters::-webkit-scrollbar {
+  display: none; /* Chrome / Safari */
+}
+
+/* Cada botón (todo, Perdidas, Encontradas...) */
+.map-filters__chip {
+  display: flex;
+
+  flex-shrink: 0;
+
+  height: 26px;
+
+  padding: 6px 10px 5px 9px;
+
+  justify-content: center;
+  align-items: center;
+
+  gap: 10px;
+
+  border-radius: 10px;
+  border: 1px solid #e9e3f9;
+  background: #ffffff;
+
+  cursor: pointer;
+
+  color: #7519ff;
+
+  font-family: "Kodchasan", sans-serif;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: normal;
+
+  white-space: nowrap;
+
+  box-sizing: border-box;
+}
+
+.map-filters__chip:focus {
+  outline: none;
+}
+
+.map-filters__chip:active {
+  transform: scale(0.96);
+}
+
+/* Estado activo (como "Todo" en tu captura) */
+.map-filters__chip.is-active {
+  border: 1px solid var(--titulos, #7519ff);
+  box-shadow: 0 0 8px 2px rgba(189, 175, 239, 0.7);
+}

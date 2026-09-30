@@ -5,33 +5,32 @@ function PetCard({
   status = "Perdido",
   name = "Nombre",
   location = "Ubicación · hoy",
+  photoUrl,
+  onClick,
 }) {
   return (
-    <article className="pet-card">
+    <article className="pet-card" onClick={onClick}>
+      <div className="pet-card__body">
 
-      {/* Placeholder de la fotografía */}
-      <div className="pet-card__photo">
-        <span>Foto</span>
-      </div>
+        {/* Foto (Foto1 / Rectangle 3) */}
+        <div className="pet-card__photo">
+          {photoUrl ? (
+            <img src={photoUrl} alt={name} />
+          ) : (
+            <span>Foto</span>
+          )}
+        </div>
 
-      {/* Información de la mascota */}
-      <div className="pet-card__info">
+        {/* Info (Info_Mascotas) */}
+        <div className="pet-card__info">
+          <StatusTag status={status} />
 
-        {/* Estado de la publicación */}
-        <StatusTag status={status} />
+          <h2 className="pet-card__name">{name}</h2>
 
-        {/* Nombre */}
-        <h2 className="pet-card__name">
-          {name}
-        </h2>
-
-        {/* Ubicación */}
-        <p className="pet-card__location">
-          {location}
-        </p>
+          <p className="pet-card__location">{location}</p>
+        </div>
 
       </div>
-
     </article>
   );
 }
