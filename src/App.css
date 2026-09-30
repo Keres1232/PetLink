@@ -1,3 +1,26 @@
+.page-header {
+  display: flex;
+
+  align-items: center;
+  justify-content: space-between;
+
+  margin-bottom: 16px;
+}
+
+.page-header__title {
+  margin: 0;
+
+  font-family: "Nata Sans", sans-serif;
+  font-size: clamp(20px, 5.5vw, 24px);
+  font-weight: 700;
+
+  color: #000000;
+
+  text-align: center;
+
+  flex: 1;
+}
+
 .phone-frame {
   display: flex;
 
@@ -16,11 +39,14 @@
 
   min-height: 100vh;
 
-  padding: clamp(16px, 5vw, 24px) clamp(14px, 4vw, 20px) 100px;
+  padding: 15px 31px 100px;
 
   box-sizing: border-box;
 
-  background: #ede4fb;
+  background-color: #ede8ff;
+  background-image: url("./assets/Recursos/Fondo.png");
+  background-repeat: repeat;
+  background-position: top left;
 }
 
 /* ===== Header ===== */
@@ -31,7 +57,7 @@
   align-items: flex-start;
   justify-content: space-between;
 
-  margin-bottom: 16px;
+  margin-bottom: 15px;
 }
 
 .home-greeting {
@@ -47,7 +73,7 @@
 .home-title {
   margin: 0;
 
-  font-family: "Nata Sans", sans-serif;
+  font-family: "Kodchasan", sans-serif;
   font-size: clamp(20px, 5.5vw, 24px);
   font-weight: 700;
 
@@ -80,7 +106,7 @@
 /* ===== Secciones ===== */
 
 .home-section {
-  margin-bottom: 22px;
+  margin-bottom: 15px;
 }
 
 .home-section__header {
@@ -89,17 +115,35 @@
   align-items: center;
   justify-content: space-between;
 
-  margin-bottom: 10px;
+  margin-bottom: 18px;
 }
 
 .home-section__title {
   margin: 0;
 
-  font-family: "Nata Sans", sans-serif;
-  font-size: clamp(16px, 4.5vw, 18px);
+  font-family: "Kodchasan", sans-serif;
+  font-size: clamp(18px, 5vw, 22px);
+  font-style: normal;
   font-weight: 700;
+  line-height: normal;
 
   color: #000000;
+}
+
+.page-header__title {
+  margin: 0;
+
+  font-family: "Kodchasan", sans-serif;
+  font-size: clamp(18px, 5vw, 22px);
+  font-style: normal;
+  font-weight: 700;
+  line-height: normal;
+
+  color: #000000;
+
+  text-align: center;
+
+  flex: 1;
 }
 
 .home-section__link {
@@ -126,7 +170,7 @@
 
   grid-template-columns: repeat(2, 1fr);
 
-  gap: 12px;
+  gap: 14px;
 }
 
 @media (min-width: 480px) {

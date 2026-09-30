@@ -1,0 +1,147 @@
+.account {
+  display: inline-flex;
+
+  width: 100%;
+
+  padding: 7px 6px;
+
+  flex-direction: column;
+  align-items: stretch;
+
+  box-sizing: border-box;
+}
+
+.account__title {
+  margin: 0 0 8px;
+
+  color: #000000;
+
+  font-family: "Kodchasan", sans-serif;
+  font-size: clamp(18px, 5vw, 22px);
+  font-style: normal;
+  font-weight: 700;
+  line-height: normal;
+}
+
+.account__card {
+  display: flex;
+
+  width: 100%;
+  max-width: 331px;
+
+  padding: 7px 0;
+
+  flex-direction: column;
+  align-items: stretch;
+
+  gap: 4px;
+
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 4px 4px 0 rgba(0, 0, 0, 0.25);
+
+  box-sizing: border-box;
+
+  margin: 0 auto;
+}
+
+.account__row {
+  display: flex;
+
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 10px 12px;
+
+  border: none;
+  border-bottom: 1px solid #f0ecf9;
+
+  background: transparent;
+
+  cursor: pointer;
+
+  box-sizing: border-box;
+
+  text-align: left;
+}
+
+.account__row:last-child {
+  border-bottom: none;
+}
+
+.account__row:focus {
+  outline: none;
+}
+
+.account__row:active {
+  background: #faf8ff;
+}
+
+.account__row-left {
+  display: flex;
+
+  align-items: center;
+
+  gap: 16px;
+
+  min-width: 0;
+}
+
+.account__icon-circle {
+  display: flex;
+
+  flex-shrink: 0;
+
+  width: 37px;
+  height: 37px;
+
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+  background: #ede8ff;
+
+  box-sizing: border-box;
+}
+
+.account__icon-circle--danger {
+  background: #ffe3e3;
+}
+
+.account__icon {
+  width: 16px;
+  height: 16px;
+
+  object-fit: contain;
+
+  pointer-events: none;
+}
+
+.account__label {
+  color: #000000;
+
+  font-family: "Kodchasan", sans-serif;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: normal;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.account__row--danger .account__label {
+  color: #e0554f;
+}
+
+.account__chevron {
+  display: flex;
+
+  flex-shrink: 0;
+
+  align-items: center;
+  justify-content: center;
+
+  width: 15px;
+}

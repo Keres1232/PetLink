@@ -3,6 +3,8 @@ const statusStyles = {
   Encontrado: "status-found",
   Adopción: "status-adoption",
   Rescatado: "status-rescued",
+  Gato: "status-cat",
+  Perro: "status-dog",
 };
 
 function StatusTag({ status = "Sin estado" }) {

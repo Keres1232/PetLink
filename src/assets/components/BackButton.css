@@ -1,0 +1,76 @@
+.circle-icon-button {
+  position: relative;
+
+  display: flex;
+
+  width: 49px;
+  height: 47px;
+
+  flex-shrink: 0;
+
+  align-items: center;
+  justify-content: center;
+
+  border: none;
+  background: transparent;
+
+  cursor: pointer;
+
+  padding: 0;
+}
+
+.circle-icon-button:focus {
+  outline: none;
+}
+
+.circle-icon-button:active .circle-icon-button__circle {
+  transform: translate(-50%, -50%) scale(0.94);
+}
+
+.circle-icon-button__shadow {
+  position: absolute;
+
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+
+  width: 42px;
+  height: 42px;
+
+  border-radius: 50%;
+
+  background: #bdafef;
+  filter: blur(2.6px);
+}
+
+.circle-icon-button__circle {
+  position: absolute;
+
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+
+  display: flex;
+
+  width: 40px;
+  height: 39px;
+
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background: #ffffff;
+  border: 1px solid #e1d9ec;
+
+  transition: transform 0.1s ease;
+}
+
+.circle-icon-button__icon {
+  width: 18px;
+  height: 18px;
+
+  object-fit: contain;
+
+  pointer-events: none; /* evita que el drag/click del img interfiera con el botón */
+}

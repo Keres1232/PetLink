@@ -1,3 +1,7 @@
+/* ========================================
+   TARJETA (Card + Card1)
+======================================== */
+
 .pet-card {
   display: flex;
 
@@ -7,34 +11,49 @@
 
   aspect-ratio: 182 / 189;
 
-  padding: 10px 3px 12px 8px;
-
   flex-direction: column;
-  align-items: flex-start;
+  justify-content: center;
+  align-items: center;
 
-  gap: 10px;
-
-  border-radius: 15px;
-  border: 1px solid #e1d9ec;
-
+  border-radius: 10px;
   background: #ffffff;
+  box-shadow: 0 4px 4px 0 rgba(148, 132, 191, 0.42);
 
   box-sizing: border-box;
+  overflow: hidden; /* la foto respeta las esquinas redondeadas */
 }
 
-.pet-card__photo {
+/* Card_info */
+
+.pet-card__body {
+  display: flex;
+
   width: 100%;
-  height: 55%;
+  height: 100%;
+
+  flex-direction: column;
+  align-items: center;
+
+  gap: 6px;
+}
+
+
+/* ========================================
+   FOTO (Foto1 / Rectangle 3)
+======================================== */
+
+.pet-card__photo {
+  display: flex;
+
+  width: 100%;
+  height: 54%; /* 102px de 189px */
 
   flex-shrink: 0;
 
-  border-radius: 18px;
-
-  background: #fed3ff;
-
-  display: flex;
   align-items: center;
   justify-content: center;
+
+  background: #fed3ff; /* placeholder si no hay foto */
 
   overflow: hidden;
 }
@@ -42,23 +61,32 @@
 .pet-card__photo img {
   width: 100%;
   height: 100%;
+
   object-fit: cover;
+  display: block;
 }
 
 .pet-card__photo span {
   font-family: "Nata Sans", sans-serif;
   font-size: clamp(9px, 2.5vw, 10px);
   font-weight: 600;
-  line-height: normal;
   color: #505050;
 }
+
+
+/* ========================================
+   INFO (Info_Mascotas)
+======================================== */
 
 .pet-card__info {
   display: flex;
 
   width: 100%;
 
-  padding: 2px 6px;
+  padding: 2px 10px;
+
+  flex: 1;
+  min-height: 0;
 
   flex-direction: column;
   align-items: flex-start;
@@ -67,6 +95,11 @@
 
   box-sizing: border-box;
 }
+
+
+/* ========================================
+   ETIQUETA DE ESTADO
+======================================== */
 
 .status-tag {
   display: inline-flex;
@@ -88,7 +121,6 @@
   color: #000000;
 
   box-sizing: border-box;
-
   white-space: nowrap;
 }
 
@@ -97,14 +129,18 @@
 .status-adoption { background: #d8b7ff; }
 .status-rescued { background: #b7f0c0; }
 .status-default { background: #e5e5e5; }
+.status-cat { background: #d9cffb; color: #6b4eff; }
+.status-dog { background: #ffd3ed; color: #d6368f; }
+
+
+/* ========================================
+   NOMBRE Y UBICACIÓN
+======================================== */
 
 .pet-card__name {
   margin: 0;
 
-  display: flex;
-
-  justify-content: center;
-  align-items: center;
+  width: 100%;
 
   font-family: "Nata Sans", sans-serif;
   font-size: clamp(13px, 3.5vw, 15px);
@@ -113,7 +149,6 @@
 
   color: #000000;
 
-  width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -122,12 +157,7 @@
 .pet-card__location {
   margin: 0;
 
-  display: flex;
-
-  justify-content: center;
-  align-items: center;
-
-  align-self: stretch;
+  width: 100%;
 
   font-family: "Nata Sans", sans-serif;
   font-size: clamp(9px, 2.5vw, 10px);
@@ -136,7 +166,6 @@
 
   color: #505050;
 
-  width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

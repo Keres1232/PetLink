@@ -1,0 +1,215 @@
+.settings-section {
+  margin-bottom: 22px;
+}
+
+.settings-section__title {
+  margin: 0 0 10px;
+
+  color: #000000;
+
+  font-family: "Kodchasan", sans-serif;
+  font-size: clamp(17px, 4.5vw, 20px);
+  font-style: normal;
+  font-weight: 700;
+  line-height: normal;
+}
+
+.settings-card {
+  display: flex;
+
+  width: 100%;
+
+  flex-direction: column;
+
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 4px 4px 0 rgba(0, 0, 0, 0.25);
+
+  overflow: hidden;
+
+  box-sizing: border-box;
+}
+
+/* ===== Fila ===== */
+
+.settings-row {
+  display: flex;
+
+  width: 100%;
+
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 10px;
+
+  padding: 10px 12px;
+
+  border: none;
+  border-bottom: 1px solid #f0ecf9;
+
+  background: transparent;
+
+  box-sizing: border-box;
+
+  text-align: left;
+
+  font: inherit;
+  color: inherit;
+}
+
+.settings-card > .settings-row:last-child {
+  border-bottom: none;
+}
+
+button.settings-row {
+  cursor: pointer;
+}
+
+button.settings-row:focus {
+  outline: none;
+}
+
+button.settings-row:active {
+  background: #faf8ff;
+}
+
+.settings-row__left {
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+
+  min-width: 0;
+}
+
+.settings-row__icon {
+  display: flex;
+
+  flex-shrink: 0;
+
+  width: 32px;
+  height: 32px;
+
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+  background: #ede8ff;
+}
+
+.settings-row__icon--danger {
+  background: #ffe3e3;
+}
+
+.settings-row__text {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 2px;
+
+  min-width: 0;
+}
+
+.settings-row__label {
+  color: #000000;
+
+  font-family: "Kodchasan", sans-serif;
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: normal;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-row--danger .settings-row__label {
+  color: #e0554f;
+}
+
+.settings-row__sublabel {
+  color: #66557e;
+
+  font-family: "Nata Sans", sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-row__right {
+  display: flex;
+
+  flex-shrink: 0;
+
+  align-items: center;
+
+  gap: 6px;
+}
+
+.settings-row__value {
+  color: #a8a8a8;
+
+  font-family: "Nata Sans", sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+
+  white-space: nowrap;
+}
+
+/* Fila especial de chips (sin fondo de botón) */
+
+.settings-row--chips {
+  padding: 8px 12px 12px;
+}
+
+/* ===== Chips de distancia ===== */
+
+.distance-chips {
+  display: flex;
+
+  gap: 8px;
+
+  overflow-x: auto;
+
+  scrollbar-width: none;
+}
+
+.distance-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.distance-chips__chip {
+  flex-shrink: 0;
+
+  padding: 6px 12px;
+
+  border-radius: 27px;
+  border: 1px solid #e9e3f9;
+  background: #f7f4ff;
+
+  color: #7519ff;
+
+  font-family: "Kodchasan", sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  white-space: nowrap;
+}
+
+.distance-chips__chip:focus {
+  outline: none;
+}
+
+.distance-chips__chip.is-active {
+  background: var(--titulos, #7519ff);
+  border-color: var(--titulos, #7519ff);
+  color: #ffffff;
+}

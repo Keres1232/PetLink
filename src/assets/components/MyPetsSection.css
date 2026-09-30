@@ -1,0 +1,42 @@
+.my-pets {
+  width: 100%;
+}
+
+.my-pets__header {
+  display: flex;
+
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 12px;
+
+  margin-bottom: 18px;
+
+  flex-wrap: wrap;
+}
+
+.my-pets__title {
+  margin: 0;
+
+  color: #000000;
+
+  font-family: "Kodchasan", sans-serif;
+  font-size: clamp(18px, 5vw, 22px);
+  font-style: normal;
+  font-weight: 700;
+  line-height: normal;
+}
+
+.my-pets__grid {
+  display: grid;
+
+  grid-template-columns: repeat(2, 1fr);
+
+  gap: 14px;
+}
+
+@media (min-width: 480px) {
+  .my-pets__grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
