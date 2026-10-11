@@ -49,6 +49,9 @@ function RegisterCard({ onSwitchToLogin, onSubmit }) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
+              <p className="register-card__password-hint">
+                Mínimo 12 caracteres, con mayúscula, minúscula, número y símbolo.
+              </p>
             </div>
 
             <TermsConsent

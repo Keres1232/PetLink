@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Camera } from "lucide-react";
+import { Camera, Trash2 } from "lucide-react";
 import PrimaryButton from "../components/PrimaryButton.jsx";
 import ChipGroup from "../components/ui/ChipGroup";
 import PhotoPickerModal from "../components/ui/PhotoPickerModal";
-import { createPet, getMyPet, listSpecies, updatePet, uploadPhoto } from "../lib/api";
+import ConfirmModal from "../components/ui/ConfirmModal";
+import { createPet, deletePet, getMyPet, listSpecies, updatePet, uploadPhoto } from "../lib/api";
 import { ageFromBirthDate } from "../lib/format";
 import type { PetSex, PetSize, Species } from "../lib/types";
 import "../components/report/report.css";
@@ -38,8 +39,11 @@ export default function PetFormPage() {
   const [size, setSize] = useState<PetSize | null>(null);
   const [markings, setMarkings] = useState("");
   const [busy, setBusy] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const busyRef = useRef(false);
 
   useEffect(() => {
     void listSpecies()
@@ -77,6 +81,7 @@ export default function PetFormPage() {
   }, [id]);
 
   async function submit() {
+    if (busyRef.current) return;
     if (name.trim().length < 2) {
       setError("Escribe el nombre de tu mascota.");
       return;
@@ -85,6 +90,7 @@ export default function PetFormPage() {
       setError("Selecciona la especie de tu mascota.");
       return;
     }
+    busyRef.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -109,12 +115,34 @@ export default function PetFormPage() {
       navigate("/perfil");
     } catch (err) {
       console.error("guardar mascota falló:", err);
-      setError(
-        editing
-          ? "No pudimos guardar los cambios. Intenta de nuevo."
-          : "No pudimos inscribir a tu mascota. Intenta de nuevo."
-      );
+      const message =
+        err && typeof err === "object" && "message" in err
+          ? String((err as { message: unknown }).message)
+          : "";
+      if (message.includes("Ya registraste")) {
+        setError("Esta mascota ya fue registrada hace un momento. Revisa tu perfil.");
+      } else {
+        setError(
+          editing
+            ? "No pudimos guardar los cambios. Intenta de nuevo."
+            : "No pudimos inscribir a tu mascota. Intenta de nuevo."
+        );
+      }
+      busyRef.current = false;
       setBusy(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!id || deleting) return;
+    setDeleting(true);
+    try {
+      await deletePet(id);
+      navigate("/perfil");
+    } catch {
+      setDeleting(false);
+      setDeleteOpen(false);
+      setError("No pudimos eliminar la mascota. Intenta de nuevo.");
     }
   }
 
@@ -264,14 +292,42 @@ export default function PetFormPage() {
         )}
 
         <div className="pc-form-actions" style={{ display: "flex", gap: 10 }}>
-          <PrimaryButton onClick={() => void submit()} type="button">
+          <PrimaryButton onClick={() => void submit()} type="button" disabled={busy}>
             {busy ? "Guardando…" : editing ? "Guardar cambios" : "Guardar mascota"}
           </PrimaryButton>
           <button type="button" className="pc-outline-btn" onClick={() => navigate(-1)}>
             Cancelar
           </button>
         </div>
+
+        {editing && (
+          <div className="pet-form__danger">
+            <button
+              type="button"
+              className="pet-form__delete"
+              onClick={() => setDeleteOpen(true)}
+            >
+              <Trash2 size={15} /> Eliminar mascota
+            </button>
+          </div>
+        )}
       </div>
+
+      {deleteOpen && (
+        <ConfirmModal
+          title="Eliminar mascota"
+          confirmLabel={deleting ? "Eliminando…" : "Eliminar"}
+          danger
+          onClose={() => setDeleteOpen(false)}
+          onConfirm={() => void handleDelete()}
+        >
+          <p>
+            Se eliminará <strong>{name.trim() || "esta mascota"}</strong> de tu perfil y dejarás
+            de verla en tu lista de mascotas.
+          </p>
+          <p>Los reportes que ya publicaste se mantienen en la comunidad.</p>
+        </ConfirmModal>
+      )}
     </div>
   );
 }

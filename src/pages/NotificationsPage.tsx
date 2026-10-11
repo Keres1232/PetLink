@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, CalendarDays, Heart, MapPin, MessageCircle } from "lucide-react";
+import { Bell, CalendarDays, Heart, HeartHandshake, MapPin, MessageCircle } from "lucide-react";
 import { EmptyState, ErrorState, LoadingState } from "../components/ui/States";
 import { usePrefs } from "../hooks/usePrefs";
 import {
@@ -19,6 +19,7 @@ const TYPE_ICONS: Record<string, typeof Bell> = {
   post_reply: MessageCircle,
   post_like: Heart,
   pet_reminder: CalendarDays,
+  report_match: HeartHandshake,
 };
 
 export default function NotificationsPage() {
@@ -80,7 +81,7 @@ export default function NotificationsPage() {
         }
         return;
       }
-      if (n.type === "geo_alert") {
+      if (n.type === "geo_alert" || n.type === "report_match") {
         const post = n.reference_id
           ? await getPostByReportId(n.reference_id).catch(() => null)
           : null;

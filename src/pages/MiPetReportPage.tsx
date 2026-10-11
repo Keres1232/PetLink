@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { HelpCircle } from "lucide-react";
 import PetSelectCard from "../components/PetSelectCard";
@@ -42,6 +42,7 @@ export default function MiPetReportPage() {
   const [time, setTime] = useState(nowTime());
 
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -58,6 +59,7 @@ export default function MiPetReportPage() {
   const selectedPet = pets.find((p) => p.id === petId) ?? null;
 
   async function submit() {
+    if (busyRef.current) return;
     setError(null);
     let finalPoint = point;
     if (!finalPoint && placeText.trim()) {
@@ -72,6 +74,7 @@ export default function MiPetReportPage() {
       return;
     }
 
+    busyRef.current = true;
     setBusy(true);
     try {
       const photoUrls = photos.length ? await uploadPhotos(photos, "pet-photos") : [];
@@ -93,6 +96,7 @@ export default function MiPetReportPage() {
     } catch (err) {
       console.error("createAlert (lost) falló:", err);
       setError("No pudimos publicar la alerta. Intenta de nuevo.");
+      busyRef.current = false;
       setBusy(false);
     }
   }
@@ -205,7 +209,7 @@ export default function MiPetReportPage() {
         </p>
 
         <div className="pc-form-actions" style={{ display: "flex", gap: 10 }}>
-          <PrimaryButton onClick={() => void submit()} type="button">
+          <PrimaryButton onClick={() => void submit()} type="button" disabled={busy}>
             {busy ? "Publicando…" : "Publicar alerta"}
           </PrimaryButton>
           <button type="button" className="pc-outline-btn" onClick={() => navigate(-1)}>

@@ -44,6 +44,7 @@ export default function HomePage() {
           .from("pets")
           .select("*, species:species(id, name)")
           .eq("status", "for_adoption")
+          .is("deleted_at", null)
           .order("created_at", { ascending: false })
           .limit(8)
           .then(({ data }) => (data as unknown as Pet[]) ?? []),

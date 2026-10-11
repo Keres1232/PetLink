@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { isWeakPasswordError, PASSWORD_POLICY_HINT } from "./authErrors";
 import type {
   CommentReport,
   CommentRow,
@@ -12,6 +13,7 @@ import type {
   Pet,
   PlaceNear,
   PrivateProfile,
+  ReportMatch,
   ReportNear,
   Species,
   VetApplication,
@@ -158,6 +160,7 @@ export async function myPets(): Promise<Pet[]> {
     .from("pets")
     .select("*, species:species(id, name)")
     .eq("user_id", userId)
+    .is("deleted_at", null)
     .order("created_at", { ascending: false });
   if (error) throw error;
   return data as unknown as Pet[];
@@ -236,6 +239,18 @@ export async function updatePet(
   if (error) throw error;
 }
 
+/** Soft delete: la mascota deja de mostrarse al usuario pero se conserva en la BD. */
+export async function deletePet(id: string): Promise<void> {
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+  if (!userId) throw new Error("No hay sesión activa.");
+  const { error } = await supabase
+    .from("pets")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("user_id", userId);
+  if (error) throw error;
+}
+
 export async function getMyPet(id: string): Promise<Pet | null> {
   const userId = (await supabase.auth.getUser()).data.user?.id;
   if (!userId) return null;
@@ -244,6 +259,7 @@ export async function getMyPet(id: string): Promise<Pet | null> {
     .select("*, species:species(id, name)")
     .eq("id", id)
     .eq("user_id", userId)
+    .is("deleted_at", null)
     .maybeSingle();
   if (error) throw error;
   return (data as unknown as Pet | null) ?? null;
@@ -445,7 +461,7 @@ export async function changePassword(input: {
   });
   if (reauth.error) return "Tu contraseña actual no es correcta.";
   const { error } = await supabase.auth.updateUser({ password: input.newPassword });
-  if (error) return error.message;
+  if (error) return isWeakPasswordError(error) ? PASSWORD_POLICY_HINT : error.message;
   await supabase.auth.signOut({ scope: "others" });
   return null;
 }
@@ -576,6 +592,58 @@ export async function moderateCommentAndResolve(
 }
 
 // ---------------------------------------------------------------
+// Coincidencias "¡La encontré!" (report_matches)
+// ---------------------------------------------------------------
+
+export async function createReportMatch(input: {
+  reportId: string;
+  message?: string | null;
+  contact?: string | null;
+}): Promise<void> {
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+  if (!userId) throw new Error("No hay sesión activa.");
+  const { error } = await supabase.from("report_matches").insert({
+    report_id: input.reportId,
+    finder_id: userId,
+    message: input.message?.trim() || null,
+    contact: input.contact?.trim() || null,
+  });
+  if (error) throw error;
+}
+
+export async function listReportMatches(reportId: string): Promise<ReportMatch[]> {
+  const { data, error } = await supabase
+    .from("report_matches")
+    .select(
+      "id, report_id, finder_id, message, contact, status, created_at, resolved_at, finder:profiles!report_matches_finder_id_fkey(name)"
+    )
+    .eq("report_id", reportId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data as unknown as ReportMatch[];
+}
+
+export async function resolveReportMatch(
+  matchId: string,
+  status: "confirmed" | "dismissed"
+): Promise<void> {
+  const { error } = await supabase.from("report_matches").update({ status }).eq("id", matchId);
+  if (error) throw error;
+}
+
+/** Cierra el reporte del dueño ("Ya la recuperé"); la alerta desaparece y la mascota vuelve a activa. */
+export async function resolveMyReport(reportId: string): Promise<void> {
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+  if (!userId) throw new Error("No hay sesión activa.");
+  const { error } = await supabase
+    .from("reports")
+    .update({ status: "resolved" })
+    .eq("id", reportId)
+    .eq("user_id", userId);
+  if (error) throw error;
+}
+
+// ---------------------------------------------------------------
 // Verificación profesional (vet / fundación) y mi clínica
 // ---------------------------------------------------------------
 
@@ -622,7 +690,8 @@ export async function requestPasswordReset(email: string): Promise<string | null
 
 export async function setNewPassword(newPassword: string): Promise<string | null> {
   const { error } = await supabase.auth.updateUser({ password: newPassword });
-  return error ? error.message : null;
+  if (!error) return null;
+  return isWeakPasswordError(error) ? PASSWORD_POLICY_HINT : error.message;
 }
 
 /**

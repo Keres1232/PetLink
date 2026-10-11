@@ -20,3 +20,12 @@
 .primary-button:hover {
   background: #9B5FFF;
 }
+
+.primary-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.primary-button:disabled:hover {
+  background: #AE77FF;
+}

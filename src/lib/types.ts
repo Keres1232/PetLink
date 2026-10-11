@@ -99,12 +99,24 @@ export interface CommentRow {
 export interface NotificationRow {
   id: string;
   user_id: string;
-  type: "geo_alert" | "post_reply" | "pet_reminder" | "post_like";
+  type: "geo_alert" | "post_reply" | "pet_reminder" | "post_like" | "report_match";
   title: string;
   body: string | null;
   reference_id: string | null;
   is_read: boolean;
   created_at: string;
+}
+
+export interface ReportMatch {
+  id: string;
+  report_id: string;
+  finder_id: string;
+  message: string | null;
+  contact: string | null;
+  status: "pending" | "confirmed" | "dismissed";
+  created_at: string;
+  resolved_at: string | null;
+  finder?: { name: string } | null;
 }
 
 export interface GeoPoint {

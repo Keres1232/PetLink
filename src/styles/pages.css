@@ -499,6 +499,134 @@
   font-weight: 600;
 }
 
+/* ---------- Formulario de mascota: eliminar ---------- */
+
+.pet-form__danger {
+  display: flex;
+  justify-content: center;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--pc-border);
+}
+
+.pet-form__delete {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1.5px solid #e0554f;
+  border-radius: 999px;
+  background: transparent;
+  color: #e0554f;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 9px 16px;
+  cursor: pointer;
+}
+
+.pet-form__delete:hover {
+  background: #ffecec;
+}
+
+/* ---------- Coincidencias "¡La encontré!" ---------- */
+
+.match-select {
+  margin-bottom: 20px;
+}
+
+.match-select__hint {
+  margin: 6px 0 14px;
+  font-size: 13.5px;
+}
+
+.match-select__actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.match-panel {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: var(--pc-radius);
+  background: #f4f1fb;
+  border: 1px solid #e9e3f9;
+}
+
+.match-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.match-panel__resolve {
+  border: 1.5px solid #36a35a;
+  border-radius: 999px;
+  background: transparent;
+  color: #1f7a41;
+  font-weight: 600;
+  font-size: 12px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.match-panel__resolve:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.match-row {
+  padding: 10px 0;
+  border-top: 1px solid #e9e3f9;
+}
+
+.match-row__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 4px;
+  font-size: 13.5px;
+}
+
+.match-row__time {
+  color: var(--pc-muted);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.match-row__badge {
+  border-radius: 999px;
+  background: #e5e5e5;
+  color: #505050;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 9px;
+  text-transform: uppercase;
+}
+
+.match-row__badge--ok {
+  background: #c9ecd9;
+  color: #1f6b45;
+}
+
+.match-row__text {
+  margin: 0 0 4px;
+  font-size: 13px;
+}
+
+.match-row__contact {
+  margin: 0 0 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--pc-primary-strong);
+}
+
+.match-row__actions {
+  display: flex;
+  gap: 8px;
+}
+
 .profile-settings {
   display: flex;
   flex-direction: column;

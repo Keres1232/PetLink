@@ -12,6 +12,11 @@ import { supabase } from "../lib/supabase";
 import { LEGAL_VERSION } from "../lib/legalDocs";
 import { consumePendingConsent } from "../lib/legalConsent";
 import { acceptLegalTerms } from "../lib/api";
+import {
+  isWeakPasswordError,
+  translateAuthError,
+  WEAK_PASSWORD_SIGNIN_HINT,
+} from "../lib/authErrors";
 import type { Profile } from "../lib/types";
 
 interface AuthContextValue {
@@ -87,7 +92,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return error ? translateAuthError(error.message) : null;
+    if (!error) return null;
+    // Si la contraseña no cumple la política vigente, guía al restablecimiento
+    if (isWeakPasswordError(error)) return WEAK_PASSWORD_SIGNIN_HINT;
+    return translateAuthError(error);
   }, []);
 
   const signUp = useCallback(async (name: string, email: string, password: string) => {
@@ -102,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
       },
     });
-    return error ? translateAuthError(error.message) : null;
+    return error ? translateAuthError(error) : null;
   }, []);
 
   const signInWithGoogle = useCallback(async () => {
@@ -133,18 +141,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-function translateAuthError(message: string): string {
-  if (message.includes("Invalid login credentials"))
-    return "Correo o contraseña incorrectos.";
-  if (message.includes("Email not confirmed"))
-    return "Confirma tu correo antes de iniciar sesión.";
-  if (message.includes("already registered"))
-    return "No pudimos completar el registro. Revisa tu correo o intenta iniciar sesión.";
-  if (message.includes("Password should be"))
-    return "La contraseña debe tener al menos 6 caracteres.";
-  return message;
 }
 
 export function useAuth(): AuthContextValue {

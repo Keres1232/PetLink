@@ -5,6 +5,7 @@ import ForumPost from "../components/ForumPost.jsx";
 import PrimaryButton from "../components/PrimaryButton.jsx";
 import ChipGroup from "../components/ui/ChipGroup";
 import { EmptyState, ErrorState, LoadingState } from "../components/ui/States";
+import { useAuth } from "../contexts/AuthContext";
 import {
   addComment,
   createPost,
@@ -12,12 +13,15 @@ import {
   getFeed,
   getPostById,
   listComments,
+  listReportMatches,
+  resolveMyReport,
+  resolveReportMatch,
   togglePostLike,
   uploadPhoto,
 } from "../lib/api";
 import { timeAgo } from "../lib/format";
 import { supabase } from "../lib/supabase";
-import type { CommentRow, FeedItem } from "../lib/types";
+import type { CommentRow, FeedItem, ReportMatch } from "../lib/types";
 import "../styles/pages.css";
 
 type FilterValue = "all" | "question" | "tip" | "story" | "found" | "alert";
@@ -44,6 +48,7 @@ const TYPE_LABELS: Record<string, string> = {
 
 export default function CommunityPage() {
   const [searchParams] = useSearchParams();
+  const { user } = useAuth();
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,6 +65,11 @@ export default function CommunityPage() {
   const [openPost, setOpenPost] = useState<string | null>(null);
   const [comments, setComments] = useState<CommentRow[]>([]);
   const [commentDraft, setCommentDraft] = useState("");
+
+  // Coincidencias "¡La encontré!" en mis propias alertas
+  const [matchesByReport, setMatchesByReport] = useState<Record<string, ReportMatch[]>>({});
+  const [resolvedReports, setResolvedReports] = useState<Record<string, boolean>>({});
+  const [matchBusyId, setMatchBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -212,6 +222,58 @@ export default function CommunityPage() {
     }
   }
 
+  // Carga las coincidencias de mis alertas (solo el dueño las ve por RLS)
+  useEffect(() => {
+    if (!user) return;
+    const reportIds = [
+      ...new Set(
+        feed
+          .filter((f) => f.type === "alert" && f.report_id && f.user_id === user.id)
+          .map((f) => f.report_id as string)
+      ),
+    ];
+    if (reportIds.length === 0) return;
+    void (async () => {
+      const entries = await Promise.all(
+        reportIds.map(async (id) => {
+          const list = await listReportMatches(id).catch(() => [] as ReportMatch[]);
+          return [id, list] as const;
+        })
+      );
+      setMatchesByReport((prev) => ({ ...prev, ...Object.fromEntries(entries) }));
+    })();
+  }, [feed, user]);
+
+  async function handleMatchAction(
+    matchId: string,
+    reportId: string,
+    status: "confirmed" | "dismissed"
+  ) {
+    setMatchBusyId(matchId);
+    try {
+      await resolveReportMatch(matchId, status);
+      setMatchesByReport((prev) => ({
+        ...prev,
+        [reportId]: (prev[reportId] ?? []).map((m) =>
+          m.id === matchId ? { ...m, status } : m
+        ),
+      }));
+    } catch {
+      setError("No pudimos actualizar la coincidencia.");
+    } finally {
+      setMatchBusyId(null);
+    }
+  }
+
+  async function handleResolveReport(reportId: string) {
+    try {
+      await resolveMyReport(reportId);
+      setResolvedReports((prev) => ({ ...prev, [reportId]: true }));
+    } catch {
+      setError("No pudimos cerrar la alerta.");
+    }
+  }
+
   return (
     <div>
       <h1 className="community-title">¿Qué quieres compartir con la comunidad?</h1>
@@ -304,6 +366,86 @@ export default function CommunityPage() {
               <Link className="feed-alert-link" to={`/mapa?report=${item.report_id}`}>
                 <MapPin size={14} /> Ver en mapa
               </Link>
+            )}
+            {item.type === "alert" && item.report_id && user && item.user_id === user.id && (
+              <div className="match-panel">
+                <div className="match-panel__header">
+                  <strong>
+                    Coincidencias (
+                    {
+                      (matchesByReport[item.report_id] ?? []).filter(
+                        (m) => m.status !== "dismissed"
+                      ).length
+                    }
+                    )
+                  </strong>
+                  <button
+                    type="button"
+                    className="match-panel__resolve"
+                    disabled={Boolean(resolvedReports[item.report_id])}
+                    onClick={() => void handleResolveReport(item.report_id as string)}
+                  >
+                    {resolvedReports[item.report_id] ? "Alerta cerrada ✓" : "Ya la recuperé"}
+                  </button>
+                </div>
+                {(matchesByReport[item.report_id] ?? []).length === 0 && (
+                  <p className="pc-muted" style={{ margin: 0 }}>
+                    Aún no hay avisos de que alguien la haya encontrado.
+                  </p>
+                )}
+                {(matchesByReport[item.report_id] ?? []).map((m) => (
+                  <div key={m.id} className="match-row">
+                    <p className="match-row__head">
+                      <strong>{m.finder?.name ?? "Alguien"}</strong>
+                      <span className="match-row__time">{timeAgo(m.created_at)}</span>
+                      {m.status === "confirmed" && (
+                        <span className="match-row__badge match-row__badge--ok">
+                          Confirmada
+                        </span>
+                      )}
+                      {m.status === "dismissed" && (
+                        <span className="match-row__badge">Descartada</span>
+                      )}
+                    </p>
+                    {m.message && <p className="match-row__text">{m.message}</p>}
+                    {m.contact && (
+                      <p className="match-row__contact">Contacto: {m.contact}</p>
+                    )}
+                    {m.status === "pending" && (
+                      <div className="match-row__actions">
+                        <button
+                          type="button"
+                          className="pc-pill-btn"
+                          disabled={matchBusyId === m.id}
+                          onClick={() =>
+                            void handleMatchAction(
+                              m.id,
+                              item.report_id as string,
+                              "confirmed"
+                            )
+                          }
+                        >
+                          Confirmar
+                        </button>
+                        <button
+                          type="button"
+                          className="pc-outline-btn"
+                          disabled={matchBusyId === m.id}
+                          onClick={() =>
+                            void handleMatchAction(
+                              m.id,
+                              item.report_id as string,
+                              "dismissed"
+                            )
+                          }
+                        >
+                          Descartar
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
             {openPost === item.id && (
               <div className="comments-panel">
