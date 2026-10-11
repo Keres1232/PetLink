@@ -625,6 +625,17 @@ export async function setNewPassword(newPassword: string): Promise<string | null
   return error ? error.message : null;
 }
 
+/**
+ * Registra la aceptación de Términos/Política del usuario autenticado
+ * (hora del servidor). Se usa tras el ingreso con Google (OAuth), donde
+ * no es posible enviar metadata en el signup. Solo escribe si no había
+ * evidencia previa (Ley 1581).
+ */
+export async function acceptLegalTerms(version: string): Promise<void> {
+  const { error } = await supabase.rpc("accept_legal_terms", { p_version: version });
+  if (error) throw error;
+}
+
 export async function myVetApplication(): Promise<VetApplication | null> {
   const userId = (await supabase.auth.getUser()).data.user?.id;
   if (!userId) return null;

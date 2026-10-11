@@ -2,7 +2,7 @@ import { useState } from "react";
 import { User, Mail, Lock } from "lucide-react";
 import FormField from "./FormField.jsx";
 import PrimaryButton from "./PrimaryButton.jsx";
-import LegalModal from "./ui/LegalModal";
+import TermsConsent from "./ui/TermsConsent";
 import "./LoginCard.css";
 
 function RegisterCard({ onSwitchToLogin, onSubmit }) {
@@ -11,7 +11,6 @@ function RegisterCard({ onSwitchToLogin, onSubmit }) {
   const [password, setPassword] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [termsError, setTermsError] = useState(false);
-  const [legal, setLegal] = useState(null);
 
   const handleSubmit = () => {
     if (!acceptedTerms) {
@@ -22,99 +21,58 @@ function RegisterCard({ onSwitchToLogin, onSubmit }) {
   };
 
   return (
-    <>
-      <div className="login-card">
-        <div className="login-card__completa">
-          <div className="login-card__btn-group">
-            <div className="login-card__superior">
-              <div className="login-card__inputs">
-                <FormField
-                  label="Nombre"
-                  icon={<User size={16} />}
-                  placeholder="¿Cómo te llamas?"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-                <FormField
-                  label="Correo electrónico"
-                  icon={<Mail size={16} />}
-                  type="email"
-                  placeholder="nombre@correo.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-                <FormField
-                  label="Contraseña"
-                  icon={<Lock size={16} />}
-                  type="password"
-                  placeholder="Password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-
-              <label
-                className={`register-card__terms ${termsError ? "register-card__terms--error" : ""}`}
-              >
-                <input
-                  type="checkbox"
-                  checked={acceptedTerms}
-                  onChange={() => {
-                    setAcceptedTerms(!acceptedTerms);
-                    setTermsError(false);
-                  }}
-                />
-                <span>
-                  Acepto los{" "}
-                  <button
-                    type="button"
-                    className="register-card__terms-link"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setLegal("terms");
-                    }}
-                  >
-                    Términos de uso
-                  </button>{" "}
-                  y la{" "}
-                  <button
-                    type="button"
-                    className="register-card__terms-link"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setLegal("privacy");
-                    }}
-                  >
-                    Política de privacidad
-                  </button>{" "}
-                  de PetClue.
-                </span>
-              </label>
-
-              {termsError && (
-                <p className="register-card__terms-error" role="alert">
-                  Debes aceptar los Términos de uso y la Política de privacidad para crear tu
-                  cuenta.
-                </p>
-              )}
+    <div className="login-card">
+      <div className="login-card__completa">
+        <div className="login-card__btn-group">
+          <div className="login-card__superior">
+            <div className="login-card__inputs">
+              <FormField
+                label="Nombre"
+                icon={<User size={16} />}
+                placeholder="¿Cómo te llamas?"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+              <FormField
+                label="Correo electrónico"
+                icon={<Mail size={16} />}
+                type="email"
+                placeholder="nombre@correo.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <FormField
+                label="Contraseña"
+                icon={<Lock size={16} />}
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
             </div>
 
-            <PrimaryButton onClick={handleSubmit}>Crear cuenta</PrimaryButton>
+            <TermsConsent
+              checked={acceptedTerms}
+              onChange={(v) => {
+                setAcceptedTerms(v);
+                setTermsError(false);
+              }}
+              error={termsError}
+              errorMessage="Debes aceptar los Términos de uso y la Política de privacidad para crear tu cuenta."
+            />
           </div>
 
-          <p className="login-card__signup">
-            ¿Ya tienes cuenta?{" "}
-            <button type="button" className="login-card__signup-link" onClick={onSwitchToLogin}>
-              Inicia sesión
-            </button>
-          </p>
+          <PrimaryButton onClick={handleSubmit}>Crear cuenta</PrimaryButton>
         </div>
-      </div>
 
-      {legal && <LegalModal initial={legal} onClose={() => setLegal(null)} />}
-    </>
+        <p className="login-card__signup">
+          ¿Ya tienes cuenta?{" "}
+          <button type="button" className="login-card__signup-link" onClick={onSwitchToLogin}>
+            Inicia sesión
+          </button>
+        </p>
+      </div>
+    </div>
   );
 }
 

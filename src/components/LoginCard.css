@@ -61,59 +61,62 @@
   text-decoration: none;
 }
 
-.register-card__terms {
+.login-card__google-group {
   display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 3px 6px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
   align-self: stretch;
-  color: #7C7589;
+}
+
+.login-card__divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #7c7589;
   font-family: "Nata Sans", sans-serif;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.register-card__terms input {
-  margin-top: 2px;
-}
-
-.register-card__terms--error {
-  color: #c02626;
-}
-
-.register-card__terms--error input {
-  outline: 2px solid #c02626;
-  outline-offset: 1px;
-}
-
-.register-card__terms-link {
-  background: none;
-  border: none;
-  padding: 0;
-  margin: 0;
-  color: #ae77ff;
-  font-family: inherit;
-  font-size: inherit;
-  font-weight: 700;
-  text-decoration: underline;
-  cursor: pointer;
-}
-
-.register-card__terms-link:hover {
-  color: #7519ff;
-}
-
-.register-card__terms-link:focus-visible {
-  outline: 2px solid #7519ff;
-  outline-offset: 1px;
-  border-radius: 3px;
-}
-
-.register-card__terms-error {
-  margin: 6px 6px 0;
-  color: #c02626;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
+}
+
+.login-card__divider::before,
+.login-card__divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #e9e3f9;
+}
+
+.login-card__google {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1.5px solid #e2dbf1;
+  background: #ffffff;
+  color: #14101c;
+  font-family: "Nata Sans", sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.login-card__google:hover {
+  background: #faf8ff;
+  border-color: #cbb8f5;
+}
+
+.login-card__google:focus-visible {
+  outline: 2px solid #7519ff;
+  outline-offset: 2px;
+}
+
+.login-card__google:disabled {
+  opacity: 0.6;
+  cursor: wait;
 }
 
 .login-card__signup-link {

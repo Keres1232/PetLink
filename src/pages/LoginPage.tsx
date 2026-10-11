@@ -3,11 +3,13 @@ import { useNavigate } from "react-router-dom";
 import LoginCard from "../components/LoginCard.jsx";
 import PawHeartLogo from "../components/PawHeartLogo.jsx";
 import { useAuth } from "../contexts/AuthContext";
+import { LEGAL_VERSION } from "../lib/legalDocs";
+import { markPendingConsent } from "../lib/legalConsent";
 import "../styles/auth.css";
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { signIn } = useAuth();
+  const { signIn, signInWithGoogle } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -17,6 +19,13 @@ export default function LoginPage() {
     const err = await signIn(email, password);
     setBusy(false);
     if (err) setError(err);
+  }
+
+  async function handleGoogle() {
+    markPendingConsent(LEGAL_VERSION);
+    const err = await signInWithGoogle();
+    if (err) setError(err);
+    return err;
   }
 
   return (
@@ -37,6 +46,7 @@ export default function LoginPage() {
         onSwitchToRegister={() => navigate("/registro")}
         onForgotPassword={() => navigate("/recuperar")}
         onSubmit={(data: { email: string; password: string }) => void handleSubmit(data)}
+        onGoogleSignIn={handleGoogle}
       />
 
       {busy && <p className="pc-muted auth-page__busy">Verificando…</p>}

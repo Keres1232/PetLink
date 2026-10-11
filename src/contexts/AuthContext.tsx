@@ -10,6 +10,8 @@ import {
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 import { LEGAL_VERSION } from "../lib/legalDocs";
+import { consumePendingConsent } from "../lib/legalConsent";
+import { acceptLegalTerms } from "../lib/api";
 import type { Profile } from "../lib/types";
 
 interface AuthContextValue {
@@ -19,6 +21,7 @@ interface AuthContextValue {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<string | null>;
   signUp: (name: string, email: string, password: string) => Promise<string | null>;
+  signInWithGoogle: () => Promise<string | null>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -72,6 +75,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loading = sessionLoading || profileLoading;
 
+  // Registra la aceptación legal pendiente tras el ingreso con Google (OAuth).
+  useEffect(() => {
+    if (sessionLoading || !session) return;
+    const version = consumePendingConsent();
+    if (!version) return;
+    void acceptLegalTerms(version).catch(() => {
+      /* best-effort: la evidencia no debe bloquear el ingreso */
+    });
+  }, [session, sessionLoading]);
+
   const signIn = useCallback(async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     return error ? translateAuthError(error.message) : null;
@@ -92,6 +105,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return error ? translateAuthError(error.message) : null;
   }, []);
 
+  const signInWithGoogle = useCallback(async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/` },
+    });
+    return error ? translateAuthError(error.message) : null;
+  }, []);
+
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
   }, []);
@@ -104,10 +125,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       signIn,
       signUp,
+      signInWithGoogle,
       signOut,
       refreshProfile: () => loadProfile(session?.user.id ?? null),
     }),
-    [session, profile, loading, signIn, signUp, signOut, loadProfile]
+    [session, profile, loading, signIn, signUp, signInWithGoogle, signOut, loadProfile]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
