@@ -32,9 +32,25 @@ function VerificationPage({ onBack, onNotifications, onSubmit }) {
   const [specialty, setSpecialty] = useState("");
   const [licenseFile, setLicenseFile] = useState(null);
   const [idFile, setIdFile] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
 
   const canSubmit =
-    name.trim() !== "" && email.trim() !== "" && license.trim() !== "" && licenseFile && idFile;
+    name.trim() !== "" && email.trim() !== "" && license.trim() !== "" && licenseFile && idFile && !busy;
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!canSubmit) return;
+    setBusy(true);
+    setError("");
+    try {
+      await onSubmit?.({ type, name, email, license, degree, specialty, licenseFile, idFile });
+    } catch (err) {
+      console.error(err);
+      setError(err?.message || "No se pudo enviar la solicitud. Intenta de nuevo.");
+      setBusy(false);
+    }
+  };
 
   return (
     <>
@@ -46,15 +62,7 @@ function VerificationPage({ onBack, onNotifications, onSubmit }) {
         onRight={onNotifications}
       />
 
-      <form
-        className="report-lost"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (canSubmit) {
-            onSubmit?.({ type, name, email, license, degree, specialty, licenseFile, idFile });
-          }
-        }}
-      >
+      <form className="report-lost" onSubmit={submit}>
         <InfoNotice>
           Verificamos cada solicitud. Una vez aprobada, tu cuenta mostrará la
           etiqueta correspondiente y la comunidad podrá identificarte.
@@ -107,8 +115,10 @@ function VerificationPage({ onBack, onNotifications, onSubmit }) {
         <div className="verification__submit-card">
           <p className="verification__submit-text">Te avisaremos cuando revisemos tu solicitud</p>
 
+          {error && <p className="auth-error" role="alert">{error}</p>}
+
           <button type="submit" className="verification__submit" disabled={!canSubmit}>
-            Enviar solicitud
+            {busy ? "Enviando..." : "Enviar solicitud"}
           </button>
         </div>
 

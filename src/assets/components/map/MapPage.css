@@ -52,3 +52,19 @@
 }
 
 .map-page__empty { color: var(--desctivado, #66557e); font-family: "Kodchasan", sans-serif; font-size: 13px; text-align: center; }
+.map-page__consent {
+  width: 100%;
+  margin: 0 0 14px;
+  padding: 10px 14px;
+
+  border: 1px dashed #7519ff;
+  border-radius: 10px;
+  background: #ffffff;
+
+  color: #7519ff;
+  font-family: "Kodchasan", sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+
+  cursor: pointer;
+}

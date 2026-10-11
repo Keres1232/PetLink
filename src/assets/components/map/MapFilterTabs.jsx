@@ -3,8 +3,8 @@ import "./MapFilterTabs.css";
 
 const FILTERS = ["Todo", "Perdidas", "Encontradas", "Veterinarias", "Refugios"];
 
-function MapFilterTabs({ onChange }) {
-  const [active, setActive] = useState("Todo");
+function MapFilterTabs({ filters = FILTERS, onChange }) {
+  const [active, setActive] = useState(filters[0]);
 
   const handleSelect = (filter) => {
     setActive(filter);
@@ -13,7 +13,7 @@ function MapFilterTabs({ onChange }) {
 
   return (
     <div className="map-filters">
-      {FILTERS.map((filter) => (
+      {filters.map((filter) => (
         <button
           key={filter}
           type="button"

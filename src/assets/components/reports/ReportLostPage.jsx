@@ -46,8 +46,8 @@ const MAX_EXTRA_PHOTOS = 3;
 
 function ReportLostPage({ pets = [], onBack, onNotifications, onNotListed, onSubmit }) {
   const [petId, setPetId] = useState(pets[0]?.id ?? null);
-  const [date, setDate] = useState("");
-  const [time, setTime] = useState("");
+  const [date, setDate] = useState(() => new Date().toLocaleDateString("en-CA"));
+  const [time, setTime] = useState(() => new Date().toTimeString().slice(0, 5));
   const [place, setPlace] = useState("");
   const [coords, setCoords] = useState(null);
   const [traits, setTraits] = useState("");

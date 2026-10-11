@@ -1,7 +1,25 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "./context/AuthContext";
-import { myPets, createPet, listSpecies, uploadPhoto, uploadPhotos, createAlert } from "./lib/api";
+import {
+  myPets,
+  createPet,
+  listSpecies,
+  uploadPhoto,
+  uploadPhotos,
+  createAlert,
+  updateAvatar,
+  listVetApplications,
+  reviewVetApplication,
+  getVetDocumentUrl,
+  uploadVetDocument,
+  submitVetApplication,
+  reportsNear,
+} from "./lib/api";
+import { useUserLocation } from "./hooks/useUserLocation";
+import { reportToPet } from "./lib/reportPet";
 import { searchPlace } from "./lib/geocode";
+import { supabase } from "./lib/supabase";
+import { showNotification } from "./lib/notify";
 import LoginScreen from "./assets/components/auth/LoginScreen.jsx";
 import RegisterScreen from "./assets/components/auth/RegisterScreen.jsx";
 import NavBar from "./assets/components/shared/NavBar.jsx";
@@ -74,27 +92,26 @@ const makeList = (n, status) =>
     return sample(i + 1, species, status ?? species);
   });
 
+// Adopción todavía no tiene datos en la base: se muestran ejemplos
 const ADOPTION_PETS = makeList(6);
-const FOUND_PETS = makeList(6);
-const NEAR_PETS = makeList(6, "Perdido");
 
-const INITIAL_REQUESTS = [
-  { id: 1, type: "vet", status: "pending", name: "Nombre", location: "Engativá, Bogotá" },
-  { id: 2, type: "doctor", status: "pending", name: "Nombre", location: "Engativá, Bogotá" },
-  { id: 3, type: "refuge", status: "approved", name: "Nombre", location: "Engativá, Bogotá" },
-  { id: 4, type: "vet", status: "approved", name: "Nombre", location: "Engativá, Bogotá" },
-  { id: 5, type: "doctor", status: "rejected", name: "Nombre", location: "Engativá, Bogotá" },
-].map((r) => ({
-  ...r,
-  email: "contacto@correo.com",
-  address: "Cll 1 #2-3, Usaquén",
-  description:
-    "Texto con la descripción que la veterinaria escribió al enviar su solicitud: servicios, horarios y por qué quiere unirse a PetClue.",
-  documents: [
-    { id: 1, name: "Documento de registro" },
-    { id: 2, name: "Identificación del responsable" },
-  ],
-}));
+// La solicitud guarda los dos documentos en support_document_url separados por coma
+const DOC_NAMES = ["Tarjeta profesional", "Documento de identidad"];
+
+// Fila de vet_applications -> forma que usan RequestsPage / ReviewRequestPage
+const toRequest = (a) => ({
+  id: a.id,
+  type: a.target_role === "foundation" ? "refuge" : "doctor",
+  status: a.status,
+  name: a.applicant?.name ?? "Usuario",
+  location: "",
+  sentLabel: `Enviada ${new Date(a.created_at).toLocaleDateString("es-CO")}`,
+  description: "",
+  documents: (a.support_document_url ?? "")
+    .split(",")
+    .filter(Boolean)
+    .map((path, i) => ({ id: i, name: DOC_NAMES[i] ?? `Documento ${i + 1}`, path })),
+});
 
 const CONFIRMS = {
   logout: {
@@ -142,13 +159,13 @@ function App() {
   const [showHelp, setShowHelp] = useState(false);
   const [listPage, setListPage] = useState(null);
 
-  const [requests, setRequests] = useState(INITIAL_REQUESTS);
+  const [requests, setRequests] = useState([]);
   const [requestsTab, setRequestsTab] = useState(null);
   const [reviewing, setReviewing] = useState(null);
 
   const [selectedPet, setSelectedPet] = useState(null);
   const [profilePhotoOpen, setProfilePhotoOpen] = useState(false);
-  const [profilePhoto, setProfilePhoto] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
 
   const [city, setCity] = useState("Bogotá");
   const [cityPickerOpen, setCityPickerOpen] = useState(false);
@@ -157,6 +174,26 @@ function App() {
 
   const [pets, setPets] = useState([]);
   const [species, setSpecies] = useState([]);
+  const [contactPostId, setContactPostId] = useState(null);
+
+  // Reportes reales cerca del usuario (Inicio: "Cerca de ti" y "Encontrados")
+  const { point: userPoint, radius, loading: locLoading } = useUserLocation();
+  const [nearReports, setNearReports] = useState([]);
+
+  const loadNear = useCallback(async () => {
+    try {
+      setNearReports((await reportsNear(userPoint, radius, 20)).map(reportToPet));
+    } catch (e) {
+      console.error("No se pudieron cargar los reportes cercanos", e);
+    }
+  }, [userPoint, radius]);
+
+  useEffect(() => {
+    if (user && !locLoading) void loadNear();
+  }, [user, locLoading, loadNear]);
+
+  const nearLost = nearReports.filter((p) => p.status === "Perdido");
+  const nearFound = nearReports.filter((p) => p.status === "Encontrado");
 
   const loadPets = useCallback(async () => {
     try {
@@ -192,6 +229,32 @@ function App() {
     }
   }, [user, loadPets]);
 
+  const loadRequests = useCallback(async () => {
+    try {
+      setRequests((await listVetApplications()).map(toRequest));
+    } catch (e) {
+      console.error("No se pudieron cargar las solicitudes", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (profile?.role === "admin") void loadRequests();
+  }, [profile?.role, loadRequests]);
+
+  // Cada notificación nueva (alerta cercana, respuesta, etc.) también sale como notificación del celular
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel("my-notifications")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
+        ({ new: n }) => void showNotification(n.title, n.body)
+      )
+      .subscribe();
+    return () => void supabase.removeChannel(channel);
+  }, [user]);
+
   const savePet = async (pet) => {
     let photoUrl = null;
     if (pet.photoFile) photoUrl = await uploadPhoto(pet.photoFile, "pet-photos");
@@ -212,6 +275,16 @@ function App() {
   };
 
   const publishAlert = async (type, r) => {
+    const details = ((type === "lost" ? r.traits : r.description) || "").trim();
+    if (type === "found" && details.length < 5) {
+      throw new Error("Describe cómo es la mascota que encontraste.");
+    }
+    // El lugar escrito se guarda en la descripción (la base de datos solo guarda coordenadas)
+    const placeText = r.point ? "" : r.place.trim();
+    const description =
+      [placeText, details].filter(Boolean).join(" · ") ||
+      (type === "lost" ? "Mascota perdida" : "Mascota encontrada");
+
     const point = r.point ?? (await searchPlace(r.place));
     if (!point) {
       throw new Error("No encontramos ese lugar. Escríbelo más específico o usa tu ubicación actual.");
@@ -225,7 +298,7 @@ function App() {
     const payload = {
       petId: type === "lost" ? r.petId : null,
       type,
-      description: (type === "lost" ? r.traits : r.description) || "",
+      description,
       point,
       photos,
       speciesId: type === "found" ? r.speciesId : null,
@@ -251,6 +324,7 @@ function App() {
     setShowReportLost(false);
     setShowReportFound(false);
     setActiveTab("map");
+    void loadNear();
   };
 
   const handleCall = (phone) => {
@@ -259,14 +333,32 @@ function App() {
   const goHome = () => setActiveTab("home");
   const openNotifications = () => setShowNotifications(true);
 
-  const decide = (request, status) => {
-    setRequests((list) => list.map((r) => (r.id === request.id ? { ...r, status } : r)));
-    setReviewing(null);
+  const decide = async (request, status) => {
+    try {
+      await reviewVetApplication(request.id, status === "approved");
+      await loadRequests();
+      setReviewing(null);
+    } catch (e) {
+      console.error("No se pudo guardar la decisión", e);
+    }
+  };
+
+  const openDocument = async (doc) => {
+    const url = await getVetDocumentUrl(doc.path);
+    if (url) window.open(url, "_blank");
+  };
+
+  const sendVerification = async (r) => {
+    const paths = [await uploadVetDocument(r.licenseFile), await uploadVetDocument(r.idFile)];
+    await submitVetApplication(r.type === "refuge" ? "foundation" : "vet", paths.join(","));
+    setShowVerification(false);
+    setActiveTab("profile");
   };
 
   const userEmail = user?.email ?? "";
   const userName = profile?.name ?? userEmail.split("@")[0] ?? "usuario";
   const isAdmin = profile?.role === "admin";
+  const profilePhoto = photoPreview ?? user?.user_metadata?.avatar_url ?? null;
   const countBy = (status) => requests.filter((r) => r.status === status).length;
 
   const sharedModals = (
@@ -274,12 +366,26 @@ function App() {
       <PetDetailModal
         pet={selectedPet}
         onClose={() => setSelectedPet(null)}
-        onContact={(pet) => console.log("Contactar dueño de:", pet.name)}
+        onContact={(pet) => {
+          // Se habla con el dueño en la publicación del reporte (comentarios)
+          setSelectedPet(null);
+          setListPage(null);
+          setContactPostId(pet.postId);
+          setActiveTab("community");
+        }}
       />
       <PhotoPickerModal
         open={profilePhotoOpen}
         onClose={() => setProfilePhotoOpen(false)}
-        onFile={(file) => setProfilePhoto(URL.createObjectURL(file))}
+        onFile={async (file) => {
+          setPhotoPreview(URL.createObjectURL(file));
+          try {
+            await updateAvatar(file);
+          } catch (e) {
+            console.error("No se pudo guardar la foto de perfil", e);
+            setPhotoPreview(null);
+          }
+        }}
       />
     </>
   );
@@ -301,6 +407,7 @@ function App() {
 
   const goTab = (close) => (id) => {
     close();
+    setContactPostId(null);
     if (id === "report") setShowReportModal(true);
     else setActiveTab(id);
   };
@@ -354,7 +461,7 @@ function App() {
             onBack={() => setReviewing(null)}
             onAccept={(r) => decide(r, "approved")}
             onReject={(r) => decide(r, "rejected")}
-            onOpenDocument={(d) => console.log("Abrir documento:", d)}
+            onOpenDocument={(d) => void openDocument(d)}
           />
           <NavBar
             active={activeTab}
@@ -395,7 +502,7 @@ function App() {
           <PawBackground />
           <PetListPage
             title={isAdoption ? "En adopción" : "Encontrados"}
-            pets={isAdoption ? ADOPTION_PETS : FOUND_PETS}
+            pets={isAdoption ? ADOPTION_PETS : nearFound}
             onBack={() => setListPage(null)}
             onNotifications={() => {
               setListPage(null);
@@ -506,11 +613,7 @@ function App() {
               setShowVerification(false);
               setShowNotifications(true);
             }}
-            onSubmit={(request) => {
-              console.log("Solicitud de verificación:", request);
-              setShowVerification(false);
-              setActiveTab("profile");
-            }}
+            onSubmit={sendVerification}
           />
           <NavBar active={activeTab} onNavigate={goTab(() => setShowVerification(false))} />
         </main>
@@ -638,9 +741,9 @@ function App() {
         {activeTab === "home" && (
           <HomePage
             userName={userName}
-            nearPets={NEAR_PETS}
+            nearPets={nearLost}
             adoptionPets={ADOPTION_PETS}
-            foundPets={FOUND_PETS}
+            foundPets={nearFound}
             onNotifications={openNotifications}
             onLost={() => setShowReportLost(true)}
             onFound={() => setShowReportFound(true)}
@@ -653,15 +756,21 @@ function App() {
         )}
 
         {activeTab === "map" && (
-          <MapPage onBack={goHome} onNotifications={openNotifications} onCall={handleCall} />
+          <MapPage
+            onBack={goHome}
+            onNotifications={openNotifications}
+            onCall={handleCall}
+            onReportClick={setSelectedPet}
+          />
         )}
 
         {activeTab === "community" && (
           <CommunityPage
+            key={contactPostId ?? "feed"}
+            avatarUrl={profilePhoto}
+            openPostId={contactPostId}
             onBack={goHome}
             onNotifications={openNotifications}
-            onShare={() => console.log("Crear publicación")}
-            onPostClick={(post) => console.log("Ver publicación:", post)}
           />
         )}
 
@@ -759,6 +868,7 @@ function App() {
         <NavBar
           active={activeTab}
           onNavigate={(id) => {
+            setContactPostId(null);
             if (id === "report") setShowReportModal(true);
             else setActiveTab(id);
           }}

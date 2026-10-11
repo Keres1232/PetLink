@@ -1,5 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import CircleIconButton from "../shared/CircleIconButton.jsx";
+import LegalModal from "../shared/LegalModal.jsx";
+import { useUserLocation } from "../../../hooks/useUserLocation";
+import { notificationsAllowed, requestNotificationPermission } from "../../../lib/notify";
 import ToggleSwitch from "./ToggleSwitch.jsx";
 import backIcon from "../../svg/Back.svg";
 import bellIcon from "../../svg/bell.svg";
@@ -65,7 +68,13 @@ function SettingsRow({ icon, label, sublabel, value, danger, right, onClick }) {
   );
 }
 
-const DISTANCES = ["500 m", "1 Km", "3 Km", "5 Km"];
+// Radio de alertas: se guarda en private_profiles y lo usa el mapa
+const DISTANCES = [
+  { label: "500 m", meters: 500 },
+  { label: "1 Km", meters: 1000 },
+  { label: "3 Km", meters: 3000 },
+  { label: "5 Km", meters: 5000 },
+];
 
 function SettingsPage({
   onBack,
@@ -78,11 +87,32 @@ function SettingsPage({
   onDeactivate,
   onDelete,
 }) {
-  const [petAlerts, setPetAlerts] = useState(true);
-  const [distance, setDistance] = useState("1 Km");
+  const { radius, consent, saveRadius, requestConsent } = useUserLocation();
+  const [petAlerts, setPetAlerts] = useState(false);
+  const [notifMsg, setNotifMsg] = useState("");
+  const [legal, setLegal] = useState(null);
   const [postReplies, setPostReplies] = useState(true);
   const [reportUpdates, setReportUpdates] = useState(true);
   const [exactLocation, setExactLocation] = useState(true);
+
+  useEffect(() => {
+    notificationsAllowed().then(setPetAlerts).catch(() => setPetAlerts(false));
+  }, []);
+
+  const togglePetAlerts = async (on) => {
+    setNotifMsg("");
+    if (!on) {
+      setPetAlerts(false);
+      return;
+    }
+    const granted = await requestNotificationPermission().catch(() => false);
+    if (!granted) {
+      setNotifMsg("Activa las notificaciones de PetClue en los ajustes de tu celular.");
+      return;
+    }
+    if (!consent) await requestConsent();
+    setPetAlerts(true);
+  };
 
   return (
     <>
@@ -109,7 +139,8 @@ function SettingsPage({
           <SettingsRow
             icon={notificacionIcon}
             label="Alerta de mascotas cerca"
-            right={<ToggleSwitch checked={petAlerts} onChange={setPetAlerts} ariaLabel="Alerta de mascotas cerca" />}
+            sublabel={notifMsg || undefined}
+            right={<ToggleSwitch checked={petAlerts} onChange={togglePetAlerts} ariaLabel="Alerta de mascotas cerca" />}
           />
 
           {petAlerts && (
@@ -117,12 +148,14 @@ function SettingsPage({
               <div className="distance-chips">
                 {DISTANCES.map((d) => (
                   <button
-                    key={d}
+                    key={d.meters}
                     type="button"
-                    className={`distance-chips__chip ${distance === d ? "is-active" : ""}`}
-                    onClick={() => setDistance(d)}
+                    className={`distance-chips__chip ${radius === d.meters ? "is-active" : ""}`}
+                    onClick={() =>
+                      void saveRadius(d.meters).catch((e) => console.error("No se pudo guardar el radio", e))
+                    }
                   >
-                    {d}
+                    {d.label}
                   </button>
                 ))}
               </div>
@@ -168,7 +201,8 @@ function SettingsPage({
         <h2 className="settings-section__title">Soporte y legal</h2>
         <div className="settings-card">
           <SettingsRow icon={reportProblemIcon} label="Reportar un problema" onClick={() => console.log("Reportar problema")} />
-          <SettingsRow icon={termsPrivIcon} label="Términos y privacidad" onClick={() => console.log("Términos")} />
+          <SettingsRow icon={termsPrivIcon} label="Términos y condiciones" onClick={() => setLegal("terms")} />
+          <SettingsRow icon={termsPrivIcon} label="Política de privacidad" onClick={() => setLegal("privacy")} />
           <SettingsRow icon={<InfoCircleIcon />} label="Acerca de PetClue" value="v1.0.0" />
         </div>
       </section>
@@ -181,6 +215,8 @@ function SettingsPage({
           <SettingsRow icon={eliminarIcon} label="Eliminar cuenta" danger onClick={onDelete} />
         </div>
       </section>
+
+      <LegalModal type={legal} onClose={() => setLegal(null)} />
     </>
   );
 }

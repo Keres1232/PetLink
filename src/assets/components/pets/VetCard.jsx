@@ -36,9 +36,10 @@ function VetCard({
   photoUrl,
   badge,
   onCall,
+  onClick,
 }) {
   return (
-    <article className="vet-card">
+    <article className="vet-card" onClick={onClick} style={onClick ? { cursor: "pointer" } : undefined}>
       <div className="vet-card__content">
 
         {/* Foto + Información */}

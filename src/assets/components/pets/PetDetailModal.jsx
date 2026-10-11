@@ -62,9 +62,12 @@ function PetDetailModal({ pet, onClose, onContact }) {
             <h3 className="pet-detail__section">Señas particulares</h3>
             <p className="pet-detail__marks">{pet.marks || "Sin señas registradas."}</p>
 
-            <button type="button" className="pet-detail__contact" onClick={() => onContact?.(pet)}>
-              Contactar al dueño
-            </button>
+            {/* Solo los reportes tienen dueño a quien escribir (vía su publicación en Comunidad) */}
+            {pet.postId && onContact && (
+              <button type="button" className="pet-detail__contact" onClick={() => onContact(pet)}>
+                {pet.status === "Encontrado" ? "Contactar a quien la encontró" : "Contactar al dueño"}
+              </button>
+            )}
           </div>
         </div>
       </div>

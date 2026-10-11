@@ -6,28 +6,26 @@ import VetCard from "../pets/VetCard.jsx";
 import backIcon from "../../svg/Back.svg";
 import bellIcon from "../../svg/bell.svg";
 import { placesNear, reportsNear } from "../../../lib/api";
-import { getUserPoint } from "../../../lib/geo";
-import { DEFAULT_CENTER } from "../../../lib/types";
+import { useUserLocation } from "../../../hooks/useUserLocation";
 import { dayLabel, distanceLabel } from "../../../lib/format";
+import { reportToPet } from "../../../lib/reportPet";
 import "./MapPage.css";
 
-const RADIUS_M = 5000;
-
-function MapPage({ onBack, onNotifications, onCall }) {
-  const [point, setPoint] = useState(DEFAULT_CENTER);
+function MapPage({ onBack, onNotifications, onCall, onReportClick }) {
+  // Punto y radio salen de private_profiles (si no hay consentimiento, centro por defecto)
+  const { point, radius, consent, loading, requestConsent } = useUserLocation();
   const [filter, setFilter] = useState("Todo");
   const [places, setPlaces] = useState([]);
   const [reports, setReports] = useState([]);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (loading) return;
     let alive = true;
     (async () => {
       try {
-        const p = await getUserPoint();
-        if (!alive) return;
-        setPoint(p);
-        const [pl, rp] = await Promise.all([placesNear(p, RADIUS_M), reportsNear(p, RADIUS_M, 30)]);
+        setError("");
+        const [pl, rp] = await Promise.all([placesNear(point, radius), reportsNear(point, radius, 30)]);
         if (!alive) return;
         setPlaces(pl);
         setReports(rp);
@@ -37,7 +35,7 @@ function MapPage({ onBack, onNotifications, onCall }) {
       }
     })();
     return () => { alive = false; };
-  }, []);
+  }, [loading, point, radius]);
 
   const shown = useMemo(() => {
     const showReports = (t) => reports.filter((r) => r.type === t);
@@ -62,6 +60,11 @@ function MapPage({ onBack, onNotifications, onCall }) {
 
       <section className="map-page__nearby">
         <h2 className="map-page__title">Cerca de ti</h2>
+        {!loading && !consent && (
+          <button type="button" className="map-page__consent" onClick={() => void requestConsent()}>
+            Activa tu ubicación para ver los reportes cerca de ti
+          </button>
+        )}
         {error && <p className="auth-error">{error}</p>}
 
         <div className="map-page__list">
@@ -71,6 +74,8 @@ function MapPage({ onBack, onNotifications, onCall }) {
               name={`${r.pet_name ?? (r.type === "lost" ? "Mascota perdida" : "Mascota encontrada")}`}
               info={distanceLabel(r.distance_m)}
               badge={dayLabel(r.created_at)}
+              photoUrl={r.photos?.[0] ?? r.pet_photo_url ?? undefined}
+              onClick={() => onReportClick?.(reportToPet(r))}
             />
           ))}
           {shown.places.map((p) => (

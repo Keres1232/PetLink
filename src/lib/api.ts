@@ -252,6 +252,17 @@ export async function uploadPhoto(
   return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
 }
 
+/**
+ * Foto de perfil: `profiles` no tiene columna de avatar, así que el enlace
+ * se guarda en los metadatos de la cuenta (auth.users.user_metadata.avatar_url).
+ */
+export async function updateAvatar(file: File): Promise<string> {
+  const url = await uploadPhoto(file, "pet-photos");
+  const { error } = await supabase.auth.updateUser({ data: { avatar_url: url } });
+  if (error) throw error;
+  return url;
+}
+
 export async function getReportById(id: string): Promise<ReportNear | null> {
   const { data, error } = await supabase.rpc("report_by_id", { p_id: id });
   if (error) throw error;
@@ -420,6 +431,16 @@ export async function listPendingVetApplications(): Promise<VetApplication[]> {
     .select("*, applicant:profiles!vet_applications_user_id_fkey(name)")
     .eq("status", "pending")
     .order("created_at", { ascending: true });
+  if (error) throw error;
+  return data as unknown as VetApplication[];
+}
+
+/** Todas las solicitudes (pendientes, aprobadas y rechazadas) para la vista de admin. */
+export async function listVetApplications(): Promise<VetApplication[]> {
+  const { data, error } = await supabase
+    .from("vet_applications")
+    .select("*, applicant:profiles!vet_applications_user_id_fkey(name)")
+    .order("created_at", { ascending: false });
   if (error) throw error;
   return data as unknown as VetApplication[];
 }
