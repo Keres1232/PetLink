@@ -19,8 +19,6 @@
   line-height: normal;
 }
 
-/* ===== Foto ===== */
-
 .add-pet__photo-block {
   display: flex;
   flex-direction: column;
@@ -79,8 +77,6 @@
   font-weight: 600;
 }
 
-/* ===== Aviso ===== */
-
 .add-pet__notice {
   display: flex;
   align-items: center;
@@ -117,7 +113,13 @@
   font-weight: 700;
 }
 
-/* ===== Botones ===== */
+.add-pet__error {
+  margin: 0;
+  color: #c0392b;
+  font-family: "Nata Sans", sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+}
 
 .add-pet__save {
   height: 40px;
@@ -133,7 +135,8 @@
 }
 
 .add-pet__save:focus { outline: none; }
-.add-pet__save:active { transform: scale(0.98); }
+.add-pet__save:active:not(:disabled) { transform: scale(0.98); }
+.add-pet__save:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .add-pet__cancel {
   border: none;

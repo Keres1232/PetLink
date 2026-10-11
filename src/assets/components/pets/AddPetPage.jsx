@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import AppHeader from "../shared/AppHeader.jsx";
 import ChipGroup from "../shared/ChipGroup.jsx";
 import TextInputField from "../shared/TextInputField.jsx";
@@ -22,21 +22,23 @@ const HeartIcon = () => (
   </svg>
 );
 
-const SPECIES = [
-  { id: "Perro", label: "Perro", icon: dogIcon },
-  { id: "Gato", label: "Gato", icon: catIcon },
-  { id: "Otro", label: "Otro", icon: <HeartIcon /> },
-];
 const SEX = ["Macho", "Hembra"];
 const SIZES = ["Pequeño", "Mediano", "Grande"];
+const SPECIES_OPTIONS = [
+  { names: ["dog", "perro"], label: "Perro", icon: dogIcon },
+  { names: ["cat", "gato"], label: "Gato", icon: catIcon },
+  { names: ["bird", "otro"], label: "Otro", icon: <HeartIcon /> },
+];
+const normalizeSpeciesName = (name) => name.trim().toLowerCase();
 
-function AddPetPage({ onBack, onNotifications, onSave }) {
+function AddPetPage({ species = [], onBack, onNotifications, onSave }) {
   const [photo, setPhoto] = useState(null);
   const [photoFile, setPhotoFile] = useState(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const [form, setForm] = useState({
-    species: "Perro",
+    speciesId: "",
     name: "",
     breed: "",
     age: "",
@@ -46,8 +48,35 @@ function AddPetPage({ onBack, onNotifications, onSave }) {
     marks: "",
   });
 
+  const options = useMemo(
+    () =>
+      SPECIES_OPTIONS.flatMap(({ names, label, icon }) => {
+        const speciesEntry = species.find((item) =>
+          names.includes(normalizeSpeciesName(item.name))
+        );
+        return speciesEntry ? [{ id: speciesEntry.id, label, icon }] : [];
+      }),
+    [species]
+  );
+
+  const speciesId = form.speciesId || options[0]?.id || "";
+
   const update = (key) => (value) => setForm((f) => ({ ...f, [key]: value }));
-  const canSave = form.name.trim() !== "" && !saving;
+  const canSave = form.name.trim().length >= 2 && Boolean(speciesId) && !saving;
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!canSave) return;
+    setSaving(true);
+    setError("");
+    try {
+      await onSave?.({ ...form, speciesId, photoUrl: photo, photoFile });
+    } catch (err) {
+      setError(err?.message || "No pudimos inscribir a tu mascota. Intenta de nuevo.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <>
@@ -59,19 +88,7 @@ function AddPetPage({ onBack, onNotifications, onSave }) {
         onRight={onNotifications}
       />
 
-      <form
-        className="add-pet"
-        onSubmit={async (e) => {
-          e.preventDefault();
-          if (!canSave) return;
-          setSaving(true);
-          try {
-            await onSave?.({ ...form, photoUrl: photo, photoFile });
-          } finally {
-            setSaving(false);
-          }
-        }}
-      >
+      <form className="add-pet" onSubmit={submit}>
         <div className="add-pet__photo-block">
           <div className="add-pet__photo">
             <div className="add-pet__photo-circle">
@@ -91,7 +108,13 @@ function AddPetPage({ onBack, onNotifications, onSave }) {
 
         <div className="add-pet__group">
           <span className="add-pet__label">Especie</span>
-          <ChipGroup options={SPECIES} value={form.species} onChange={update("species")} />
+          {options.length > 0 ? (
+            <ChipGroup options={options} value={speciesId} onChange={update("speciesId")} />
+          ) : (
+            <p className="add-pet__error">
+              No hay especies disponibles. Revisa la tabla species en la base de datos.
+            </p>
+          )}
         </div>
 
         <TextInputField label="Nombre" value={form.name} onChange={update("name")} />
@@ -118,6 +141,8 @@ function AddPetPage({ onBack, onNotifications, onSave }) {
             día reportas a tu mascota como perdida.
           </p>
         </div>
+
+        {error && <p className="add-pet__error" role="alert">{error}</p>}
 
         <button type="submit" className="add-pet__save" disabled={!canSave}>
           {saving ? "Guardando..." : "Guardar mascota"}

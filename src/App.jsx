@@ -117,9 +117,6 @@ const CONFIRMS = {
 const SEX_LABEL = { male: "Macho", female: "Hembra", unknown: "No sé" };
 const SIZE_LABEL = { small: "Pequeño", medium: "Mediano", large: "Grande" };
 
-const normalizeSpeciesName = (name) =>
-  name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
-
 function App() {
   const { user, profile, loading, signOut } = useAuth();
 
@@ -153,7 +150,6 @@ function App() {
 
   const [confirmAction, setConfirmAction] = useState(null);
 
-  // Mascotas reales
   const [pets, setPets] = useState([]);
   const [species, setSpecies] = useState([]);
 
@@ -183,60 +179,37 @@ function App() {
   useEffect(() => {
     if (user) {
       loadPets();
-      listSpecies().then(setSpecies).catch(console.error);
+      listSpecies()
+        .then((s) => {
+          console.log("Especies cargadas:", s);
+          setSpecies(s);
+        })
+        .catch((e) => console.error("No se pudo cargar species", e));
     } else {
       setPets([]);
     }
   }, [user, loadPets]);
 
   const savePet = async (pet) => {
-    try {
-      let availableSpecies = species;
-      let selectedSpecies = availableSpecies.find(
-        (item) => normalizeSpeciesName(item.name) === normalizeSpeciesName(pet.species)
-      );
+    const sex = { Macho: "male", Hembra: "female" }[pet.sex] ?? "unknown";
+    const size = { Pequeño: "small", Mediano: "medium", Grande: "large" }[pet.size] ?? null;
 
-      if (!selectedSpecies) {
-        availableSpecies = await listSpecies();
-        setSpecies(availableSpecies);
-        selectedSpecies = availableSpecies.find(
-          (item) => normalizeSpeciesName(item.name) === normalizeSpeciesName(pet.species)
-        );
-      }
+    let photoUrl = null;
+    if (pet.photoFile) photoUrl = await uploadPhoto(pet.photoFile, "pet-photos");
 
-      if (!selectedSpecies) {
-        throw new Error(
-          `La especie "${pet.species}" no está disponible. Verifica que exista y esté aprobada en el catálogo de especies.`
-        );
-      }
-
-      const sex = { Macho: "male", Hembra: "female" }[pet.sex] ?? "unknown";
-      const size = { Pequeño: "small", Mediano: "medium", Grande: "large" }[pet.size] ?? null;
-
-      let photoUrl = null;
-      if (pet.photoFile) photoUrl = await uploadPhoto(pet.photoFile, "pet-photos");
-
-      await createPet({
-        name: pet.name.trim(),
-        speciesId: selectedSpecies.id,
-        description: pet.marks || null,
-        birthDate: null,
-        photoUrl,
-        sex,
-        breed: pet.breed || null,
-        color: pet.color || null,
-        size,
-      });
-      await loadPets();
-      setShowAddPet(false);
-    } catch (e) {
-      console.error(e);
-      alert(
-        e instanceof Error
-          ? `No se pudo guardar la mascota: ${e.message}`
-          : "No se pudo guardar la mascota. Revisa la consola (F12)."
-      );
-    }
+    await createPet({
+      name: pet.name.trim(),
+      speciesId: pet.speciesId,
+      description: pet.marks?.trim() || null,
+      birthDate: null,
+      photoUrl,
+      sex,
+      breed: pet.breed?.trim() || null,
+      color: pet.color?.trim() || null,
+      size,
+    });
+    await loadPets();
+    setShowAddPet(false);
   };
 
   const handleCall = (phone) => {
@@ -608,6 +581,7 @@ function App() {
         <main className="app">
           <PawBackground />
           <AddPetPage
+            species={species}
             onBack={() => setShowAddPet(false)}
             onNotifications={() => {
               setShowAddPet(false);
