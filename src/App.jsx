@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "./context/AuthContext";
-import { myPets, createPet, listSpecies, uploadPhoto } from "./lib/api";
+import { myPets, createPet, listSpecies, uploadPhoto, uploadPhotos, createAlert } from "./lib/api";
+import { searchPlace } from "./lib/geocode";
 import LoginScreen from "./assets/components/auth/LoginScreen.jsx";
 import RegisterScreen from "./assets/components/auth/RegisterScreen.jsx";
 import NavBar from "./assets/components/shared/NavBar.jsx";
@@ -34,6 +35,8 @@ import RequestsPage from "./assets/components/requests/RequestsPage.jsx";
 import ReviewRequestPage from "./assets/components/requests/ReviewRequestPage.jsx";
 import backIcon from "./assets/svg/Back.svg";
 import "./App.css";
+
+const HIDDEN_SPECIES = ["ferret", "rabbit"];
 
 const SettingsIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -116,6 +119,8 @@ const CONFIRMS = {
 
 const SEX_LABEL = { male: "Macho", female: "Hembra", unknown: "No sé" };
 const SIZE_LABEL = { small: "Pequeño", medium: "Mediano", large: "Grande" };
+const SEX_DB = { Macho: "male", Hembra: "female", "No sé": "unknown" };
+const SIZE_DB = { Pequeño: "small", Mediano: "medium", Grande: "large" };
 
 function App() {
   const { user, profile, loading, signOut } = useAuth();
@@ -180,10 +185,7 @@ function App() {
     if (user) {
       loadPets();
       listSpecies()
-        .then((s) => {
-          console.log("Especies cargadas:", s);
-          setSpecies(s);
-        })
+        .then((s) => setSpecies(s.filter((x) => !HIDDEN_SPECIES.includes(x.name.toLowerCase()))))
         .catch((e) => console.error("No se pudo cargar species", e));
     } else {
       setPets([]);
@@ -191,9 +193,6 @@ function App() {
   }, [user, loadPets]);
 
   const savePet = async (pet) => {
-    const sex = { Macho: "male", Hembra: "female" }[pet.sex] ?? "unknown";
-    const size = { Pequeño: "small", Mediano: "medium", Grande: "large" }[pet.size] ?? null;
-
     let photoUrl = null;
     if (pet.photoFile) photoUrl = await uploadPhoto(pet.photoFile, "pet-photos");
 
@@ -203,13 +202,55 @@ function App() {
       description: pet.marks?.trim() || null,
       birthDate: null,
       photoUrl,
-      sex,
+      sex: SEX_DB[pet.sex] ?? "unknown",
       breed: pet.breed?.trim() || null,
       color: pet.color?.trim() || null,
-      size,
+      size: SIZE_DB[pet.size] ?? null,
     });
     await loadPets();
     setShowAddPet(false);
+  };
+
+  const publishAlert = async (type, r) => {
+    const point = r.point ?? (await searchPlace(r.place));
+    if (!point) {
+      throw new Error("No encontramos ese lugar. Escríbelo más específico o usa tu ubicación actual.");
+    }
+    const petPhoto = type === "lost" ? pets.find((p) => p.id === r.petId)?.photoUrl : null;
+    const photos = [
+      ...(petPhoto ? [petPhoto] : []),
+      ...(r.photoFiles?.length ? await uploadPhotos(r.photoFiles, "pet-photos") : []),
+    ];
+
+    const payload = {
+      petId: type === "lost" ? r.petId : null,
+      type,
+      description: (type === "lost" ? r.traits : r.description) || "",
+      point,
+      photos,
+      speciesId: type === "found" ? r.speciesId : null,
+      sex: type === "found" ? SEX_DB[r.sex] ?? "unknown" : null,
+      breed: type === "found" ? r.breed?.trim() || null : null,
+      size: type === "found" ? SIZE_DB[r.size] ?? null : null,
+      ageEstimate: type === "found" ? r.age?.trim() || null : null,
+      lostAt:
+        type === "lost" && r.date
+          ? new Date(`${r.date}T${r.time || "00:00"}`).toISOString()
+          : null,
+    };
+    console.log("create_alert payload:", payload);
+
+    try {
+      const id = await createAlert(payload);
+      console.log("Alerta creada:", id);
+    } catch (e) {
+      console.error("create_alert falló:", e.message, e.details, e.hint, e.code);
+      throw e;
+    }
+
+    setShowReportLost(false);
+    setShowReportFound(false);
+    setActiveTab("map");
   };
 
   const handleCall = (phone) => {
@@ -400,11 +441,7 @@ function App() {
               setActiveTab("profile");
               setShowAddPet(true);
             }}
-            onSubmit={(report) => {
-              console.log("Alerta publicada:", report);
-              setShowReportLost(false);
-              setActiveTab("home");
-            }}
+            onSubmit={(report) => publishAlert("lost", report)}
           />
           <NavBar active={activeTab} onNavigate={goTab(() => setShowReportLost(false))} />
         </main>
@@ -419,16 +456,13 @@ function App() {
         <main className="app">
           <PawBackground />
           <ReportFoundPage
+            species={species}
             onBack={() => setShowReportFound(false)}
             onNotifications={() => {
               setShowReportFound(false);
               setShowNotifications(true);
             }}
-            onSubmit={(report) => {
-              console.log("Alerta de mascota encontrada:", report);
-              setShowReportFound(false);
-              setActiveTab("home");
-            }}
+            onSubmit={(report) => publishAlert("found", report)}
           />
           <NavBar active={activeTab} onNavigate={goTab(() => setShowReportFound(false))} />
         </main>

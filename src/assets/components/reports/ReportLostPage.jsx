@@ -5,41 +5,38 @@ import IconInputField from "../shared/IconInputField.jsx";
 import PetPicker from "../pets/PetPicker.jsx";
 import backIcon from "../../svg/Back.svg";
 import bellIcon from "../../svg/bell.svg";
+import { setGeoConsent } from "../../../lib/geo";
 import "./ReportLostPage.css";
 
 const stroke = { stroke: "#66557E", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round", fill: "none" };
 
 const CalendarIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <svg width="18" height="18" viewBox="0 0 24 24">
     <rect x="3" y="5" width="18" height="16" rx="2" {...stroke} />
     <path d="M3 10H21M8 3V7M16 3V7" {...stroke} />
   </svg>
 );
-
 const ClockIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <svg width="18" height="18" viewBox="0 0 24 24">
     <circle cx="12" cy="12" r="9" {...stroke} />
     <path d="M12 7V12L15 14" {...stroke} />
   </svg>
 );
-
 const PinIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <svg width="18" height="18" viewBox="0 0 24 24">
     <path d="M12 21C12 21 19 14.5 19 8.5C19 4.91 15.87 2 12 2C8.13 2 5 4.91 5 8.5C5 14.5 12 21 12 21Z" {...stroke} />
     <circle cx="12" cy="8.5" r="2.5" {...stroke} />
   </svg>
 );
-
 const TargetIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <svg width="16" height="16" viewBox="0 0 24 24">
     <circle cx="12" cy="12" r="3" fill="#7519FF" />
     <circle cx="12" cy="12" r="8" stroke="#7519FF" strokeWidth="2" fill="none" />
     <path d="M12 1V4M12 20V23M1 12H4M20 12H23" stroke="#7519FF" strokeWidth="2" strokeLinecap="round" />
   </svg>
 );
-
 const PlusIcon = () => (
-  <svg width="30" height="30" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <svg width="30" height="30" viewBox="0 0 24 24">
     <circle cx="12" cy="12" r="11" fill="#ffffff" />
     <path d="M12 7V17M7 12H17" stroke="#7519FF" strokeWidth="2" strokeLinecap="round" />
   </svg>
@@ -52,49 +49,63 @@ function ReportLostPage({ pets = [], onBack, onNotifications, onNotListed, onSub
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [place, setPlace] = useState("");
+  const [coords, setCoords] = useState(null);
   const [traits, setTraits] = useState("");
   const [photos, setPhotos] = useState([]);
+  const [photoFiles, setPhotoFiles] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
 
   const selectedPet = pets.find((p) => p.id === petId);
-  const canSubmit = petId !== null && place.trim() !== "";
+  const canSubmit = petId !== null && place.trim() !== "" && !busy;
 
   const useMyLocation = () => {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
-      ({ coords }) =>
-        setPlace(`Mi ubicación actual (${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)})`),
-      () => console.log("No se pudo obtener la ubicación")
+      ({ coords: c }) => {
+        setGeoConsent(true); // para que el mapa se centre en tu ubicación real
+        setCoords({ lat: c.latitude, lon: c.longitude });
+        setPlace(`Mi ubicación actual (${c.latitude.toFixed(4)}, ${c.longitude.toFixed(4)})`);
+      },
+      () => setError("No se pudo obtener tu ubicación. Escribe el lugar a mano.")
     );
+  };
+
+  const onPlaceChange = (v) => {
+    setPlace(v);
+    setCoords(null);
   };
 
   const addPhoto = (e) => {
     const file = e.target.files?.[0];
     if (file && photos.length < MAX_EXTRA_PHOTOS) {
       setPhotos((p) => [...p, URL.createObjectURL(file)]);
+      setPhotoFiles((f) => [...f, file]);
     }
     e.target.value = "";
   };
 
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!canSubmit) return;
+    setBusy(true);
+    setError("");
+    try {
+      await onSubmit?.({ petId, date, time, place, point: coords, traits, photoFiles });
+    } catch (err) {
+      console.error(err);
+      setError(err?.message || "No se pudo publicar la alerta. Intenta de nuevo.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <>
-      <AppHeader
-        title="Reportar mascota"
-        leftIcon={backIcon}
-        onLeft={onBack}
-        rightIcon={bellIcon}
-        onRight={onNotifications}
-      />
+      <AppHeader title="Reportar mascota" leftIcon={backIcon} onLeft={onBack} rightIcon={bellIcon} onRight={onNotifications} />
 
-      <form
-        className="report-lost"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (canSubmit) onSubmit?.({ petId, date, time, place, traits, photos });
-        }}
-      >
-        <InfoNotice>
-          Publicaremos una alerta a los usuarios cerca de la ubicación que indiques.
-        </InfoNotice>
+      <form className="report-lost" onSubmit={submit}>
+        <InfoNotice>Publicaremos una alerta a los usuarios cerca de la ubicación que indiques.</InfoNotice>
 
         <h2 className="report-lost__label">¿Cuál de tus mascotas se perdió?</h2>
         <PetPicker pets={pets} value={petId} onChange={setPetId} onNotListed={onNotListed} />
@@ -110,7 +121,7 @@ function ReportLostPage({ pets = [], onBack, onNotifications, onNotListed, onSub
             icon={<PinIcon />}
             placeholder="Ej: Parque de Usaquén"
             value={place}
-            onChange={setPlace}
+            onChange={onPlaceChange}
           />
           <button type="button" className="report-lost__locate" onClick={useMyLocation}>
             <TargetIcon />
@@ -120,12 +131,7 @@ function ReportLostPage({ pets = [], onBack, onNotifications, onNotListed, onSub
 
         <label className="report-lost__field">
           <span className="report-lost__label">Características al momento de perderse</span>
-          <textarea
-            className="report-lost__textarea"
-            rows={4}
-            value={traits}
-            onChange={(e) => setTraits(e.target.value)}
-          />
+          <textarea className="report-lost__textarea" rows={4} value={traits} onChange={(e) => setTraits(e.target.value)} />
         </label>
 
         <div className="report-lost__field">
@@ -151,13 +157,15 @@ function ReportLostPage({ pets = [], onBack, onNotifications, onNotListed, onSub
           </div>
 
           <p className="report-lost__hint">
-            La primera foto ya es la de {selectedPet?.name ?? "tu mascota"} registrada. Puedes
-            agregar hasta {MAX_EXTRA_PHOTOS} más recientes.
+            La primera foto ya es la de {selectedPet?.name ?? "tu mascota"} registrada. Puedes agregar hasta{" "}
+            {MAX_EXTRA_PHOTOS} más recientes.
           </p>
         </div>
 
+        {error && <p className="auth-error" role="alert">{error}</p>}
+
         <button type="submit" className="report-lost__submit" disabled={!canSubmit}>
-          Publicar alerta
+          {busy ? "Publicando..." : "Publicar alerta"}
         </button>
 
         <button type="button" className="report-lost__cancel" onClick={onBack}>

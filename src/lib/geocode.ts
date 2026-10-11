@@ -31,6 +31,7 @@ export async function searchPlace(query: string): Promise<GeoPoint | null> {
     format: "jsonv2",
     q: query.trim(),
     limit: "1",
+    countrycodes: "co",
     "accept-language": "es",
   });
   try {
