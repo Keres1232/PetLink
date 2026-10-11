@@ -171,3 +171,31 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Nombre + lápiz de editar */
+.pet-card__name-row {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.pet-card__name-row .pet-card__name {
+  width: auto;
+  min-width: 0;
+}
+
+.pet-card__edit {
+  display: flex;
+  flex-shrink: 0;
+
+  padding: 2px;
+
+  align-items: center;
+  justify-content: center;
+
+  border: none;
+  background: transparent;
+
+  cursor: pointer;
+}

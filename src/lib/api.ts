@@ -133,6 +133,16 @@ export async function addComment(postId: string, text: string): Promise<void> {
   if (error) throw error;
 }
 
+/** Denuncia un comentario: queda pendiente en comment_reports para que lo revise un admin. */
+export async function reportComment(commentId: string, reason: string | null): Promise<void> {
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+  if (!userId) throw new Error("No hay sesión activa.");
+  const { error } = await supabase
+    .from("comment_reports")
+    .insert({ comment_id: commentId, reporter_id: userId, reason });
+  if (error) throw error;
+}
+
 export async function listNotifications(): Promise<NotificationRow[]> {
   const { data, error } = await supabase
     .from("notifications")
@@ -152,12 +162,63 @@ export async function markNotificationRead(id: string): Promise<void> {
 }
 
 export async function myPets(): Promise<Pet[]> {
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+  if (!userId) return [];
+  // Solo las del usuario y sin las eliminadas (borrado suave con deleted_at)
   const { data, error } = await supabase
     .from("pets")
     .select("*, species:species(id, name)")
+    .eq("user_id", userId)
+    .is("deleted_at", null)
     .order("created_at", { ascending: false });
   if (error) throw error;
   return data as unknown as Pet[];
+}
+
+export async function updatePet(
+  id: string,
+  input: {
+    name: string;
+    speciesId: string;
+    description: string | null;
+    birthDate: string | null;
+    photoUrl: string | null;
+    sex?: "male" | "female" | "unknown" | null;
+    breed?: string | null;
+    color?: string | null;
+    size?: "small" | "medium" | "large" | null;
+  }
+): Promise<void> {
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+  if (!userId) throw new Error("No hay sesión activa.");
+  const { error } = await supabase
+    .from("pets")
+    .update({
+      name: input.name,
+      species_id: input.speciesId,
+      description: input.description,
+      birth_date: input.birthDate,
+      photo_url: input.photoUrl,
+      sex: input.sex ?? null,
+      breed: input.breed ?? null,
+      color: input.color ?? null,
+      size: input.size ?? null,
+    })
+    .eq("id", id)
+    .eq("user_id", userId);
+  if (error) throw error;
+}
+
+/** Borrado suave: la mascota deja de mostrarse pero se conserva en la base de datos. */
+export async function deletePet(id: string): Promise<void> {
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+  if (!userId) throw new Error("No hay sesión activa.");
+  const { error } = await supabase
+    .from("pets")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("user_id", userId);
+  if (error) throw error;
 }
 
 export async function listSpecies(): Promise<Species[]> {

@@ -13,8 +13,12 @@ import {
   getVetDocumentUrl,
   uploadVetDocument,
   submitVetApplication,
+  myVetApplication,
   reportsNear,
+  updatePet,
+  deletePet,
 } from "./lib/api";
+import { ageFromBirthDate } from "./lib/format";
 import { useUserLocation } from "./hooks/useUserLocation";
 import { reportToPet } from "./lib/reportPet";
 import { searchPlace } from "./lib/geocode";
@@ -51,6 +55,7 @@ import ReportFoundPage from "./assets/components/reports/ReportFoundPage.jsx";
 import ReportAdoptionPage from "./assets/components/reports/ReportAdoptionPage.jsx";
 import RequestsPage from "./assets/components/requests/RequestsPage.jsx";
 import ReviewRequestPage from "./assets/components/requests/ReviewRequestPage.jsx";
+import ModerationPage from "./assets/components/requests/ModerationPage.jsx";
 import backIcon from "./assets/svg/Back.svg";
 import "./App.css";
 
@@ -95,8 +100,8 @@ const makeList = (n, status) =>
 // Adopción todavía no tiene datos en la base: se muestran ejemplos
 const ADOPTION_PETS = makeList(6);
 
-// La solicitud guarda los dos documentos en support_document_url separados por coma
-const DOC_NAMES = ["Tarjeta profesional", "Documento de identidad"];
+// support_document_url guarda una ruta; las solicitudes viejas pueden traer dos separadas por coma
+const DOC_NAMES = ["Documento de soporte", "Documento de identidad"];
 
 // Fila de vet_applications -> forma que usan RequestsPage / ReviewRequestPage
 const toRequest = (a) => ({
@@ -137,6 +142,10 @@ const CONFIRMS = {
 const SEX_LABEL = { male: "Macho", female: "Hembra", unknown: "No sé" };
 const SIZE_LABEL = { small: "Pequeño", medium: "Mediano", large: "Grande" };
 const SEX_DB = { Macho: "male", Hembra: "female", "No sé": "unknown" };
+
+// Las especies vienen en inglés desde la base de datos
+const SPECIES_ES = { dog: "Perro", cat: "Gato", bird: "Ave", rabbit: "Conejo", ferret: "Hurón", other: "Otro" };
+const speciesLabel = (name) => (name ? SPECIES_ES[name.toLowerCase()] ?? name : "Otro");
 const SIZE_DB = { Pequeño: "small", Mediano: "medium", Grande: "large" };
 
 function App() {
@@ -161,6 +170,7 @@ function App() {
 
   const [requests, setRequests] = useState([]);
   const [requestsTab, setRequestsTab] = useState(null);
+  const [moderationTab, setModerationTab] = useState(null);
   const [reviewing, setReviewing] = useState(null);
 
   const [selectedPet, setSelectedPet] = useState(null);
@@ -175,6 +185,7 @@ function App() {
   const [pets, setPets] = useState([]);
   const [species, setSpecies] = useState([]);
   const [contactPostId, setContactPostId] = useState(null);
+  const [editingPet, setEditingPet] = useState(null);
 
   // Reportes reales cerca del usuario (Inicio: "Cerca de ti" y "Encontrados")
   const { point: userPoint, radius, loading: locLoading } = useUserLocation();
@@ -202,10 +213,13 @@ function App() {
         rows.map((p) => ({
           id: p.id,
           name: p.name,
-          species: p.species?.name ?? "Otro",
-          status: p.species?.name ?? "Otro",
+          speciesId: p.species_id,
+          species: speciesLabel(p.species?.name),
+          status: speciesLabel(p.species?.name),
           location: "",
           breed: p.breed ?? "",
+          age: ageFromBirthDate(p.birth_date) ?? "",
+          birthDate: p.birth_date,
           color: p.color ?? "",
           sex: SEX_LABEL[p.sex] ?? "",
           size: SIZE_LABEL[p.size] ?? "",
@@ -255,23 +269,35 @@ function App() {
     return () => void supabase.removeChannel(channel);
   }, [user]);
 
+  // Crea la mascota o, si viene con id, actualiza la existente
   const savePet = async (pet) => {
-    let photoUrl = null;
-    if (pet.photoFile) photoUrl = await uploadPhoto(pet.photoFile, "pet-photos");
+    const photoUrl = pet.photoFile
+      ? await uploadPhoto(pet.photoFile, "pet-photos")
+      : editingPet?.photoUrl ?? null;
 
-    await createPet({
+    const data = {
       name: pet.name.trim(),
       speciesId: pet.speciesId,
       description: pet.marks?.trim() || null,
-      birthDate: null,
+      birthDate: pet.birthDate,
       photoUrl,
       sex: SEX_DB[pet.sex] ?? "unknown",
       breed: pet.breed?.trim() || null,
       color: pet.color?.trim() || null,
       size: SIZE_DB[pet.size] ?? null,
-    });
+    };
+    if (pet.id) await updatePet(pet.id, data);
+    else await createPet(data);
+
     await loadPets();
     setShowAddPet(false);
+    setEditingPet(null);
+  };
+
+  const removePet = async (id) => {
+    await deletePet(id);
+    await loadPets();
+    setEditingPet(null);
   };
 
   const publishAlert = async (type, r) => {
@@ -349,8 +375,21 @@ function App() {
   };
 
   const sendVerification = async (r) => {
-    const paths = [await uploadVetDocument(r.licenseFile), await uploadVetDocument(r.idFile)];
-    await submitVetApplication(r.type === "refuge" ? "foundation" : "vet", paths.join(","));
+    // Revisar antes de subir, para no dejar documentos huérfanos en el bucket
+    if ((await myVetApplication())?.status === "pending") {
+      throw new Error("Ya tienes una solicitud en revisión.");
+    }
+    const path = await uploadVetDocument(r.docFile);
+    try {
+      await submitVetApplication(r.type === "refuge" ? "foundation" : "vet", path);
+    } catch (e) {
+      const msg = e?.message ?? "";
+      if (msg.includes("pending application"))
+        throw new Error("Ya tienes una solicitud en revisión.", { cause: e });
+      if (msg.includes("professional role"))
+        throw new Error("Tu cuenta ya tiene un rol profesional.", { cause: e });
+      throw e;
+    }
     setShowVerification(false);
     setActiveTab("profile");
   };
@@ -475,6 +514,19 @@ function App() {
     );
   }
 
+  /* POR REVISAR: PUBLICACIONES, CLÍNICAS Y DENUNCIAS (ADMIN) */
+  if (moderationTab) {
+    return (
+      <div className="phone-frame">
+        <main className="app">
+          <PawBackground />
+          <ModerationPage initialTab={moderationTab} onBack={() => setModerationTab(null)} />
+          <NavBar active={activeTab} onNavigate={goTab(() => setModerationTab(null))} />
+        </main>
+      </div>
+    );
+  }
+
   /* SOLICITUDES (ADMIN) */
   if (requestsTab) {
     return (
@@ -584,6 +636,7 @@ function App() {
         <main className="app">
           <PawBackground />
           <ReportAdoptionPage
+            species={species}
             onBack={() => setShowReportAdoption(false)}
             onNotifications={() => {
               setShowReportAdoption(false);
@@ -711,22 +764,29 @@ function App() {
     );
   }
 
-  /* INSCRIBIR MASCOTA */
-  if (showAddPet) {
+  /* INSCRIBIR / EDITAR MASCOTA */
+  if (showAddPet || editingPet) {
+    const closePetForm = () => {
+      setShowAddPet(false);
+      setEditingPet(null);
+    };
     return (
       <div className="phone-frame">
         <main className="app">
           <PawBackground />
           <AddPetPage
+            key={editingPet?.id ?? "new"}
             species={species}
-            onBack={() => setShowAddPet(false)}
+            pet={editingPet}
+            onBack={closePetForm}
             onNotifications={() => {
-              setShowAddPet(false);
+              closePetForm();
               setShowNotifications(true);
             }}
             onSave={savePet}
+            onDelete={removePet}
           />
-          <NavBar active={activeTab} onNavigate={goTab(() => setShowAddPet(false))} />
+          <NavBar active={activeTab} onNavigate={goTab(closePetForm)} />
         </main>
       </div>
     );
@@ -752,6 +812,10 @@ function App() {
             onSeeAllCommunity={() => setActiveTab("community")}
             onSeeAllAdoption={() => setListPage("adoption")}
             onSeeAllFound={() => setListPage("found")}
+            onOpenPost={(postId) => {
+              setContactPostId(postId);
+              setActiveTab("community");
+            }}
           />
         )}
 
@@ -821,7 +885,7 @@ function App() {
                 onOptionClick={(id) => {
                   if (id === "pending") setRequestsTab("pending");
                   else if (id === "history") setRequestsTab("approved");
-                  else console.log("Gestión:", id);
+                  else setModerationTab(id);
                 }}
               />
             ) : (
@@ -830,6 +894,7 @@ function App() {
                   pets={pets}
                   onEnroll={() => setShowAddPet(true)}
                   onPetClick={setSelectedPet}
+                  onEdit={setEditingPet}
                 />
               </section>
             )}

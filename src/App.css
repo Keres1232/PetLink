@@ -218,3 +218,12 @@ body {
 
   z-index: 100;
 }
+.home-section__empty {
+  margin: 8px 0;
+
+  color: #66557e;
+  font-family: "Kodchasan", sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}

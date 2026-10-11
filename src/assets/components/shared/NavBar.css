@@ -101,5 +101,5 @@
 .nav-item:hover .nav-label { color: #ae77ff; }
 .nav-item:active { transform: scale(0.95); }
 /* Reportar: texto siempre morado */
-.nav-item--always-active .nav-label { color: #ae77ff; }
+.nav-item--always-active .nav-label { color: #7519ff; }
 .nav-item:focus { outline: none; }

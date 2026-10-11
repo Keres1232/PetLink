@@ -1,6 +1,7 @@
 import { useState } from "react";
 import PawBackground from "./PawBackground.jsx";
 import useLockBodyScroll from "../../../hooks/useLockBodyScroll.js";
+import useSwipeToClose from "../../../hooks/useSwipeToClose.js";
 import "./PermissionsModal.css";
 
 const CloseIcon = () => (
@@ -15,11 +16,13 @@ function PermissionsModal({ open, onClose, onConfirm }) {
 
   useLockBodyScroll(open);
 
+  const swipe = useSwipeToClose(onClose);
+
   if (!open) return null;
 
   return (
     <div className="perm__overlay" onClick={onClose}>
-      <div className="perm__sheet" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+      <div className="perm__sheet" {...swipe} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <PawBackground contained />
 
         <span className="perm__handle" />

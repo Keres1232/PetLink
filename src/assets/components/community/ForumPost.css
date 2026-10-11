@@ -170,3 +170,18 @@
 
   white-space: nowrap;
 }
+/* Botón de me gusta */
+.forum-post__like-btn {
+  padding: 2px 4px;
+  margin: -2px -4px;
+
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+
+  cursor: pointer;
+}
+
+.forum-post__like-btn:active { transform: scale(0.92); }
+
+.forum-post__like-btn.is-liked .forum-post__count { color: #ae77ff; }

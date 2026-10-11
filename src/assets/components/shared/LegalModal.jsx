@@ -1,5 +1,6 @@
 import PawBackground from "./PawBackground.jsx";
 import useLockBodyScroll from "../../../hooks/useLockBodyScroll.js";
+import useSwipeToClose from "../../../hooks/useSwipeToClose.js";
 import { LEGAL_DOCS } from "./legalDocs.js";
 import "./LegalModal.css";
 
@@ -11,13 +12,14 @@ const CloseIcon = () => (
 
 function LegalModal({ type, onClose }) {
   useLockBodyScroll(Boolean(type));
+  const swipe = useSwipeToClose(onClose);
 
   const doc = LEGAL_DOCS[type];
   if (!doc) return null;
 
   return (
     <div className="legal__overlay" onClick={onClose}>
-      <div className="legal__sheet" role="dialog" aria-modal="true" aria-label={doc.title} onClick={(e) => e.stopPropagation()}>
+      <div className="legal__sheet" {...swipe} role="dialog" aria-modal="true" aria-label={doc.title} onClick={(e) => e.stopPropagation()}>
         <PawBackground contained />
 
         <span className="legal__handle" />

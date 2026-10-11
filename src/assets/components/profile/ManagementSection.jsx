@@ -39,8 +39,10 @@ const Chevron = () => (
 );
 
 const OPTIONS = [
-  { id: "pending", icon: <ClockIcon />, label: "Solicitudes pendientes" },
-  { id: "status", icon: <BellIcon />, label: "Consultar estado de una solicitud" },
+  { id: "pending", icon: <ClockIcon />, label: "Solicitudes de verificación" },
+  { id: "posts", icon: <BellIcon />, label: "Publicaciones por revisar" },
+  { id: "clinics", icon: <DocIcon />, label: "Clínicas y refugios por verificar" },
+  { id: "comments", icon: <BellIcon />, label: "Denuncias de comentarios" },
   { id: "history", icon: <DocIcon />, label: "Historial de solicitudes" },
 ];
 

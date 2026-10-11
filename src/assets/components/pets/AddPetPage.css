@@ -149,3 +149,43 @@
 }
 
 .add-pet__cancel:focus { outline: none; }
+/* Eliminar mascota */
+.add-pet__delete {
+  height: 40px;
+  padding: 0 16px;
+
+  border: 1.5px solid #e0554f;
+  border-radius: 10px;
+  background: #ffffff;
+
+  color: #a0403c;
+  font-family: "Kodchasan", sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.add-pet__delete:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.add-pet__delete-confirm {
+  display: flex;
+  padding: 12px;
+  flex-direction: column;
+  gap: 10px;
+
+  border-radius: 10px;
+  background: #ffe3e3;
+
+  font-family: "Nata Sans", sans-serif;
+  font-size: 13px;
+  text-align: center;
+}
+
+.add-pet__delete-confirm p { margin: 0; }
+
+.add-pet__delete-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}

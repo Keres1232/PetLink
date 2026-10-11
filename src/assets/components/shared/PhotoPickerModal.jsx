@@ -1,10 +1,12 @@
 import cameraIcon from "../../svg/AgregarPhoto/Camara.svg";
 import galleryIcon from "../../svg/AgregarPhoto/Photo.svg";
 import useLockBodyScroll from "../../../hooks/useLockBodyScroll.js";
+import useSwipeToClose from "../../../hooks/useSwipeToClose.js";
 import "./PhotoPickerModal.css";
 
 function PhotoPickerModal({ open, onClose, onFile }) {
-    useLockBodyScroll(open);  
+    useLockBodyScroll(open);
+    const swipe = useSwipeToClose(onClose);  
   
     if (!open) return null;
 
@@ -17,7 +19,7 @@ function PhotoPickerModal({ open, onClose, onFile }) {
 
   return (
     <div className="photo-picker__overlay" onClick={onClose}>
-      <div className="photo-picker__sheet" onClick={(e) => e.stopPropagation()}>
+      <div className="photo-picker__sheet" {...swipe} onClick={(e) => e.stopPropagation()}>
         <span className="photo-picker__handle" />
 
         <h2 className="photo-picker__title">Agregar foto</h2>

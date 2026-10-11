@@ -4,7 +4,16 @@ import ShareBar from "./ShareBar.jsx";
 import MapFilterTabs from "../map/MapFilterTabs.jsx";
 import ChipGroup from "../shared/ChipGroup.jsx";
 import ForumPost from "./ForumPost.jsx";
-import { addComment, createPost, getFeed, getPostById, listComments, uploadPhoto } from "../../../lib/api";
+import {
+  addComment,
+  createPost,
+  getPostById,
+  listComments,
+  reportComment,
+  uploadPhoto,
+} from "../../../lib/api";
+import useLiveFeed from "../../../hooks/useLiveFeed.js";
+import { POST_TYPE_LABEL } from "../../../lib/postTypes";
 import { timeAgo } from "../../../lib/format";
 import backIcon from "../../svg/Back.svg";
 import bellIcon from "../../svg/bell.svg";
@@ -19,16 +28,6 @@ const TYPE_BY_FILTER = {
 };
 const FILTERS = ["Todo", ...Object.keys(TYPE_BY_FILTER)];
 
-const TYPE_LABEL = {
-  question: "Pregunta",
-  tip: "Consejo",
-  story: "Historia",
-  alert: "Alerta",
-  found: "Encontrada",
-  post: "Post",
-  experience: "Experiencia",
-  meme: "Meme",
-};
 
 const DRAFT_TYPES = [
   { id: "question", label: "Pregunta" },
@@ -38,9 +37,22 @@ const DRAFT_TYPES = [
 
 function CommunityPage({ avatarUrl, openPostId, onBack, onNotifications }) {
   const [filter, setFilter] = useState("Todo");
-  const [feed, setFeed] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // Si venimos de "Contactar al dueño" o de Inicio, aseguramos que esa publicación esté en la lista
+  const withOpenPost = useCallback(
+    async (rows) => {
+      if (!openPostId || rows.some((r) => r.id === openPostId)) return rows;
+      const extra = await getPostById(openPostId).catch(() => null);
+      return extra ? [extra, ...rows] : rows;
+    },
+    [openPostId]
+  );
+
+  const { feed, loading, error: feedError, version, refresh, toggleLike } = useLiveFeed({
+    type: TYPE_BY_FILTER[filter],
+    extra: withOpenPost,
+  });
 
   const [composing, setComposing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -53,35 +65,13 @@ function CommunityPage({ avatarUrl, openPostId, onBack, onNotifications }) {
   const [comments, setComments] = useState([]);
   const [commentDraft, setCommentDraft] = useState("");
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const rows = await getFeed({ type: TYPE_BY_FILTER[filter], limit: 30 });
-      // Si venimos de "Contactar al dueño", aseguramos que esa publicación esté en la lista
-      if (openPostId && !rows.some((r) => r.id === openPostId)) {
-        const extra = await getPostById(openPostId).catch(() => null);
-        if (extra) rows.unshift(extra);
-      }
-      setFeed(rows);
-    } catch (e) {
-      console.error(e);
-      setError("No pudimos cargar la comunidad.");
-    } finally {
-      setLoading(false);
-    }
-  }, [filter, openPostId]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
+  // Comentarios de la publicación abierta; se recargan cuando llega un comentario nuevo (version)
   useEffect(() => {
     if (!openPost) return;
     listComments(openPost)
       .then(setComments)
       .catch(() => setComments([]));
-  }, [openPost]);
+  }, [openPost, version]);
 
   const publish = async () => {
     if (draft.trim().length < 3 || publishing) return;
@@ -95,12 +85,24 @@ function CommunityPage({ avatarUrl, openPostId, onBack, onNotifications }) {
       setComposing(false);
       // Las publicaciones de usuarios pasan por moderación antes de aparecer
       setNotice("¡Listo! Tu publicación quedó en revisión y aparecerá cuando un administrador la apruebe.");
-      await load();
+      refresh();
     } catch (e) {
       console.error(e);
       setError("No pudimos publicar. Intenta de nuevo.");
     } finally {
       setPublishing(false);
+    }
+  };
+
+  const [reported, setReported] = useState([]);
+
+  const denounce = async (commentId) => {
+    try {
+      await reportComment(commentId, "Contenido inapropiado");
+      setReported((list) => [...list, commentId]);
+    } catch (e) {
+      console.error(e);
+      setError("No pudimos enviar la denuncia.");
     }
   };
 
@@ -110,6 +112,7 @@ function CommunityPage({ avatarUrl, openPostId, onBack, onNotifications }) {
       await addComment(postId, commentDraft.trim());
       setCommentDraft("");
       setComments(await listComments(postId));
+      refresh(); // actualiza el número de respuestas
     } catch (e) {
       console.error(e);
       setError("No pudimos enviar tu respuesta.");
@@ -151,7 +154,7 @@ function CommunityPage({ avatarUrl, openPostId, onBack, onNotifications }) {
         )}
 
         {notice && <p className="community__notice">{notice}</p>}
-        {error && <p className="auth-error" role="alert">{error}</p>}
+        {(error || feedError) && <p className="auth-error" role="alert">{error || feedError}</p>}
 
         <MapFilterTabs filters={FILTERS} onChange={setFilter} />
 
@@ -164,9 +167,11 @@ function CommunityPage({ avatarUrl, openPostId, onBack, onNotifications }) {
               <ForumPost
                 userName={post.author_name}
                 timeAgo={timeAgo(post.created_at)}
-                category={TYPE_LABEL[post.type] ?? post.type}
+                category={POST_TYPE_LABEL[post.type] ?? post.type}
                 question={post.content}
                 likes={post.like_count}
+                liked={post.liked_by_me}
+                onLike={() => void toggleLike(post.id)}
                 replies={post.comment_count}
                 onClick={() => setOpenPost((id) => (id === post.id ? null : post.id))}
               />
@@ -180,7 +185,14 @@ function CommunityPage({ avatarUrl, openPostId, onBack, onNotifications }) {
                   {comments.length === 0 && <p className="community__empty">Sé el primero en responder.</p>}
                   {comments.map((c) => (
                     <p key={c.id} className="community__comment">
-                      <strong>{c.author?.name ?? "Usuario"}</strong> {c.text}
+                      <strong>{c.author?.name ?? "Usuario"}</strong> {c.text}{" "}
+                      {reported.includes(c.id) ? (
+                        <span className="community__reported">Denunciado</span>
+                      ) : (
+                        <button type="button" className="community__report" onClick={() => void denounce(c.id)}>
+                          Denunciar
+                        </button>
+                      )}
                     </p>
                   ))}
                   <div className="community__composer-row">

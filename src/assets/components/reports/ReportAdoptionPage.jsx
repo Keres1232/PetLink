@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import AppHeader from "../shared/AppHeader.jsx";
 import InfoNotice from "../shared/InfoNotice.jsx";
 import ChipGroup from "../shared/ChipGroup.jsx";
@@ -6,9 +6,9 @@ import IconInputField from "../shared/IconInputField.jsx";
 import TextInputField from "../shared/TextInputField.jsx";
 import backIcon from "../../svg/Back.svg";
 import bellIcon from "../../svg/bell.svg";
-import vetIcon from "../../svg/Adopcion/Vet.svg";
-import refugeIcon from "../../svg/Adopcion/Ref.svg";
+import { speciesChipOptions } from "../shared/speciesOptions.jsx";
 import "./ReportLostPage.css";
+import "./ReportFoundPage.css";
 
 const stroke = { stroke: "#66557E", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round", fill: "none" };
 
@@ -34,16 +34,14 @@ const PlusIcon = () => (
   </svg>
 );
 
-const TYPES = [
-  { id: "vet", label: "Médico veterinario", icon: vetIcon },
-  { id: "refuge", label: "Refugio/ Veterinaria", icon: refugeIcon },
-];
 const SEX = ["Macho", "Hembra", "No sé"];
 const SIZES = ["Pequeño", "Mediano", "Grande"];
 const MAX_PHOTOS = 3;
 
-function ReportAdoptionPage({ onBack, onNotifications, onSubmit }) {
-  const [type, setType] = useState("vet");
+function ReportAdoptionPage({ species = [], onBack, onNotifications, onSubmit }) {
+  const options = useMemo(() => speciesChipOptions(species), [species]);
+  const [speciesId, setSpeciesId] = useState("");
+  const currentSpecies = speciesId || options[0]?.id || "";
   const [place, setPlace] = useState("");
   const [name, setName] = useState("");
   const [sex, setSex] = useState("Macho");
@@ -85,7 +83,8 @@ function ReportAdoptionPage({ onBack, onNotifications, onSubmit }) {
         className="report-lost"
         onSubmit={(e) => {
           e.preventDefault();
-          if (canSubmit) onSubmit?.({ type, place, name, sex, size, age, description, photos });
+          if (canSubmit)
+            onSubmit?.({ speciesId: currentSpecies, place, name, sex, size, age, description, photos });
         }}
       >
         <InfoNotice>
@@ -94,8 +93,12 @@ function ReportAdoptionPage({ onBack, onNotifications, onSubmit }) {
         </InfoNotice>
 
         <div className="found__group">
-          <span className="report-lost__label">Tipo de solicitud</span>
-          <ChipGroup options={TYPES} value={type} onChange={setType} />
+          <span className="report-lost__label">Especie</span>
+          {options.length > 0 ? (
+            <ChipGroup options={options} value={currentSpecies} onChange={setSpeciesId} />
+          ) : (
+            <p className="auth-error">No hay especies disponibles.</p>
+          )}
         </div>
 
         <div className="report-lost__place">

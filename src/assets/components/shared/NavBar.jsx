@@ -45,7 +45,7 @@ const ReportIcon = () => (
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
   >
-    <circle cx="12" cy="12" r="10" fill="#AE77FF" />
+    <circle cx="12" cy="12" r="10" fill="#7519FF" />
     <path d="M12 7V17" stroke="white" strokeWidth="2" strokeLinecap="round" />
     <path d="M7 12H17" stroke="white" strokeWidth="2" strokeLinecap="round" />
   </svg>

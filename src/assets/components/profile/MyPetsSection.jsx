@@ -3,7 +3,7 @@ import PillButton from "../shared/PillButton.jsx";
 import masIcon from "../../svg/Mas.svg";
 import "./MyPetsSection.css";
 
-function MyPetsSection({ pets = [], onEnroll, onPetClick }) {
+function MyPetsSection({ pets = [], onEnroll, onPetClick, onEdit }) {
   return (
     <section className="my-pets">
       <div className="my-pets__header">
@@ -23,9 +23,10 @@ function MyPetsSection({ pets = [], onEnroll, onPetClick }) {
             key={pet.id}
             status={pet.species}
             name={pet.name}
-            location={pet.location}
+            location={pet.breed || "Raza sin registrar"}
             photoUrl={pet.photoUrl}
             onClick={() => onPetClick?.(pet)}
+            onEdit={onEdit ? () => onEdit(pet) : undefined}
           />
         ))}
       </div>

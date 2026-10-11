@@ -3,6 +3,7 @@ import pawIcon from "../../svg/Report/huella.svg";
 import heartIcon from "../../svg/Report/corazon.svg";
 import commentIcon from "../../svg/Report/coment.svg";
 import useLockBodyScroll from "../../../hooks/useLockBodyScroll.js";
+import useSwipeToClose from "../../../hooks/useSwipeToClose.js";
 import starIcon from "../../svg/Report/Star_R.svg";
 import "./ReportModal.css";
 
@@ -44,12 +45,13 @@ const OPTIONS = [
 
 function ReportModal({ open, onClose, onSelectOption, onCommunityPost }) {
   useLockBodyScroll(open);
+  const swipe = useSwipeToClose(onClose);
   
   if (!open) return null;
 
   return (
     <div className="report-modal__overlay" onClick={onClose}>
-      <div className="report-modal__sheet" onClick={(e) => e.stopPropagation()}>
+      <div className="report-modal__sheet" {...swipe} onClick={(e) => e.stopPropagation()}>
         <PawBackground contained />
 
         <span className="report-modal__handle" />

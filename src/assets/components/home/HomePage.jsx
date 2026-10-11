@@ -8,6 +8,9 @@ import bellIcon from "../../svg/bell.svg";
 import mapIcon from "../../svg/Ver_todo.svg";
 import commentIcon from "../../svg/Report/coment.svg";
 import heartIcon from "../../svg/Report/corazon.svg";
+import useLiveFeed from "../../../hooks/useLiveFeed.js";
+import { timeAgo } from "../../../lib/format";
+import { POST_TYPE_LABEL } from "../../../lib/postTypes";
 
 function SectionHeader({ title, icon, onSeeAll }) {
   return (
@@ -48,7 +51,12 @@ function HomePage({
   onSeeAllCommunity,
   onSeeAllAdoption,
   onSeeAllFound,
+  onOpenPost,
 }) {
+  // Publicación más reciente, con me gusta y contadores en vivo
+  const { feed, toggleLike } = useLiveFeed({ limit: 1 });
+  const latest = feed[0];
+
   return (
     <>
       <header className="home-header">
@@ -74,14 +82,21 @@ function HomePage({
 
       <section className="home-section">
         <SectionHeader title="De la comunidad" icon={commentIcon} onSeeAll={onSeeAllCommunity} />
-        <ForumPost
-          userName="Usuario"
-          timeAgo="hace 2 horas"
-          category="Pregunta"
-          question="¿Alguien sabe qué puedo darle a mi perrita, tiene mucha comezón?"
-          likes={12}
-          replies={8}
-        />
+        {latest ? (
+          <ForumPost
+            userName={latest.author_name}
+            timeAgo={timeAgo(latest.created_at)}
+            category={POST_TYPE_LABEL[latest.type] ?? latest.type}
+            question={latest.content}
+            likes={latest.like_count}
+            liked={latest.liked_by_me}
+            onLike={() => void toggleLike(latest.id)}
+            replies={latest.comment_count}
+            onClick={() => onOpenPost?.(latest.id)}
+          />
+        ) : (
+          <p className="home-section__empty">Aún no hay publicaciones en la comunidad.</p>
+        )}
       </section>
 
       <section className="home-section">

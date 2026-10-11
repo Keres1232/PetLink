@@ -7,6 +7,7 @@ import genderIcon from "../../svg/ExpCard/genero_card.svg";
 import sizeIcon from "../../svg/ExpCard/tamaño_card.svg";
 import colorIcon from "../../svg/ExpCard/Color_card.svg";
 import useLockBodyScroll from "../../../hooks/useLockBodyScroll.js";
+import useSwipeToClose from "../../../hooks/useSwipeToClose.js";
 import "./PetDetailModal.css";
 
 function InfoItem({ icon, label, value }) {
@@ -25,12 +26,13 @@ function InfoItem({ icon, label, value }) {
 
 function PetDetailModal({ pet, onClose, onContact }) {
   useLockBodyScroll(Boolean(pet));
+  const swipe = useSwipeToClose(onClose);
   
     if (!pet) return null;
 
   return (
     <div className="pet-detail__overlay" onClick={onClose}>
-      <div className="pet-detail__sheet" onClick={(e) => e.stopPropagation()}>
+      <div className="pet-detail__sheet" {...swipe} onClick={(e) => e.stopPropagation()}>
         <PawBackground contained />
         <span className="pet-detail__handle" />
 

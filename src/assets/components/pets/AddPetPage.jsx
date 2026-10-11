@@ -31,21 +31,34 @@ const SPECIES_OPTIONS = [
 ];
 const normalizeSpeciesName = (name) => name.trim().toLowerCase();
 
-function AddPetPage({ species = [], onBack, onNotifications, onSave }) {
-  const [photo, setPhoto] = useState(null);
+const YEAR_MS = 365.25 * 24 * 60 * 60 * 1000;
+
+// La base de datos guarda la fecha de nacimiento: la edad en años se convierte en una fecha aproximada
+const yearsToBirthDate = (years) => {
+  const n = parseFloat(String(years).replace(",", "."));
+  if (!Number.isFinite(n) || n < 0) return null;
+  return new Date(Date.now() - n * YEAR_MS).toISOString().slice(0, 10);
+};
+const birthDateToYears = (birthDate) =>
+  birthDate ? String(Math.round(((Date.now() - new Date(birthDate).getTime()) / YEAR_MS) * 10) / 10) : "";
+
+function AddPetPage({ species = [], pet = null, onBack, onNotifications, onSave, onDelete }) {
+  const editing = Boolean(pet);
+  const [photo, setPhoto] = useState(pet?.photoUrl ?? null);
   const [photoFile, setPhotoFile] = useState(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState({
-    speciesId: "",
-    name: "",
-    breed: "",
-    age: "",
-    sex: "Macho",
-    size: "Pequeño",
-    color: "",
-    marks: "",
+    speciesId: pet?.speciesId ?? "",
+    name: pet?.name ?? "",
+    breed: pet?.breed ?? "",
+    age: birthDateToYears(pet?.birthDate),
+    sex: pet?.sex === "Hembra" ? "Hembra" : "Macho",
+    size: pet?.size || "Pequeño",
+    color: pet?.color ?? "",
+    marks: pet?.marks ?? "",
   });
 
   const options = useMemo(
@@ -70,10 +83,28 @@ function AddPetPage({ species = [], onBack, onNotifications, onSave }) {
     setSaving(true);
     setError("");
     try {
-      await onSave?.({ ...form, speciesId, photoUrl: photo, photoFile });
+      await onSave?.({
+        ...form,
+        id: pet?.id,
+        speciesId,
+        birthDate: yearsToBirthDate(form.age),
+        photoUrl: photo,
+        photoFile,
+      });
     } catch (err) {
-      setError(err?.message || "No pudimos inscribir a tu mascota. Intenta de nuevo.");
+      setError(err?.message || "No pudimos guardar a tu mascota. Intenta de nuevo.");
     } finally {
+      setSaving(false);
+    }
+  };
+
+  const remove = async () => {
+    setSaving(true);
+    setError("");
+    try {
+      await onDelete?.(pet.id);
+    } catch (err) {
+      setError(err?.message || "No pudimos eliminar a tu mascota. Intenta de nuevo.");
       setSaving(false);
     }
   };
@@ -81,7 +112,7 @@ function AddPetPage({ species = [], onBack, onNotifications, onSave }) {
   return (
     <>
       <AppHeader
-        title="Inscribir mascota"
+        title={editing ? "Editar mascota" : "Inscribir mascota"}
         leftIcon={backIcon}
         onLeft={onBack}
         rightIcon={bellIcon}
@@ -119,7 +150,13 @@ function AddPetPage({ species = [], onBack, onNotifications, onSave }) {
 
         <TextInputField label="Nombre" value={form.name} onChange={update("name")} />
         <TextInputField label="Raza" optional value={form.breed} onChange={update("breed")} />
-        <TextInputField label="Edad" value={form.age} onChange={update("age")} />
+        <TextInputField
+          label="Edad (años)"
+          type="number"
+          placeholder="Ej: 2 o 0.5 para 6 meses"
+          value={form.age}
+          onChange={update("age")}
+        />
 
         <div className="add-pet__group">
           <span className="add-pet__label">Sexo</span>
@@ -145,12 +182,32 @@ function AddPetPage({ species = [], onBack, onNotifications, onSave }) {
         {error && <p className="add-pet__error" role="alert">{error}</p>}
 
         <button type="submit" className="add-pet__save" disabled={!canSave}>
-          {saving ? "Guardando..." : "Guardar mascota"}
+          {saving ? "Guardando..." : editing ? "Guardar cambios" : "Guardar mascota"}
         </button>
 
         <button type="button" className="add-pet__cancel" onClick={onBack}>
           Cancelar
         </button>
+
+        {/* Eliminar: pide confirmación en la misma página */}
+        {editing &&
+          (confirmDelete ? (
+            <div className="add-pet__delete-confirm">
+              <p>¿Seguro que quieres eliminar a {pet.name}? Ya no aparecerá en tu perfil.</p>
+              <div className="add-pet__delete-actions">
+                <button type="button" className="add-pet__cancel" onClick={() => setConfirmDelete(false)}>
+                  No, volver
+                </button>
+                <button type="button" className="add-pet__delete" disabled={saving} onClick={() => void remove()}>
+                  Sí, eliminar
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button type="button" className="add-pet__delete" onClick={() => setConfirmDelete(true)}>
+              Eliminar mascota
+            </button>
+          ))}
       </form>
 
       <PhotoPickerModal

@@ -2,6 +2,7 @@ import { useState } from "react";
 import SearchBar from "../shared/SearchBar.jsx";
 import PawBackground from "../shared/PawBackground.jsx";
 import useLockBodyScroll from "../../../hooks/useLockBodyScroll.js";
+import useSwipeToClose from "../../../hooks/useSwipeToClose.js";
 import "./CityPickerModal.css";
 
 const CITIES = [
@@ -39,6 +40,8 @@ function CityPickerModal({ open, value, onClose, onSelect }) {
 
   useLockBodyScroll(open);
 
+  const swipe = useSwipeToClose(onClose);
+
   if (!open) return null;
 
   const visible = CITIES.filter((c) => normalize(c).includes(normalize(query)));
@@ -56,7 +59,7 @@ function CityPickerModal({ open, value, onClose, onSelect }) {
 
   return (
     <div className="city-picker__overlay" onClick={close}>
-      <div className="city-picker__sheet" onClick={(e) => e.stopPropagation()}>
+      <div className="city-picker__sheet" {...swipe} onClick={(e) => e.stopPropagation()}>
         <PawBackground contained />
 
         <span className="city-picker__handle" />
