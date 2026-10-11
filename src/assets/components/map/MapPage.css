@@ -50,3 +50,5 @@
 .map-page__list .vet-card {
   max-width: none;
 }
+
+.map-page__empty { color: var(--desctivado, #66557e); font-family: "Kodchasan", sans-serif; font-size: 13px; text-align: center; }

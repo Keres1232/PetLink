@@ -7,6 +7,7 @@ import CircleIconButton from "../shared/CircleIconButton.jsx";
 import SuccessToast from "../shared/SuccessToast.jsx";
 import backIcon from "../../svg/Back.svg";
 import { useAuth } from "../../../context/AuthContext";
+import { supabase } from "../../../lib/supabase";
 import { updateSettings } from "../../../lib/api";
 import "./AuthPages.css";
 
@@ -40,6 +41,7 @@ function RegisterScreen({ onBack, onSwitchToLogin, onRegisterSuccess }) {
   const [accepted, setAccepted] = useState(false);
   const [permOpen, setPermOpen] = useState(false);
   const [created, setCreated] = useState(false);
+  const [needsConfirm, setNeedsConfirm] = useState(false);
   const [legal, setLegal] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -59,11 +61,18 @@ function RegisterScreen({ onBack, onSwitchToLogin, onRegisterSuccess }) {
       return;
     }
 
-    // Solo funciona si hay sesión (sin confirmación de correo)
-    try {
-      await updateSettings({ geolocationConsent: Boolean(location) });
-    } catch {
-      /* se podrá guardar después del primer inicio de sesión */
+    // Solo guardamos el consentimiento si ya hay sesión.
+    // Sin sesión (correo por confirmar) se evita la petición que daba 400.
+    const { data } = await supabase.auth.getSession();
+    if (data.session) {
+      try {
+        await updateSettings({ geolocationConsent: Boolean(location) });
+      } catch {
+        /* se podrá guardar después del primer inicio de sesión */
+      }
+      setNeedsConfirm(false);
+    } else {
+      setNeedsConfirm(true);
     }
 
     setLoading(false);
@@ -80,7 +89,12 @@ function RegisterScreen({ onBack, onSwitchToLogin, onRegisterSuccess }) {
 
   return (
     <div className="auth-page">
-      <SuccessToast open={created} message="¡Cuenta creada exitosamente!" onDone={afterToast} />
+      <SuccessToast
+        open={created}
+        message={needsConfirm ? "¡Cuenta creada! Revisa tu correo para confirmarla" : "¡Cuenta creada exitosamente!"}
+        duration={needsConfirm ? 3500 : 2200}
+        onDone={afterToast}
+      />
 
       <div className="auth-page__back">
         <CircleIconButton icon={backIcon} iconAlt="Volver" ariaLabel="Volver" onClick={onBack} />

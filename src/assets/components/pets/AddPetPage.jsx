@@ -32,7 +32,9 @@ const SIZES = ["Pequeño", "Mediano", "Grande"];
 
 function AddPetPage({ onBack, onNotifications, onSave }) {
   const [photo, setPhoto] = useState(null);
+  const [photoFile, setPhotoFile] = useState(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     species: "Perro",
     name: "",
@@ -45,6 +47,7 @@ function AddPetPage({ onBack, onNotifications, onSave }) {
   });
 
   const update = (key) => (value) => setForm((f) => ({ ...f, [key]: value }));
+  const canSave = form.name.trim() !== "" && !saving;
 
   return (
     <>
@@ -58,9 +61,15 @@ function AddPetPage({ onBack, onNotifications, onSave }) {
 
       <form
         className="add-pet"
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
-          onSave?.({ ...form, photoUrl: photo });
+          if (!canSave) return;
+          setSaving(true);
+          try {
+            await onSave?.({ ...form, photoUrl: photo, photoFile });
+          } finally {
+            setSaving(false);
+          }
         }}
       >
         <div className="add-pet__photo-block">
@@ -110,7 +119,9 @@ function AddPetPage({ onBack, onNotifications, onSave }) {
           </p>
         </div>
 
-        <button type="submit" className="add-pet__save">Guardar mascota</button>
+        <button type="submit" className="add-pet__save" disabled={!canSave}>
+          {saving ? "Guardando..." : "Guardar mascota"}
+        </button>
 
         <button type="button" className="add-pet__cancel" onClick={onBack}>
           Cancelar
@@ -120,7 +131,10 @@ function AddPetPage({ onBack, onNotifications, onSave }) {
       <PhotoPickerModal
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
-        onFile={(file) => setPhoto(URL.createObjectURL(file))}
+        onFile={(file) => {
+          setPhotoFile(file);
+          setPhoto(URL.createObjectURL(file));
+        }}
       />
     </>
   );

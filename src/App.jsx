@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "./context/AuthContext";
+import { myPets, createPet, listSpecies, uploadPhoto } from "./lib/api";
 import LoginScreen from "./assets/components/auth/LoginScreen.jsx";
 import RegisterScreen from "./assets/components/auth/RegisterScreen.jsx";
 import NavBar from "./assets/components/shared/NavBar.jsx";
@@ -62,11 +63,6 @@ const sample = (id, species, status) => ({
     "Pecho y patas blancas, ojos verdes. Tiene una pequeña mancha oscura en la nariz y una marca en la oreja izquierda.",
 });
 
-const MY_PETS = [
-  { ...sample(1, "Perro", "Perro"), name: "Mati" },
-  { ...sample(2, "Gato", "Gato"), name: "Luna" },
-];
-
 const SPECIES_CYCLE = ["Perro", "Gato"];
 
 const makeList = (n, status) =>
@@ -118,10 +114,16 @@ const CONFIRMS = {
   },
 };
 
+const SEX_LABEL = { male: "Macho", female: "Hembra", unknown: "No sé" };
+const SIZE_LABEL = { small: "Pequeño", medium: "Mediano", large: "Grande" };
+
+const normalizeSpeciesName = (name) =>
+  name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+
 function App() {
   const { user, profile, loading, signOut } = useAuth();
 
-  const [authView, setAuthView] = useState("login"); // "login" | "register"
+  const [authView, setAuthView] = useState("login");
   const [newAccountEmail, setNewAccountEmail] = useState("");
 
   const [activeTab, setActiveTab] = useState("home");
@@ -151,7 +153,95 @@ function App() {
 
   const [confirmAction, setConfirmAction] = useState(null);
 
-  const handleCall = (name) => console.log(`Llamando a: ${name}`);
+  // Mascotas reales
+  const [pets, setPets] = useState([]);
+  const [species, setSpecies] = useState([]);
+
+  const loadPets = useCallback(async () => {
+    try {
+      const rows = await myPets();
+      setPets(
+        rows.map((p) => ({
+          id: p.id,
+          name: p.name,
+          species: p.species?.name ?? "Otro",
+          status: p.species?.name ?? "Otro",
+          location: "",
+          breed: p.breed ?? "",
+          color: p.color ?? "",
+          sex: SEX_LABEL[p.sex] ?? "",
+          size: SIZE_LABEL[p.size] ?? "",
+          marks: p.description ?? "",
+          photoUrl: p.photo_url,
+        }))
+      );
+    } catch (e) {
+      console.error("No se pudieron cargar las mascotas", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      loadPets();
+      listSpecies().then(setSpecies).catch(console.error);
+    } else {
+      setPets([]);
+    }
+  }, [user, loadPets]);
+
+  const savePet = async (pet) => {
+    try {
+      let availableSpecies = species;
+      let selectedSpecies = availableSpecies.find(
+        (item) => normalizeSpeciesName(item.name) === normalizeSpeciesName(pet.species)
+      );
+
+      if (!selectedSpecies) {
+        availableSpecies = await listSpecies();
+        setSpecies(availableSpecies);
+        selectedSpecies = availableSpecies.find(
+          (item) => normalizeSpeciesName(item.name) === normalizeSpeciesName(pet.species)
+        );
+      }
+
+      if (!selectedSpecies) {
+        throw new Error(
+          `La especie "${pet.species}" no está disponible. Verifica que exista y esté aprobada en el catálogo de especies.`
+        );
+      }
+
+      const sex = { Macho: "male", Hembra: "female" }[pet.sex] ?? "unknown";
+      const size = { Pequeño: "small", Mediano: "medium", Grande: "large" }[pet.size] ?? null;
+
+      let photoUrl = null;
+      if (pet.photoFile) photoUrl = await uploadPhoto(pet.photoFile, "pet-photos");
+
+      await createPet({
+        name: pet.name.trim(),
+        speciesId: selectedSpecies.id,
+        description: pet.marks || null,
+        birthDate: null,
+        photoUrl,
+        sex,
+        breed: pet.breed || null,
+        color: pet.color || null,
+        size,
+      });
+      await loadPets();
+      setShowAddPet(false);
+    } catch (e) {
+      console.error(e);
+      alert(
+        e instanceof Error
+          ? `No se pudo guardar la mascota: ${e.message}`
+          : "No se pudo guardar la mascota. Revisa la consola (F12)."
+      );
+    }
+  };
+
+  const handleCall = (phone) => {
+    window.location.href = `tel:${phone}`;
+  };
   const goHome = () => setActiveTab("home");
   const openNotifications = () => setShowNotifications(true);
 
@@ -195,7 +285,13 @@ function App() {
     />
   );
 
-  /* CARGANDO (solo si ya hay usuario, para no desmontar el registro) */
+  const goTab = (close) => (id) => {
+    close();
+    if (id === "report") setShowReportModal(true);
+    else setActiveTab(id);
+  };
+
+  /* CARGANDO */
   if (loading && user && authView !== "register") {
     return (
       <div className="phone-frame">
@@ -204,7 +300,7 @@ function App() {
     );
   }
 
-  /* SIN SESIÓN: LOGIN / REGISTRO */
+  /* SIN SESIÓN */
   if (!user || authView === "register") {
     return authView === "register" ? (
       <RegisterScreen
@@ -216,10 +312,7 @@ function App() {
         }}
       />
     ) : (
-      <LoginScreen
-        initialEmail={newAccountEmail}
-        onSwitchToRegister={() => setAuthView("register")}
-      />
+      <LoginScreen initialEmail={newAccountEmail} onSwitchToRegister={() => setAuthView("register")} />
     );
   }
 
@@ -230,14 +323,7 @@ function App() {
         <main className="app">
           <PawBackground />
           <NotificationsPage onBack={() => setShowNotifications(false)} />
-          <NavBar
-            active={activeTab}
-            onNavigate={(id) => {
-              setShowNotifications(false);
-              if (id === "report") setShowReportModal(true);
-              else setActiveTab(id);
-            }}
-          />
+          <NavBar active={activeTab} onNavigate={goTab(() => setShowNotifications(false))} />
         </main>
       </div>
     );
@@ -258,12 +344,10 @@ function App() {
           />
           <NavBar
             active={activeTab}
-            onNavigate={(id) => {
+            onNavigate={goTab(() => {
               setReviewing(null);
               setRequestsTab(null);
-              if (id === "report") setShowReportModal(true);
-              else setActiveTab(id);
-            }}
+            })}
           />
         </main>
       </div>
@@ -282,14 +366,7 @@ function App() {
             onBack={() => setRequestsTab(null)}
             onReview={setReviewing}
           />
-          <NavBar
-            active={activeTab}
-            onNavigate={(id) => {
-              setRequestsTab(null);
-              if (id === "report") setShowReportModal(true);
-              else setActiveTab(id);
-            }}
-          />
+          <NavBar active={activeTab} onNavigate={goTab(() => setRequestsTab(null))} />
         </main>
       </div>
     );
@@ -298,7 +375,6 @@ function App() {
   /* EN ADOPCIÓN / ENCONTRADOS */
   if (listPage) {
     const isAdoption = listPage === "adoption";
-
     return (
       <div className="phone-frame">
         <main className="app">
@@ -313,14 +389,7 @@ function App() {
             }}
             onPetClick={setSelectedPet}
           />
-          <NavBar
-            active={activeTab}
-            onNavigate={(id) => {
-              setListPage(null);
-              if (id === "report") setShowReportModal(true);
-              else setActiveTab(id);
-            }}
-          />
+          <NavBar active={activeTab} onNavigate={goTab(() => setListPage(null))} />
           {sharedModals}
         </main>
       </div>
@@ -334,14 +403,7 @@ function App() {
         <main className="app">
           <PawBackground />
           <HelpPage onBack={() => setShowHelp(false)} />
-          <NavBar
-            active={activeTab}
-            onNavigate={(id) => {
-              setShowHelp(false);
-              if (id === "report") setShowReportModal(true);
-              else setActiveTab(id);
-            }}
-          />
+          <NavBar active={activeTab} onNavigate={goTab(() => setShowHelp(false))} />
         </main>
       </div>
     );
@@ -354,7 +416,7 @@ function App() {
         <main className="app">
           <PawBackground />
           <ReportLostPage
-            pets={MY_PETS}
+            pets={pets}
             onBack={() => setShowReportLost(false)}
             onNotifications={() => {
               setShowReportLost(false);
@@ -371,14 +433,7 @@ function App() {
               setActiveTab("home");
             }}
           />
-          <NavBar
-            active={activeTab}
-            onNavigate={(id) => {
-              setShowReportLost(false);
-              if (id === "report") setShowReportModal(true);
-              else setActiveTab(id);
-            }}
-          />
+          <NavBar active={activeTab} onNavigate={goTab(() => setShowReportLost(false))} />
         </main>
       </div>
     );
@@ -402,14 +457,7 @@ function App() {
               setActiveTab("home");
             }}
           />
-          <NavBar
-            active={activeTab}
-            onNavigate={(id) => {
-              setShowReportFound(false);
-              if (id === "report") setShowReportModal(true);
-              else setActiveTab(id);
-            }}
-          />
+          <NavBar active={activeTab} onNavigate={goTab(() => setShowReportFound(false))} />
         </main>
       </div>
     );
@@ -433,14 +481,7 @@ function App() {
               setShowVerification(true);
             }}
           />
-          <NavBar
-            active={activeTab}
-            onNavigate={(id) => {
-              setShowReportAdoption(false);
-              if (id === "report") setShowReportModal(true);
-              else setActiveTab(id);
-            }}
-          />
+          <NavBar active={activeTab} onNavigate={goTab(() => setShowReportAdoption(false))} />
         </main>
       </div>
     );
@@ -464,14 +505,7 @@ function App() {
               setActiveTab("profile");
             }}
           />
-          <NavBar
-            active={activeTab}
-            onNavigate={(id) => {
-              setShowVerification(false);
-              if (id === "report") setShowReportModal(true);
-              else setActiveTab(id);
-            }}
-          />
+          <NavBar active={activeTab} onNavigate={goTab(() => setShowVerification(false))} />
         </main>
       </div>
     );
@@ -494,14 +528,7 @@ function App() {
               setShowSettings(true);
             }}
           />
-          <NavBar
-            active={activeTab}
-            onNavigate={(id) => {
-              setShowChangePassword(false);
-              if (id === "report") setShowReportModal(true);
-              else setActiveTab(id);
-            }}
-          />
+          <NavBar active={activeTab} onNavigate={goTab(() => setShowChangePassword(false))} />
         </main>
       </div>
     );
@@ -526,14 +553,7 @@ function App() {
               setShowSettings(true);
             }}
           />
-          <NavBar
-            active={activeTab}
-            onNavigate={(id) => {
-              setShowChangeEmail(false);
-              if (id === "report") setShowReportModal(true);
-              else setActiveTab(id);
-            }}
-          />
+          <NavBar active={activeTab} onNavigate={goTab(() => setShowChangeEmail(false))} />
         </main>
       </div>
     );
@@ -568,14 +588,7 @@ function App() {
             onDeactivate={() => setConfirmAction("deactivate")}
             onDelete={() => setConfirmAction("delete")}
           />
-          <NavBar
-            active={activeTab}
-            onNavigate={(id) => {
-              setShowSettings(false);
-              if (id === "report") setShowReportModal(true);
-              else setActiveTab(id);
-            }}
-          />
+          <NavBar active={activeTab} onNavigate={goTab(() => setShowSettings(false))} />
           <CityPickerModal
             open={cityPickerOpen}
             value={city}
@@ -600,19 +613,9 @@ function App() {
               setShowAddPet(false);
               setShowNotifications(true);
             }}
-            onSave={(pet) => {
-              console.log("Mascota guardada:", pet);
-              setShowAddPet(false);
-            }}
+            onSave={savePet}
           />
-          <NavBar
-            active={activeTab}
-            onNavigate={(id) => {
-              setShowAddPet(false);
-              if (id === "report") setShowReportModal(true);
-              else setActiveTab(id);
-            }}
-          />
+          <NavBar active={activeTab} onNavigate={goTab(() => setShowAddPet(false))} />
         </main>
       </div>
     );
@@ -642,15 +645,7 @@ function App() {
         )}
 
         {activeTab === "map" && (
-          <MapPage
-            onBack={goHome}
-            onNotifications={openNotifications}
-            onFilter={(filter) => {
-              if (filter === "Encontradas") setListPage("found");
-              else console.log("Filtro seleccionado:", filter);
-            }}
-            onCall={handleCall}
-          />
+          <MapPage onBack={goHome} onNotifications={openNotifications} onCall={handleCall} />
         )}
 
         {activeTab === "community" && (
@@ -700,7 +695,7 @@ function App() {
                   labels={["Pendientes", "Aprobadas", "Rechazadas"]}
                 />
               ) : (
-                <ProfileStats pets={MY_PETS.length} posts={14} activeReports={0} />
+                <ProfileStats pets={pets.length} posts={0} activeReports={0} />
               )}
             </section>
 
@@ -715,7 +710,7 @@ function App() {
             ) : (
               <section className="home-section">
                 <MyPetsSection
-                  pets={MY_PETS}
+                  pets={pets}
                   onEnroll={() => setShowAddPet(true)}
                   onPetClick={setSelectedPet}
                 />

@@ -172,7 +172,7 @@ export async function listSpecies(): Promise<Species[]> {
 
 export async function createPet(input: {
   name: string;
-  speciesId: string | null;
+  speciesId: string;
   description: string | null;
   birthDate: string | null;
   photoUrl: string | null;
@@ -181,6 +181,9 @@ export async function createPet(input: {
   color?: string | null;
   size?: "small" | "medium" | "large" | null;
 }): Promise<void> {
+  if (!input.speciesId.trim()) {
+    throw new Error("Debes seleccionar una especie válida para la mascota.");
+  }
   const userId = (await supabase.auth.getUser()).data.user?.id;
   if (!userId) throw new Error("No hay sesión activa.");
   const { error } = await supabase.from("pets").insert({
