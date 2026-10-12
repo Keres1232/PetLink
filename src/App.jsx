@@ -248,11 +248,26 @@ function App() {
     if (inboxRequests > 0) setShowNotifications(true);
   }, [inboxRequests]);
 
-  // Foto subida antes de existir profiles.avatar_url: se publica para que los demás la vean
+  /*
+   * Foto de perfil: la oficial es profiles.avatar_url (igual en la web y en la app).
+   * Solo si profiles todavía NO tiene foto se copia la que quedó en los datos de la cuenta
+   * (fotos subidas antes de existir la columna). Antes se copiaba siempre y un dispositivo con
+   * la sesión vieja pisaba la foto nueva subida desde otro.
+   */
   const savedAvatar = user?.user_metadata?.avatar_url;
+  const avatarColumnReady = Boolean(profile) && "avatar_url" in profile;
+  const needsAvatarBackfill = avatarColumnReady && !profile.avatar_url && Boolean(savedAvatar);
   useEffect(() => {
-    if (user?.id && savedAvatar) void publishMyAvatar(user.id, savedAvatar);
-  }, [user?.id, savedAvatar]);
+    if (!needsAvatarBackfill) return;
+    void publishMyAvatar(user.id, savedAvatar).then(() => refreshProfileRef.current());
+  }, [needsAvatarBackfill, user?.id, savedAvatar]);
+
+  // Al volver a la app se relee el perfil: trae la foto o el nombre cambiados desde otro dispositivo
+  useEffect(() => {
+    const onVisible = () => document.visibilityState === "visible" && void refreshProfileRef.current();
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showAddPet, setShowAddPet] = useState(false);
@@ -542,9 +557,14 @@ function App() {
     setAvatarStatus("saving");
     try {
       const url = await updateAvatar(file);
-      const { data, error } = await supabase.auth.getUser(); // lee la cuenta desde el servidor
-      if (error || data.user?.user_metadata?.avatar_url !== url) {
-        throw new Error("La cuenta no quedó con la foto nueva.");
+      // Comprueba en el servidor que la foto oficial (profiles.avatar_url) quedó guardada
+      if (avatarColumnReady) {
+        const { data, error } = await supabase.from("profiles").select("avatar_url").eq("id", user.id).maybeSingle();
+        if (error || data?.avatar_url !== url) throw new Error("El perfil no quedó con la foto nueva.");
+        await refreshProfileRef.current();
+      } else {
+        const { data, error } = await supabase.auth.getUser();
+        if (error || data.user?.user_metadata?.avatar_url !== url) throw new Error("La cuenta no quedó con la foto nueva.");
       }
       await new Promise((resolve, reject) => {
         const img = new Image();
@@ -755,7 +775,9 @@ function App() {
   const userEmail = user?.email ?? "";
   const userName = profile?.name ?? userEmail.split("@")[0] ?? "usuario";
   const isAdmin = profile?.role === "admin";
-  const profilePhoto = photoPreview ?? user?.user_metadata?.avatar_url ?? null;
+  // Foto oficial: profiles.avatar_url. Solo si aún no existe la columna se usa la de la cuenta.
+  const profilePhoto =
+    photoPreview ?? (avatarColumnReady ? profile.avatar_url : user?.user_metadata?.avatar_url) ?? null;
   const countBy = (status) => requests.filter((r) => r.status === status).length;
 
   const sharedModals = (

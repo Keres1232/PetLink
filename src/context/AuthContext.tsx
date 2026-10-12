@@ -68,11 +68,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     try {
-      const { data } = await supabase
+      // avatar_url es la foto de perfil oficial (la misma en la web y en la app)
+      let { data, error } = await supabase
         .from("profiles")
-        .select("id, name, role, vet_status, created_at")
+        .select("id, name, role, vet_status, created_at, avatar_url")
         .eq("id", userId)
         .maybeSingle();
+      if (error?.code === "42703") {
+        // Aún no existe la columna avatar_url (falta el SQL): se carga el perfil sin foto
+        ({ data, error } = await supabase
+          .from("profiles")
+          .select("id, name, role, vet_status, created_at")
+          .eq("id", userId)
+          .maybeSingle());
+      }
       setProfile((data as Profile | null) ?? null);
     } finally {
       setProfileLoading(false);

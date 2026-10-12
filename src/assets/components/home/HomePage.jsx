@@ -96,6 +96,7 @@ function HomePage({
           <ForumPost
             userName={latest.author_name}
             avatarUrl={latest.avatar_url}
+            imageUrl={latest.image_url}
             timeAgo={timeAgo(latest.created_at)}
             category={POST_TYPE_LABEL[latest.type] ?? latest.type}
             question={latest.content}

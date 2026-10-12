@@ -168,6 +168,7 @@ function CommunityPage({ avatarUrl, openPostId, onBack, onNotifications }) {
               <ForumPost
                 userName={post.author_name}
                 avatarUrl={post.avatar_url}
+                imageUrl={post.image_url}
                 timeAgo={timeAgo(post.created_at)}
                 category={POST_TYPE_LABEL[post.type] ?? post.type}
                 question={post.content}
@@ -177,10 +178,6 @@ function CommunityPage({ avatarUrl, openPostId, onBack, onNotifications }) {
                 replies={post.comment_count}
                 onClick={() => setOpenPost((id) => (id === post.id ? null : post.id))}
               />
-
-              {post.image_url && openPost === post.id && (
-                <img className="community__image" src={post.image_url} alt="" />
-              )}
 
               {openPost === post.id && (
                 <div className="community__thread">

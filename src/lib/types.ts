@@ -8,6 +8,8 @@ export interface Profile {
   role: Role;
   vet_status: string | null;
   created_at: string;
+  /** Foto de perfil pública (columna creada por supabase/sql/2026-10-12_completar_app.sql). */
+  avatar_url?: string | null;
 }
 
 export interface PrivateProfile {

@@ -24,6 +24,7 @@ function ForumPost({
   likes = 0,
   replies = 0,
   avatarUrl,
+  imageUrl,
   liked = false,
   onLike,
   onClick,
@@ -44,6 +45,9 @@ function ForumPost({
       <span className="forum-post__tag">{category}</span>
 
       <p className="forum-post__question">{question}</p>
+
+      {/* Imagen de la publicación: siempre visible dentro de la tarjeta */}
+      {imageUrl && <img className="forum-post__image" src={imageUrl} alt="" loading="lazy" />}
 
       <div className="forum-post__interactions">
         {onLike ? (

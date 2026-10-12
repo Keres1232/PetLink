@@ -27,7 +27,8 @@ create or replace function public.update_my_clinic(
 ) returns void
 language plpgsql
 security definer
-set search_path = public
+-- PostGIS (st_makepoint, st_setsrid) vive en el esquema "extensions" en Supabase
+set search_path = public, extensions
 as $$
 declare
   v_clinic public.vet_clinics%rowtype;

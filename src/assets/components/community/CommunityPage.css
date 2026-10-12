@@ -144,14 +144,6 @@
   color: #000000;
 }
 
-.community__image {
-  width: 100%;
-  max-width: 331px;
-  margin-top: 8px;
-  border-radius: 18px;
-  object-fit: cover;
-}
-
 .community__report,
 .community__reported {
   padding: 0;
