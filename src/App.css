@@ -227,3 +227,18 @@ body {
   font-weight: 600;
   text-align: center;
 }
+
+/* Estado al cambiar la foto de perfil */
+.profile-photo-status {
+  margin: 8px 0 0;
+
+  color: var(--titulos, #7519ff);
+  font-family: "Kodchasan", sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.profile-photo-status--error {
+  color: #c02626;
+}

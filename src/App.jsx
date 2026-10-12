@@ -31,6 +31,7 @@ import CircleIconButton from "./assets/components/shared/CircleIconButton.jsx";
 import PawBackground from "./assets/components/shared/PawBackground.jsx";
 import ConfirmModal from "./assets/components/shared/ConfirmModal.jsx";
 import PhotoPickerModal from "./assets/components/shared/PhotoPickerModal.jsx";
+import SuccessToast from "./assets/components/shared/SuccessToast.jsx";
 import HomePage from "./assets/components/home/HomePage.jsx";
 import MapPage from "./assets/components/map/MapPage.jsx";
 import CommunityPage from "./assets/components/community/CommunityPage.jsx";
@@ -176,6 +177,8 @@ function App() {
   const [selectedPet, setSelectedPet] = useState(null);
   const [profilePhotoOpen, setProfilePhotoOpen] = useState(false);
   const [photoPreview, setPhotoPreview] = useState(null);
+  const [avatarStatus, setAvatarStatus] = useState(null); // "saving" | "saved" | "error"
+  const clearAvatarStatus = useCallback(() => setAvatarStatus(null), []);
 
   const [city, setCity] = useState("Bogotá");
   const [cityPickerOpen, setCityPickerOpen] = useState(false);
@@ -292,6 +295,31 @@ function App() {
     await loadPets();
     setShowAddPet(false);
     setEditingPet(null);
+  };
+
+  // Foto de perfil: sube, guarda y comprueba contra Supabase antes de decir que quedó guardada
+  const saveAvatar = async (file) => {
+    setPhotoPreview(URL.createObjectURL(file));
+    setAvatarStatus("saving");
+    try {
+      const url = await updateAvatar(file);
+      const { data, error } = await supabase.auth.getUser(); // lee la cuenta desde el servidor
+      if (error || data.user?.user_metadata?.avatar_url !== url) {
+        throw new Error("La cuenta no quedó con la foto nueva.");
+      }
+      await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = resolve;
+        img.onerror = () => reject(new Error("La foto se subió pero no se puede abrir."));
+        img.src = url;
+      });
+      setPhotoPreview(null); // desde aquí se muestra la foto guardada en Supabase, no la local
+      setAvatarStatus("saved");
+    } catch (e) {
+      console.error("No se pudo guardar la foto de perfil", e);
+      setPhotoPreview(null);
+      setAvatarStatus("error");
+    }
   };
 
   const removePet = async (id) => {
@@ -416,15 +444,7 @@ function App() {
       <PhotoPickerModal
         open={profilePhotoOpen}
         onClose={() => setProfilePhotoOpen(false)}
-        onFile={async (file) => {
-          setPhotoPreview(URL.createObjectURL(file));
-          try {
-            await updateAvatar(file);
-          } catch (e) {
-            console.error("No se pudo guardar la foto de perfil", e);
-            setPhotoPreview(null);
-          }
-        }}
+        onFile={(file) => void saveAvatar(file)}
       />
     </>
   );
@@ -864,6 +884,17 @@ function App() {
                 memberLabel={isAdmin ? "Administrador" : "Miembro"}
                 photoUrl={profilePhoto}
                 onEditPhoto={() => setProfilePhotoOpen(true)}
+              />
+              {avatarStatus === "saving" && <p className="profile-photo-status">Guardando foto…</p>}
+              {avatarStatus === "error" && (
+                <p className="profile-photo-status profile-photo-status--error" role="alert">
+                  No se pudo guardar la foto. Revisa tu conexión e intenta de nuevo.
+                </p>
+              )}
+              <SuccessToast
+                open={avatarStatus === "saved"}
+                message="¡Foto de perfil guardada!"
+                onDone={clearAvatarStatus}
               />
             </section>
 
