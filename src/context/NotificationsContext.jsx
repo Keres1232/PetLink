@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { requestNotificationPermission, showNotification } from "../lib/notify";
+import { registerPush, unregisterPush } from "../lib/push";
 import { useAuth } from "./AuthContext";
 
 const NotificationsContext = createContext({
@@ -8,6 +9,7 @@ const NotificationsContext = createContext({
   refreshUnread: () => {},
   enabled: true,
   setEnabled: () => {},
+  inboxRequests: 0,
 });
 
 // Interruptor general (Perfil → Notificaciones). Se guarda en este dispositivo.
@@ -88,10 +90,21 @@ export function NotificationsProvider({ children }) {
     };
   }, [user, refreshUnread]);
 
+  // Notificaciones con la app cerrada (push): el celular se registra mientras estén activadas
+  const [inboxRequests, setInboxRequests] = useState(0); // sube al tocar una notificación push
+  useEffect(() => {
+    if (!user) return;
+    if (enabled) {
+      registerPush(user.id, () => setInboxRequests((n) => n + 1)).catch((e) => console.error("[push]", e));
+    } else {
+      void unregisterPush();
+    }
+  }, [user, enabled]);
+
   // Desactivadas: no hay globito en la campana (las notificaciones se siguen guardando y se ven en la bandeja)
   const value = useMemo(
-    () => ({ unread: enabled ? unread : 0, refreshUnread, enabled, setEnabled }),
-    [unread, refreshUnread, enabled, setEnabled]
+    () => ({ unread: enabled ? unread : 0, refreshUnread, enabled, setEnabled, inboxRequests }),
+    [unread, refreshUnread, enabled, setEnabled, inboxRequests]
   );
   return <NotificationsContext.Provider value={value}>{children}</NotificationsContext.Provider>;
 }

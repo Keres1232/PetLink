@@ -129,7 +129,10 @@ export async function listComments(postId: string): Promise<CommentRow[]> {
     .eq("is_hidden", false)
     .order("created_at", { ascending: true });
   if (error) throw error;
-  return data as unknown as CommentRow[];
+  const rows = data as unknown as CommentRow[];
+  // Foto de perfil de cada autor (profiles.avatar_url)
+  const avatars = await avatarsOf([...new Set(rows.map((c) => c.user_id))]);
+  return rows.map((c) => ({ ...c, avatar_url: avatars[c.user_id] ?? null }));
 }
 
 export async function addComment(postId: string, text: string): Promise<void> {
@@ -258,6 +261,7 @@ export async function createPet(input: {
   breed?: string | null;
   color?: string | null;
   size?: "small" | "medium" | "large" | null;
+  status?: "active" | "for_adoption";
 }): Promise<void> {
   if (!input.speciesId.trim()) {
     throw new Error("Debes seleccionar una especie válida para la mascota.");
@@ -275,7 +279,7 @@ export async function createPet(input: {
     breed: input.breed ?? null,
     color: input.color ?? null,
     size: input.size ?? null,
-    status: "active",
+    status: input.status ?? "active",
   });
   if (error) throw error;
 }
@@ -339,9 +343,126 @@ export async function uploadPhoto(
  */
 export async function updateAvatar(file: File): Promise<string> {
   const url = await uploadPhoto(file, "pet-photos");
-  const { error } = await supabase.auth.updateUser({ data: { avatar_url: url } });
+  const { data, error } = await supabase.auth.updateUser({ data: { avatar_url: url } });
   if (error) throw error;
+  // Copia pública en profiles.avatar_url para que los demás la vean (columna creada por
+  // supabase/sql/2026-10-12_completar_app.sql; si aún no existe, solo la ve el dueño)
+  const userId = data.user?.id;
+  if (userId) {
+    const { error: pubError } = await supabase.from("profiles").update({ avatar_url: url }).eq("id", userId);
+    if (pubError) console.warn("[foto] no se pudo publicar en profiles (¿falta correr el SQL?)", pubError);
+  }
   return url;
+}
+
+/**
+ * Las fotos subidas antes de existir profiles.avatar_url solo estaban en los datos de la cuenta:
+ * al iniciar sesión se copian a profiles para que los demás también las vean.
+ */
+export async function publishMyAvatar(userId: string, url: string): Promise<void> {
+  const { error } = await supabase.from("profiles").update({ avatar_url: url }).eq("id", userId);
+  if (error && error.code !== "42703") console.warn("[foto] no se pudo publicar la foto de perfil", error);
+}
+
+/** Fotos de perfil públicas de varios usuarios (para Comunidad). Vacío si falta la columna. */
+// Si profiles.avatar_url aún no existe (falta correr el SQL), se deja de preguntar
+// en esta sesión para no repetir el error 400 cada vez que se recarga el feed
+let avatarColumnMissing = false;
+
+export async function avatarsOf(userIds: string[]): Promise<Record<string, string>> {
+  if (!userIds.length || avatarColumnMissing) return {};
+  const { data, error } = await supabase.from("profiles").select("id, avatar_url").in("id", userIds);
+  if (error) {
+    if (error.code === "42703") {
+      avatarColumnMissing = true;
+      console.warn(
+        "[foto] falta la columna profiles.avatar_url: ejecuta supabase/sql/2026-10-12_completar_app.sql en Supabase"
+      );
+    }
+    return {};
+  }
+  const map: Record<string, string> = {};
+  for (const p of (data ?? []) as { id: string; avatar_url: string | null }[]) {
+    if (p.avatar_url) map[p.id] = p.avatar_url;
+  }
+  return map;
+}
+
+// ---------------------------------------------------------------
+// Perfil: nombre, ciudad y contadores
+// ---------------------------------------------------------------
+
+export async function updateProfileName(name: string): Promise<void> {
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+  if (!userId) throw new Error("No hay sesión activa.");
+  const { error } = await supabase.from("profiles").update({ name }).eq("id", userId);
+  if (error) throw error;
+}
+
+/** Ciudad del perfil: profiles no tiene columna, se guarda en los datos de la cuenta. */
+export async function updateCity(city: string): Promise<void> {
+  const { error } = await supabase.auth.updateUser({ data: { city } });
+  if (error) throw error;
+}
+
+/** Publicaciones del usuario (todas: publicadas y en revisión), como getMyStats de web-development. */
+export async function myPostsCount(): Promise<number> {
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+  if (!userId) return 0;
+  const { count, error } = await supabase
+    .from("posts")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+// ---------------------------------------------------------------
+// Adopción (pets.status = 'for_adoption' + adoption_interests)
+// ---------------------------------------------------------------
+
+export async function listAdoptionPets(limit = 20): Promise<Pet[]> {
+  const { data, error } = await supabase
+    .from("pets")
+    .select("*, species:species(id, name)")
+    .eq("status", "for_adoption")
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []) as unknown as Pet[];
+}
+
+/** "Me interesa adoptar": el dueño lo ve en la ficha de su mascota y puede aprobarlo. */
+export async function expressAdoptionInterest(petId: string, message: string): Promise<void> {
+  const { error } = await supabase.rpc("express_adoption_interest", { p_pet_id: petId, p_message: message });
+  if (error) throw error;
+}
+
+export interface AdoptionInterest {
+  id: string;
+  pet_id: string;
+  interested_user_id: string;
+  message: string | null;
+  status: "pending" | "approved" | "rejected" | "withdrawn";
+  created_at: string;
+  interested?: { name: string } | null;
+}
+
+export async function listAdoptionInterests(petId: string): Promise<AdoptionInterest[]> {
+  const { data, error } = await supabase
+    .from("adoption_interests")
+    .select("*, interested:profiles(name)")
+    .eq("pet_id", petId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as unknown as AdoptionInterest[];
+}
+
+/** El dueño aprueba o rechaza; al aprobar la mascota pasa a "adopted" (lo hace la RPC). */
+export async function respondAdoptionInterest(interestId: string, status: "approved" | "rejected"): Promise<void> {
+  const { error } = await supabase.rpc("respond_adoption_interest", { p_interest_id: interestId, p_status: status });
+  if (error) throw error;
 }
 
 // ---------------------------------------------------------------
@@ -935,4 +1056,31 @@ export async function updateMyClinic(
     .update(patch)
     .eq("id", clinicId);
   if (error) throw error;
+}
+
+/**
+ * Editar un lugar YA verificado (RPC update_my_clinic del SQL 2026-10-12_completar_app.sql).
+ * El teléfono se cambia sin perder la verificación; nombre, dirección o punto vuelven a revisión.
+ * Devuelve true si quedó pendiente de verificar de nuevo.
+ */
+export async function updateMyVerifiedClinic(input: {
+  name: string;
+  address: string;
+  phone: string | null;
+  point?: GeoPoint | null;
+  changedReviewable: boolean;
+}): Promise<boolean> {
+  const { error } = await supabase.rpc("update_my_clinic", {
+    p_name: input.name,
+    p_address: input.address,
+    p_phone: input.phone,
+    p_lat: input.point?.lat ?? null,
+    p_lon: input.point?.lon ?? null,
+  });
+  if (error) {
+    if (error.code === "PGRST202")
+      throw new Error("Falta ejecutar en Supabase el archivo supabase/sql/2026-10-12_completar_app.sql.", { cause: error });
+    throw error;
+  }
+  return input.changedReviewable || Boolean(input.point);
 }

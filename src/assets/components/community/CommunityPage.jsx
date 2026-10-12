@@ -4,6 +4,7 @@ import ShareBar from "./ShareBar.jsx";
 import MapFilterTabs from "../map/MapFilterTabs.jsx";
 import ChipGroup from "../shared/ChipGroup.jsx";
 import ForumPost from "./ForumPost.jsx";
+import AvatarPlaceholder from "../pets/AvatarPlaceholder.jsx";
 import {
   addComment,
   createPost,
@@ -166,6 +167,7 @@ function CommunityPage({ avatarUrl, openPostId, onBack, onNotifications }) {
             <div key={post.id} className="community__item">
               <ForumPost
                 userName={post.author_name}
+                avatarUrl={post.avatar_url}
                 timeAgo={timeAgo(post.created_at)}
                 category={POST_TYPE_LABEL[post.type] ?? post.type}
                 question={post.content}
@@ -184,16 +186,22 @@ function CommunityPage({ avatarUrl, openPostId, onBack, onNotifications }) {
                 <div className="community__thread">
                   {comments.length === 0 && <p className="community__empty">Sé el primero en responder.</p>}
                   {comments.map((c) => (
-                    <p key={c.id} className="community__comment">
-                      <strong>{c.author?.name ?? "Usuario"}</strong> {c.text}{" "}
-                      {reported.includes(c.id) ? (
-                        <span className="community__reported">Denunciado</span>
-                      ) : (
-                        <button type="button" className="community__report" onClick={() => void denounce(c.id)}>
-                          Denunciar
-                        </button>
-                      )}
-                    </p>
+                    <div key={c.id} className="community__comment-row">
+                      {/* Foto de perfil del autor del comentario (o el dibujo gris si no tiene) */}
+                      <span className="community__comment-avatar">
+                        {c.avatar_url ? <img src={c.avatar_url} alt="" /> : <AvatarPlaceholder />}
+                      </span>
+                      <p className="community__comment">
+                        <strong>{c.author?.name ?? "Usuario"}</strong> {c.text}{" "}
+                        {reported.includes(c.id) ? (
+                          <span className="community__reported">Denunciado</span>
+                        ) : (
+                          <button type="button" className="community__report" onClick={() => void denounce(c.id)}>
+                            Denunciar
+                          </button>
+                        )}
+                      </p>
+                    </div>
                   ))}
                   <div className="community__composer-row">
                     <input

@@ -117,3 +117,15 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+.change-email__sent {
+  margin: 0;
+  padding: 10px 12px;
+
+  border-radius: 10px;
+  background: #e3f7e9;
+
+  color: #1f5c43;
+  font-family: "Nata Sans", sans-serif;
+  font-size: 13px;
+  text-align: center;
+}

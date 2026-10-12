@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getFeed, togglePostLike } from "../lib/api";
+import { avatarsOf, getFeed, togglePostLike } from "../lib/api";
 import { supabase } from "../lib/supabase";
 
 const POLL_MS = 20000; // respaldo por si Realtime no está activo en alguna tabla
@@ -20,7 +20,9 @@ export default function useLiveFeed({ type, limit = 30, extra } = {}) {
     try {
       let rows = await getFeed({ type, limit });
       if (extra) rows = await extra(rows);
-      setFeed(rows);
+      // Foto de perfil de cada autor (profiles.avatar_url); si falta la columna, quedan sin foto
+      const avatars = await avatarsOf([...new Set(rows.map((r) => r.user_id))]);
+      setFeed(rows.map((r) => ({ ...r, avatar_url: avatars[r.user_id] ?? null })));
       setError("");
     } catch (e) {
       console.error(e);

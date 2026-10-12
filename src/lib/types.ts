@@ -94,6 +94,7 @@ export interface CommentRow {
   created_at: string;
   is_hidden: boolean;
   author?: Pick<Profile, "name"> | null;
+  avatar_url?: string | null;
 }
 
 export interface NotificationRow {

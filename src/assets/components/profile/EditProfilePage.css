@@ -1,0 +1,13 @@
+.edit-profile__card {
+  max-width: none;
+  margin-top: 6px;
+}
+
+.edit-profile__saved {
+  margin: 0;
+  color: #2e7d5b;
+  font-family: "Kodchasan", sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}

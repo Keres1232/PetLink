@@ -1,0 +1,116 @@
+.adoption {
+  display: flex;
+  margin-top: 6px;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.adoption__muted {
+  margin: 0;
+  color: var(--desctivado, #66557e);
+  font-family: "Nata Sans", sans-serif;
+  font-size: 12px;
+}
+
+.adoption__textarea {
+  width: 100%;
+  padding: 10px 12px;
+
+  border: 1px solid #e1d9ec;
+  border-radius: 12px;
+
+  font-family: "Nata Sans", sans-serif;
+  font-size: 14px;
+
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.adoption__sent {
+  margin: 0;
+  padding: 10px 12px;
+
+  border-radius: 10px;
+  background: #e3f7e9;
+
+  color: #1f5c43;
+  font-family: "Nata Sans", sans-serif;
+  font-size: 13px;
+  text-align: center;
+}
+
+.adoption__item {
+  display: flex;
+  padding: 10px 12px;
+  flex-direction: column;
+  gap: 6px;
+
+  border-radius: 12px;
+  background: #ede8ff;
+}
+
+.adoption__item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+
+  font-family: "Kodchasan", sans-serif;
+  font-size: 14px;
+}
+
+.adoption__message {
+  margin: 0;
+  font-family: "Nata Sans", sans-serif;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.adoption__status {
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #ffffff;
+
+  font-family: "Kodchasan", sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.adoption__status--approved { background: #c9f3df; color: #1f6b45; }
+.adoption__status--rejected { background: #ffe3e3; color: #a0403c; }
+
+.adoption__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.adoption__reject,
+.adoption__accept {
+  flex: 1;
+  padding: 8px 10px;
+
+  border-radius: 20px;
+
+  font-family: "Kodchasan", sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.adoption__reject {
+  border: 1.5px solid #e0554f;
+  background: #ffffff;
+  color: #a0403c;
+}
+
+.adoption__accept {
+  border: none;
+  background: var(--titulos, #7519ff);
+  color: #ffffff;
+}
+
+.adoption__reject:disabled,
+.adoption__accept:disabled {
+  opacity: 0.5;
+}

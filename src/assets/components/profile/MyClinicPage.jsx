@@ -4,7 +4,7 @@ import InfoNotice from "../shared/InfoNotice.jsx";
 import IconInputField from "../shared/IconInputField.jsx";
 import TextInputField from "../shared/TextInputField.jsx";
 import LocationPicker from "../map/LocationPicker.jsx";
-import { createMyClinic, myClinic, updateMyClinic } from "../../../lib/api";
+import { createMyClinic, myClinic, updateMyClinic, updateMyVerifiedClinic } from "../../../lib/api";
 import { getUserPoint } from "../../../lib/geo";
 import { reverseGeocode, searchPlace } from "../../../lib/geocode";
 import { DEFAULT_CENTER } from "../../../lib/types";
@@ -41,6 +41,7 @@ function MyClinicPage({ role, onBack, onNotifications, onGoMap }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState("");
+  const [moving, setMoving] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -129,6 +130,38 @@ function MyClinicPage({ role, onBack, onNotifications, onGoMap }) {
     }
   };
 
+  // Lugar ya verificado: se edita con la RPC update_my_clinic
+  const saveVerified = async () => {
+    setBusy(true);
+    setError("");
+    setSaved("");
+    try {
+      const changedReviewable = name.trim() !== clinic.name || address.trim() !== (clinic.address ?? "");
+      const backToReview = await updateMyVerifiedClinic({
+        name: name.trim(),
+        address: address.trim(),
+        phone: phone.trim() || null,
+        point: moving ? point : null,
+        changedReviewable,
+      });
+      setSaved(
+        backToReview
+          ? "Cambios guardados. Como cambiaste el nombre, la dirección o la ubicación, un administrador lo revisará de nuevo."
+          : "Teléfono actualizado."
+      );
+      setMoving(false);
+      await load();
+    } catch (e) {
+      console.error(e);
+      setError(e?.message || "No pudimos guardar los cambios.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Se muestra el mapa para marcar al crear el lugar, o si el dueño quiere moverlo
+  const showPicker = !clinic || moving;
+
   return (
     <>
       <AppHeader title="Mi clínica" leftIcon={backIcon} onLeft={onBack} rightIcon={bellIcon} onRight={onNotifications} />
@@ -169,7 +202,7 @@ function MyClinicPage({ role, onBack, onNotifications, onGoMap }) {
                 value={address}
                 onChange={setAddress}
               />
-              {!clinic && (
+              {showPicker && (
                 <div className="my-clinic__row">
                   <button type="button" className="report-lost__locate" onClick={() => void locateMe()}>
                     <TargetIcon />
@@ -182,7 +215,14 @@ function MyClinicPage({ role, onBack, onNotifications, onGoMap }) {
               )}
             </div>
 
-            {!clinic && (
+            {clinic?.verified && !moving && (
+              <button type="button" className="report-lost__locate" onClick={() => setMoving(true)}>
+                <TargetIcon />
+                Cambiar la ubicación en el mapa
+              </button>
+            )}
+
+            {showPicker && (
               <>
                 <span className="report-lost__label">Toca el mapa para marcar el lugar</span>
                 <LocationPicker center={center} point={point} onPick={(p) => void pick(p)} />
@@ -204,8 +244,19 @@ function MyClinicPage({ role, onBack, onNotifications, onGoMap }) {
             )}
             {clinic?.verified && (
               <>
-                <p className="my-clinic__muted">Para cambiar los datos de un lugar verificado, escribe a soporte.</p>
-                <button type="button" className="report-lost__submit" onClick={onGoMap}>
+                <p className="my-clinic__muted">
+                  El teléfono se actualiza al instante. Si cambias el nombre, la dirección o la ubicación, un
+                  administrador lo revisará de nuevo antes de mostrarlo.
+                </p>
+                <button
+                  type="button"
+                  className="report-lost__submit"
+                  disabled={busy || name.trim().length < 3 || (moving && !point)}
+                  onClick={() => void saveVerified()}
+                >
+                  {busy ? "Guardando..." : "Guardar cambios"}
+                </button>
+                <button type="button" className="report-lost__cancel" onClick={onGoMap}>
                   Ver en el mapa
                 </button>
               </>

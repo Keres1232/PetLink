@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Clave privada de la cuenta de servicio de Firebase (push): nunca subirla
+*firebase-adminsdk*.json
+service-account*.json

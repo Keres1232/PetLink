@@ -21,7 +21,7 @@ function MyPetsSection({ pets = [], onEnroll, onPetClick, onEdit }) {
         {pets.map((pet) => (
           <PetCard
             key={pet.id}
-            status={pet.species}
+            status={pet.status}
             name={pet.name}
             location={pet.breed || "Raza sin registrar"}
             photoUrl={pet.photoUrl}

@@ -7,6 +7,7 @@ import TextInputField from "../shared/TextInputField.jsx";
 import backIcon from "../../svg/Back.svg";
 import bellIcon from "../../svg/bell.svg";
 import { speciesChipOptions } from "../shared/speciesOptions.jsx";
+import { reverseGeocode } from "../../../lib/geocode";
 import "./ReportLostPage.css";
 import "./ReportFoundPage.css";
 
@@ -49,24 +50,45 @@ function ReportAdoptionPage({ species = [], onBack, onNotifications, onSubmit })
   const [age, setAge] = useState("");
   const [description, setDescription] = useState("");
   const [photos, setPhotos] = useState([]);
+  const [photoFiles, setPhotoFiles] = useState([]); // los archivos reales para subirlos
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
 
-  const canSubmit = place.trim() !== "" && name.trim() !== "";
+  const canSubmit = place.trim() !== "" && name.trim() !== "" && Boolean(currentSpecies) && !busy;
 
   const addPhoto = (e) => {
     const file = e.target.files?.[0];
     if (file && photos.length < MAX_PHOTOS) {
       setPhotos((p) => [...p, URL.createObjectURL(file)]);
+      setPhotoFiles((f) => [...f, file]);
     }
     e.target.value = "";
   };
 
-  const useMyLocation = () => {
+  // Con el GPS se escribe el nombre del lugar (no las coordenadas)
+  const locateMe = () => {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
-      ({ coords }) =>
-        setPlace(`Mi ubicación actual (${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)})`),
-      () => console.log("No se pudo obtener la ubicación")
+      async ({ coords }) => {
+        const text = await reverseGeocode({ lat: coords.latitude, lon: coords.longitude });
+        setPlace(text ?? `Mi ubicación actual (${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)})`);
+      },
+      () => setError("No se pudo obtener tu ubicación. Escribe el lugar a mano.")
     );
+  };
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!canSubmit) return;
+    setBusy(true);
+    setError("");
+    try {
+      await onSubmit?.({ speciesId: currentSpecies, place, name, sex, size, age, description, photoFiles });
+    } catch (err) {
+      console.error(err);
+      setError(err?.message || "No se pudo publicar. Intenta de nuevo.");
+      setBusy(false);
+    }
   };
 
   return (
@@ -79,14 +101,7 @@ function ReportAdoptionPage({ species = [], onBack, onNotifications, onSubmit })
         onRight={onNotifications}
       />
 
-      <form
-        className="report-lost"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (canSubmit)
-            onSubmit?.({ speciesId: currentSpecies, place, name, sex, size, age, description, photos });
-        }}
-      >
+      <form className="report-lost" onSubmit={submit}>
         <InfoNotice>
           Verificamos cada solicitud. Una vez aprobada, tu cuenta mostrará la
           etiqueta correspondiente y la comunidad podrá identificarte.
@@ -109,7 +124,7 @@ function ReportAdoptionPage({ species = [], onBack, onNotifications, onSubmit })
             value={place}
             onChange={setPlace}
           />
-          <button type="button" className="report-lost__locate" onClick={useMyLocation}>
+          <button type="button" className="report-lost__locate" onClick={locateMe}>
             <TargetIcon />
             Usar mi ubicación actual
           </button>
@@ -158,8 +173,10 @@ function ReportAdoptionPage({ species = [], onBack, onNotifications, onSubmit })
           </div>
         </div>
 
+        {error && <p className="auth-error" role="alert">{error}</p>}
+
         <button type="submit" className="report-lost__submit report-found__submit" disabled={!canSubmit}>
-          Publicar mascota
+          {busy ? "Publicando..." : "Publicar mascota"}
         </button>
 
         <button type="button" className="report-lost__cancel" onClick={onBack}>

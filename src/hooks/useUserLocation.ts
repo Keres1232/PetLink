@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { getPrivateProfile, setMyLocation, updateSettings } from "../lib/api";
-import { setGeoConsent, getUserPoint, hasGeoDecision, requestGeoConsent } from "../lib/geo";
+import { setGeoConsent, getLastPoint, getUserPoint, hasGeoConsent, hasGeoDecision, requestGeoConsent } from "../lib/geo";
 import { DEFAULT_CENTER, type GeoPoint } from "../lib/types";
 import { supabase } from "../lib/supabase";
 
@@ -48,8 +48,20 @@ export function useUserLocation(): UseUserLocation {
         devicePermission ??= requestGeoConsent();
         await devicePermission;
       }
-      const p = await getUserPoint();
-      setPoint(p);
+      // Arranque rápido: mientras el GPS responde se usa la última ubicación real conocida,
+      // así Inicio y el mapa no se quedan en el centro de Bogotá al abrir la app
+      const cached = hasGeoConsent() ? getLastPoint() : null;
+      if (cached) {
+        setPoint(cached);
+        setLoading(false);
+      }
+      let p = await getUserPoint();
+      // El primer GPS de un celular puede tardar: si no respondió, se reintenta una vez
+      if (p === DEFAULT_CENTER && hasGeoConsent()) {
+        await new Promise((resolve) => setTimeout(resolve, 4000));
+        p = await getUserPoint();
+      }
+      setPoint((prev) => (prev.lat === p.lat && prev.lon === p.lon ? prev : p));
       // Las alertas cercanas (trigger notify_on_report) usan la ubicación GUARDADA en Supabase:
       // se actualiza al abrir la app (máximo cada 10 min) para que siga siendo la real.
       if (granted && p !== DEFAULT_CENTER && Date.now() - lastLocationSync > 10 * 60 * 1000) {

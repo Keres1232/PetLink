@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Capacitor } from "@capacitor/core";
 import { App as CapacitorApp } from "@capacitor/app";
 import { useAuth } from "./context/AuthContext";
+import { useNotifications } from "./context/NotificationsContext.jsx";
 import {
   myPets,
   createPet,
@@ -29,6 +30,12 @@ import {
   updatePet,
   deletePet,
   changePassword,
+  changeEmail,
+  updateProfileName,
+  updateCity,
+  myPostsCount,
+  publishMyAvatar,
+  listAdoptionPets,
   getCommentById,
   getPostByReportId,
   getReportDetails,
@@ -76,6 +83,7 @@ import ReviewRequestPage from "./assets/components/requests/ReviewRequestPage.js
 import ModerationPage from "./assets/components/requests/ModerationPage.jsx";
 import MyReportsPage from "./assets/components/reports/MyReportsPage.jsx";
 import MyClinicPage from "./assets/components/profile/MyClinicPage.jsx";
+import EditProfilePage from "./assets/components/profile/EditProfilePage.jsx";
 import backIcon from "./assets/svg/Back.svg";
 import "./App.css";
 
@@ -94,31 +102,28 @@ const SettingsIcon = () => (
   </svg>
 );
 
-const sample = (id, species, status) => ({
-  id,
-  name: "Nombre",
-  species,
-  status,
-  location: "Parque Usaquén · hoy",
-  breed: "Mestizo",
-  age: "2 años",
-  sex: "Macho",
-  size: "Mediano",
-  color: "Gris",
-  marks:
-    "Pecho y patas blancas, ojos verdes. Tiene una pequeña mancha oscura en la nariz y una marca en la oreja izquierda.",
-});
-
-const SPECIES_CYCLE = ["Perro", "Gato"];
-
-const makeList = (n, status) =>
-  Array.from({ length: n }, (_, i) => {
-    const species = SPECIES_CYCLE[i % 2];
-    return sample(i + 1, species, status ?? species);
-  });
-
-// Adopción todavía no tiene datos en la base: se muestran ejemplos
-const ADOPTION_PETS = makeList(6);
+// Fila de pets -> ficha que usan PetCard / PetDetailModal. `myId` marca las mascotas propias.
+const petToCard = (p, myId) => {
+  return {
+    id: p.id,
+    name: p.name,
+    speciesId: p.species_id,
+    species: speciesLabel(p.species?.name),
+    status: p.status === "for_adoption" ? "Adopción" : p.status === "adopted" ? "Adoptado" : speciesLabel(p.species?.name),
+    location: "",
+    breed: p.breed ?? "",
+    age: ageFromBirthDate(p.birth_date) ?? "",
+    birthDate: p.birth_date,
+    color: p.color ?? "",
+    sex: SEX_LABEL[p.sex] ?? "",
+    size: SIZE_LABEL[p.size] ?? "",
+    marks: p.description ?? "",
+    photoUrl: p.photo_url,
+    isAdoption: p.status === "for_adoption",
+    isAdopted: p.status === "adopted",
+    isMine: Boolean(myId) && p.user_id === myId,
+  };
+};
 
 // support_document_url guarda una ruta; las solicitudes viejas pueden traer dos separadas por coma
 // Fila de vet_applications -> forma que usan RequestsPage / ReviewRequestPage
@@ -236,6 +241,18 @@ function App() {
       .catch(() => setMyPlaceKind(null));
   }, [isProfessional, activeTab]);
   const [showNotifications, setShowNotifications] = useState(false);
+
+  // Tocar una notificación push (app cerrada o en segundo plano) abre la bandeja
+  const { inboxRequests } = useNotifications();
+  useEffect(() => {
+    if (inboxRequests > 0) setShowNotifications(true);
+  }, [inboxRequests]);
+
+  // Foto subida antes de existir profiles.avatar_url: se publica para que los demás la vean
+  const savedAvatar = user?.user_metadata?.avatar_url;
+  useEffect(() => {
+    if (user?.id && savedAvatar) void publishMyAvatar(user.id, savedAvatar);
+  }, [user?.id, savedAvatar]);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showAddPet, setShowAddPet] = useState(false);
@@ -248,7 +265,9 @@ function App() {
   const [showHelp, setShowHelp] = useState(false);
   const [showMyReports, setShowMyReports] = useState(false);
   const [showMyClinic, setShowMyClinic] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
   const [activeReports, setActiveReports] = useState(0);
+  const [myPosts, setMyPosts] = useState(0);
   const [listPage, setListPage] = useState(null);
 
   const [requests, setRequests] = useState([]);
@@ -262,7 +281,10 @@ function App() {
   const [avatarStatus, setAvatarStatus] = useState(null); // "saving" | "saved" | "error"
   const clearAvatarStatus = useCallback(() => setAvatarStatus(null), []);
 
-  const [city, setCity] = useState("Bogotá");
+  // Ciudad del perfil: guardada en los datos de la cuenta (antes era fija y se perdía al salir)
+  const city = user?.user_metadata?.city ?? null;
+  const setCity = (c) =>
+    updateCity(c).catch((e) => console.error("No se pudo guardar la ciudad", e));
   const [cityPickerOpen, setCityPickerOpen] = useState(false);
 
   const [confirmAction, setConfirmAction] = useState(null);
@@ -325,28 +347,46 @@ function App() {
   const loadPets = useCallback(async () => {
     try {
       const rows = await myPets();
-      setPets(
-        rows.map((p) => ({
-          id: p.id,
-          name: p.name,
-          speciesId: p.species_id,
-          species: speciesLabel(p.species?.name),
-          status: speciesLabel(p.species?.name),
-          location: "",
-          breed: p.breed ?? "",
-          age: ageFromBirthDate(p.birth_date) ?? "",
-          birthDate: p.birth_date,
-          color: p.color ?? "",
-          sex: SEX_LABEL[p.sex] ?? "",
-          size: SIZE_LABEL[p.size] ?? "",
-          marks: p.description ?? "",
-          photoUrl: p.photo_url,
-        }))
-      );
+      setPets(rows.map((p) => petToCard(p, p.user_id)));
     } catch (e) {
       console.error("No se pudieron cargar las mascotas", e);
     }
   }, []);
+
+  // "En adopción": mascotas reales con status for_adoption (antes eran ejemplos)
+  const [adoptionPets, setAdoptionPets] = useState([]);
+  const loadAdoption = useCallback(async () => {
+    try {
+      setAdoptionPets((await listAdoptionPets()).map((p) => petToCard(p, user?.id)));
+    } catch (e) {
+      console.error("No se pudieron cargar las mascotas en adopción", e);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (user && activeTab === "home") void loadAdoption();
+  }, [user, activeTab, loadAdoption]);
+
+  // Publicar "Dar en adopción": crea la mascota con status for_adoption
+  const publishAdoption = async (r) => {
+    const photoUrl = r.photoFiles?.length ? await uploadPhoto(r.photoFiles[0], "pet-photos") : null;
+    const years = parseFloat(String(r.age).replace(",", "."));
+    const ageNote = r.age?.trim() && !Number.isFinite(years) ? `Edad aproximada: ${r.age.trim()}` : null;
+    await createPet({
+      name: r.name.trim(),
+      speciesId: r.speciesId,
+      // pets no tiene ubicación: el lugar va en la descripción
+      description: [r.place.trim(), r.description?.trim(), ageNote].filter(Boolean).join(" · ") || null,
+      birthDate: Number.isFinite(years) && years >= 0 ? new Date(Date.now() - years * 365.25 * 864e5).toISOString().slice(0, 10) : null,
+      photoUrl,
+      sex: SEX_DB[r.sex] ?? "unknown",
+      size: SIZE_DB[r.size] ?? null,
+      status: "for_adoption",
+    });
+    await Promise.all([loadPets(), loadAdoption()]);
+    setShowReportAdoption(false);
+    setActiveTab("home");
+  };
 
   useEffect(() => {
     if (user) {
@@ -362,16 +402,18 @@ function App() {
   // "Reportes activos" del perfil: alertas propias que siguen abiertas o en búsqueda
   const loadActiveReports = useCallback(async () => {
     try {
-      const rows = await myReports();
+      const [rows, posts] = await Promise.all([myReports(), myPostsCount()]);
       setActiveReports(rows.filter((r) => r.status === "open" || r.status === "searching").length);
+      setMyPosts(posts); // antes "Publicaciones" siempre mostraba 0
     } catch (e) {
-      console.error("No se pudieron contar los reportes activos", e);
+      console.error("No se pudieron contar los reportes y publicaciones", e);
     }
   }, []);
 
   useEffect(() => {
-    if (user) void loadActiveReports();
-  }, [user, loadActiveReports]);
+    // Al iniciar sesión y cada vez que se abre Perfil (así cuenta las publicaciones nuevas)
+    if (user && (activeTab === "profile" || activeTab === "home")) void loadActiveReports();
+  }, [user, activeTab, loadActiveReports]);
 
   /*
    * Botón "Atrás" del celular (Android). Antes cerraba la app; ahora retrocede dentro de ella:
@@ -405,6 +447,7 @@ function App() {
     if (listPage) return done(() => setListPage(null));
     if (showMyReports) return done(() => setShowMyReports(false), () => void loadActiveReports());
     if (showMyClinic) return done(() => setShowMyClinic(false));
+    if (showEditProfile) return done(() => setShowEditProfile(false));
     if (showHelp) return done(() => setShowHelp(false));
     if (showReportLost) return done(() => setShowReportLost(false));
     if (showReportFound) return done(() => setShowReportFound(false));
@@ -720,6 +763,12 @@ function App() {
       <PetDetailModal
         pet={selectedPet}
         onClose={() => setSelectedPet(null)}
+        onAdoptionChanged={() => {
+          // Al aprobar una adopción la mascota pasa a "adoptada": se recargan las listas
+          void loadPets();
+          void loadAdoption();
+          setSelectedPet(null);
+        }}
         onContact={(pet) => {
           // Se habla con el dueño en la publicación del reporte (comentarios)
           setSelectedPet(null);
@@ -903,7 +952,7 @@ function App() {
           <PawBackground />
           <PetListPage
             title={isAdoption ? "En adopción" : "Encontrados"}
-            pets={isAdoption ? ADOPTION_PETS : nearFound}
+            pets={isAdoption ? adoptionPets : nearFound}
             onBack={() => setListPage(null)}
             onNotifications={() => {
               setListPage(null);
@@ -913,6 +962,37 @@ function App() {
           />
           <NavBar active={activeTab} onNavigate={goTab(() => setListPage(null))} />
           {sharedModals}
+        </main>
+      </div>
+    );
+  }
+
+  /* EDITAR INFORMACIÓN PERSONAL */
+  if (showEditProfile) {
+    return (
+      <div className="phone-frame">
+        <main className="app">
+          <PawBackground />
+          <EditProfilePage
+            name={profile?.name ?? ""}
+            city={city}
+            email={userEmail}
+            onBack={() => setShowEditProfile(false)}
+            onSaveName={async (n) => {
+              await updateProfileName(n);
+              await refreshProfileRef.current(); // el nombre nuevo se ve de inmediato en el perfil
+            }}
+            onSaveCity={setCity}
+            onChangeEmail={() => {
+              setShowEditProfile(false);
+              setShowChangeEmail(true);
+            }}
+            onChangePassword={() => {
+              setShowEditProfile(false);
+              setShowChangePassword(true);
+            }}
+          />
+          <NavBar active={activeTab} onNavigate={goTab(() => setShowEditProfile(false))} />
         </main>
       </div>
     );
@@ -1043,11 +1123,7 @@ function App() {
               setShowReportAdoption(false);
               setShowNotifications(true);
             }}
-            onSubmit={(report) => {
-              console.log("Mascota en adopción:", report);
-              setShowReportAdoption(false);
-              setShowVerification(true);
-            }}
+            onSubmit={publishAdoption}
           />
           <NavBar active={activeTab} onNavigate={goTab(() => setShowReportAdoption(false))} />
         </main>
@@ -1117,10 +1193,10 @@ function App() {
               setShowChangeEmail(false);
               setShowSettings(true);
             }}
-            onSubmit={({ newEmail }) => {
-              console.log("Enviar confirmación a:", newEmail);
-              setShowChangeEmail(false);
-              setShowSettings(true);
+            onSubmit={async ({ newEmail, password }) => {
+              // Verifica la contraseña y pide el cambio; Supabase envía el enlace de confirmación
+              const err = await changeEmail({ currentEmail: userEmail, currentPassword: password, newEmail });
+              if (err) throw new Error(err);
             }}
           />
           <NavBar active={activeTab} onNavigate={goTab(() => setShowChangeEmail(false))} />
@@ -1153,7 +1229,7 @@ function App() {
               setShowSettings(false);
               setShowHelp(true);
             }}
-            city={city}
+            city={city ?? "Sin definir"}
             onCityClick={() => setCityPickerOpen(true)}
             onDeactivate={() => setConfirmAction("deactivate")}
             onDelete={() => setConfirmAction("delete")}
@@ -1211,7 +1287,7 @@ function App() {
             usingDefaultLocation={usingDefaultLocation}
             onEnableLocation={() => void enableDeviceLocation()}
             nearPets={nearLost}
-            adoptionPets={ADOPTION_PETS}
+            adoptionPets={adoptionPets}
             foundPets={nearFound}
             onNotifications={openNotifications}
             onLost={() => setShowReportLost(true)}
@@ -1269,7 +1345,7 @@ function App() {
             <section className="home-section">
               <ProfileCard
                 name={userName}
-                location="Engativá, Bogotá"
+                location={city ?? "Agrega tu ciudad en «Editar información personal»"}
                 memberLabel={
                   (isProfessional && PLACE_LABEL[myPlaceKind]) || ROLE_LABEL[profile?.role] || "Miembro"
                 }
@@ -1299,7 +1375,7 @@ function App() {
                   labels={["Pendientes", "Aprobadas", "Rechazadas"]}
                 />
               ) : (
-                <ProfileStats pets={pets.length} posts={0} activeReports={activeReports} />
+                <ProfileStats pets={pets.length} posts={myPosts} activeReports={activeReports} />
               )}
             </section>
 
@@ -1327,7 +1403,7 @@ function App() {
               onOptionClick={(id) => {
                 if (id === "logout") setConfirmAction("logout");
                 else if (id === "help") setShowHelp(true);
-                else if (id === "edit") setShowChangeEmail(true);
+                else if (id === "edit") setShowEditProfile(true);
                 else if (id === "verification") setShowVerification(true);
                 else if (id === "reports") setShowMyReports(true);
                 else if (id === "clinic") setShowMyClinic(true);
