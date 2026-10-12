@@ -326,3 +326,41 @@
   .auth-logo-stack__text { width: 340px; }
   .auth-error { margin: 0; color: #c0392b; font-family: "Nata Sans", sans-serif; font-size: 12px; font-weight: 600; text-align: center; }
 }
+/* ===== Mensajes (todas las pantallas) ===== */
+.auth-error {
+  margin: 0;
+  color: #c0392b;
+  font-family: "Nata Sans", sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.auth-notice {
+  margin: 0;
+  padding: 12px;
+
+  border-radius: 10px;
+  background: #ede8ff;
+
+  color: #000000;
+  font-family: "Nata Sans", sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.auth-hint {
+  margin: 0;
+  color: var(--desctivado, #66557e);
+  font-family: "Nata Sans", sans-serif;
+  font-size: 11px;
+  text-align: center;
+}
+
+/* Botón de volver en Recuperar contraseña */
+.auth-page__back-row {
+  display: flex;
+  height: 47px;
+  align-items: center;
+}

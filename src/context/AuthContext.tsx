@@ -4,12 +4,14 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 import type { Profile } from "../lib/types";
+import { translateAuthError } from "../lib/authErrors";
 
 interface AuthContextValue {
   session: Session | null;
@@ -20,6 +22,25 @@ interface AuthContextValue {
   signUp: (name: string, email: string, password: string) => Promise<string | null>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  /** true mientras el usuario debe elegir una contraseña nueva (enlace de recuperación). */
+  recovering: boolean;
+  endRecovery: () => void;
+  /** Error que trae la URL al abrir un enlace del correo (vencido, ya usado…). */
+  authLinkError: string | null;
+  clearAuthLinkError: () => void;
+}
+
+/** Lee el error que Supabase deja en la URL cuando un enlace del correo no sirve, y lo quita de la barra. */
+function readAuthLinkError(): string | null {
+  const params = new URLSearchParams(window.location.hash.slice(1));
+  new URLSearchParams(window.location.search).forEach((v, k) => params.set(k, v));
+  const code = params.get("error_code");
+  const description = params.get("error_description");
+  if (!code && !description) return null;
+  window.history.replaceState(null, "", window.location.pathname);
+  if (code === "otp_expired")
+    return "El enlace del correo expiró o ya se usó. Solicita uno nuevo o usa el código de 6 dígitos.";
+  return `No pudimos usar el enlace del correo (${description ?? code}). Solicita uno nuevo.`;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -29,9 +50,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [sessionLoading, setSessionLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(true);
+  // Si se abrió la app desde el enlace de recuperación, se sabe por la URL antes de que Supabase la procese
+  const [recovering, setRecovering] = useState(() => /type=recovery/.test(window.location.hash + window.location.search));
+  const [authLinkError, setAuthLinkError] = useState<string | null>(readAuthLinkError);
+  const loadedUserId = useRef<string | null | undefined>(undefined);
 
   const loadProfile = useCallback(async (userId: string | null) => {
-    setProfileLoading(true);
+    // Solo se muestra "Cargando…" cuando cambia de usuario. Si es el mismo (renovar sesión,
+    // volver a verificar la contraseña, cambiar la foto…) se recarga en silencio, sin
+    // desmontar la pantalla en la que está el usuario.
+    const sameUser = loadedUserId.current === userId;
+    loadedUserId.current = userId;
+    if (!sameUser) setProfileLoading(true);
     if (!userId) {
       setProfile(null);
       setProfileLoading(false);
@@ -57,7 +87,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSessionLoading(false);
       void loadProfile(data.session?.user.id ?? null);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, next) => {
+      // Llegó desde el enlace de "Olvidé mi contraseña": hay que pedir la contraseña nueva
+      if (event === "PASSWORD_RECOVERY") setRecovering(true);
       setSession(next);
       void loadProfile(next?.user.id ?? null);
     });
@@ -97,23 +129,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signUp,
       signOut,
       refreshProfile: () => loadProfile(session?.user.id ?? null),
+      recovering,
+      endRecovery: () => setRecovering(false),
+      authLinkError,
+      clearAuthLinkError: () => setAuthLinkError(null),
     }),
-    [session, profile, loading, signIn, signUp, signOut, loadProfile]
+    [session, profile, loading, signIn, signUp, signOut, loadProfile, recovering, authLinkError]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-function translateAuthError(message: string): string {
-  if (message.includes("Invalid login credentials"))
-    return "Correo o contraseña incorrectos.";
-  if (message.includes("Email not confirmed"))
-    return "Confirma tu correo antes de iniciar sesión.";
-  if (message.includes("already registered"))
-    return "Este correo ya está registrado. Inicia sesión.";
-  if (message.includes("Password should be"))
-    return "La contraseña debe tener al menos 6 caracteres.";
-  return message;
 }
 
 export function useAuth(): AuthContextValue {

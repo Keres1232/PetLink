@@ -1,4 +1,6 @@
+import { Capacitor } from "@capacitor/core";
 import { supabase } from "./supabase";
+import { translateAuthError } from "./authErrors";
 import type {
   CommentReport,
   CommentRow,
@@ -153,6 +155,17 @@ export async function listNotifications(): Promise<NotificationRow[]> {
   return data as NotificationRow[];
 }
 
+export async function markAllNotificationsRead(): Promise<void> {
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+  if (!userId) return;
+  const { error } = await supabase
+    .from("notifications")
+    .update({ is_read: true })
+    .eq("user_id", userId)
+    .eq("is_read", false);
+  if (error) throw error;
+}
+
 export async function markNotificationRead(id: string): Promise<void> {
   const { error } = await supabase
     .from("notifications")
@@ -264,6 +277,9 @@ export async function createPet(input: {
 }
 
 export async function getPrivateProfile(): Promise<PrivateProfile | null> {
+  // Sin sesión no hay perfil privado que leer (evita el 401 al abrir la app sin sesión)
+  const { data: auth } = await supabase.auth.getSession();
+  if (!auth.session) return null;
   const { data, error } = await supabase
     .from("private_profiles")
     .select("profile_id, geolocation_consent, alert_radius_m, birth_date")
@@ -431,9 +447,9 @@ export async function changeEmail(input: {
     email: input.currentEmail,
     password: input.currentPassword,
   });
-  if (reauth.error) return "Tu contrase�a actual no es correcta.";
+  if (reauth.error) return "Tu contraseña actual no es correcta.";
   const { error } = await supabase.auth.updateUser({ email: input.newEmail });
-  return error ? error.message : null;
+  return error ? translateAuthError(error) : null;
 }
 
 export async function changePassword(input: {
@@ -445,11 +461,65 @@ export async function changePassword(input: {
     email: input.email,
     password: input.currentPassword,
   });
-  if (reauth.error) return "Tu contrase�a actual no es correcta.";
+  if (reauth.error) {
+    console.warn("[cambiar contraseña] la contraseña actual no coincide:", reauth.error);
+    return "Tu contraseña actual no es correcta.";
+  }
   const { error } = await supabase.auth.updateUser({ password: input.newPassword });
-  if (error) return error.message;
+  if (error) {
+    console.error("[cambiar contraseña] Supabase rechazó la contraseña nueva:", error);
+    return translateAuthError(error);
+  }
+  const verifyError = await verifyPasswordSaved(input.email, input.newPassword);
+  if (verifyError) return verifyError;
   await supabase.auth.signOut({ scope: "others" });
   return null;
+}
+
+/** Comprueba de verdad que Supabase guardó la contraseña: inicia sesión con la nueva. */
+async function verifyPasswordSaved(email: string, password: string): Promise<string | null> {
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (!error) return null;
+  console.error("[contraseña] la contraseña nueva no funciona al iniciar sesión:", error);
+  return "Supabase no guardó la contraseña nueva. Intenta de nuevo; si sigue fallando, revisa la consola.";
+}
+
+/**
+ * "Olvidé mi contraseña": Supabase envía un correo con un enlace de recuperación.
+ * En el navegador el enlace vuelve a esta misma página. En el APK, `window.location.origin`
+ * es https://localhost (no sirve fuera del celular), así que se usa VITE_PUBLIC_SITE_URL o,
+ * si no está, la "Site URL" configurada en Supabase.
+ */
+export async function requestPasswordReset(email: string): Promise<string | null> {
+  const site = import.meta.env.VITE_PUBLIC_SITE_URL as string | undefined;
+  const redirectTo = site || (Capacitor.isNativePlatform() ? undefined : window.location.origin);
+  const { error } = await supabase.auth.resetPasswordForEmail(email, redirectTo ? { redirectTo } : undefined);
+  return error ? translateAuthError(error) : null;
+}
+
+/**
+ * Alternativa al enlace (sirve también en el APK): el correo de recuperación trae un código
+ * de 6 dígitos ({{ .Token }} en la plantilla "Reset Password" de Supabase). Al verificarlo,
+ * Supabase crea la sesión y emite PASSWORD_RECOVERY, y la app pide la contraseña nueva.
+ */
+export async function verifyRecoveryCode(email: string, code: string): Promise<string | null> {
+  const { error } = await supabase.auth.verifyOtp({ email, token: code.trim(), type: "recovery" });
+  if (!error) return null;
+  const msg = (error.message ?? "").toLowerCase();
+  if (msg.includes("expired") || msg.includes("invalid"))
+    return "El código no es válido o ya expiró. Revisa el correo más reciente o pide uno nuevo.";
+  return translateAuthError(error);
+}
+
+/** Guarda la contraseña nueva usando la sesión que crea el enlace de recuperación. */
+export async function setNewPassword(newPassword: string): Promise<string | null> {
+  const { data, error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) {
+    console.error("[recuperar contraseña] Supabase rechazó la contraseña nueva:", error);
+    return translateAuthError(error);
+  }
+  const email = data.user?.email;
+  return email ? verifyPasswordSaved(email, newPassword) : null;
 }
 
 export async function searchGuides(query: string, limit = 10): Promise<GuideRow[]> {

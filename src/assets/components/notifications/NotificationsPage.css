@@ -56,3 +56,115 @@
   font-weight: 500;
   line-height: 1.45;
 }
+/* ===== Lista de notificaciones ===== */
+.notif-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.notif-list__empty {
+  margin: 20px 0;
+  color: var(--desctivado, #66557e);
+  font-family: "Kodchasan", sans-serif;
+  font-size: 13px;
+  text-align: center;
+}
+
+.notif-list__mark-all {
+  align-self: flex-end;
+  padding: 4px 8px;
+
+  border: none;
+  background: transparent;
+
+  color: var(--titulos, #7519ff);
+  font-family: "Kodchasan", sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.notif-row {
+  display: flex;
+  width: 100%;
+  padding: 12px;
+
+  align-items: flex-start;
+  gap: 12px;
+
+  border: 1px solid #e1d9ec;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 2px 4px rgba(148, 132, 191, 0.25);
+
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease, background-color 0.12s ease;
+}
+
+.notif-row:active {
+  transform: scale(0.98);
+  background: #f3edff;
+}
+
+.notif-row--unread {
+  border-color: #cfc2f5;
+  background: #ffffff;
+}
+
+.notif-row__icon {
+  display: flex;
+  flex-shrink: 0;
+
+  width: 36px;
+  height: 36px;
+
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+  background: #ede8ff;
+
+  font-size: 17px;
+}
+
+.notif-row__text {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.notif-row__title {
+  color: #000000;
+  font-family: "Kodchasan", sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.notif-row__body {
+  color: #000000;
+  font-family: "Nata Sans", sans-serif;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.notif-row__time {
+  color: var(--desctivado, #66557e);
+  font-family: "Nata Sans", sans-serif;
+  font-size: 11px;
+}
+
+.notif-row__dot {
+  flex-shrink: 0;
+  width: 9px;
+  height: 9px;
+  margin-top: 6px;
+
+  border-radius: 50%;
+  background: var(--titulos, #7519ff);
+}

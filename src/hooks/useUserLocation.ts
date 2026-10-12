@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { getPrivateProfile, setMyLocation, updateSettings } from "../lib/api";
 import { setGeoConsent, getUserPoint, requestGeoConsent } from "../lib/geo";
 import { DEFAULT_CENTER, type GeoPoint } from "../lib/types";
+import { supabase } from "../lib/supabase";
 
 const DEFAULT_RADIUS_M = 5000;
 
@@ -42,6 +43,11 @@ export function useUserLocation(): UseUserLocation {
 
   useEffect(() => {
     void load();
+    // Al iniciar o cerrar sesión cambian el consentimiento y el radio guardados: volver a leerlos
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN" || event === "SIGNED_OUT") void load();
+    });
+    return () => sub.subscription.unsubscribe();
   }, [load]);
 
   const requestConsent = useCallback(async () => {

@@ -4,33 +4,48 @@ import IconInputField from "../shared/IconInputField.jsx";
 import InfoNotice from "../shared/InfoNotice.jsx";
 import backIcon from "../../svg/Back.svg";
 import lockIcon from "../../svg/Ajustes/Privacidad.svg";
+import { PASSWORD_POLICY_HINT } from "../../../lib/authErrors";
 import "./ChangePasswordPage.css";
 
 const MIN_LENGTH = 8;
 
-function ChangePasswordPage({ onBack, onSubmit }) {
+function ChangePasswordPage({ onBack, onSubmit, onDone }) {
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [done, setDone] = useState(false);
 
   const tooShort = next !== "" && next.length < MIN_LENGTH;
   const mismatch = confirm !== "" && next !== confirm;
   const canSubmit =
-    current !== "" && next.length >= MIN_LENGTH && next === confirm;
+    current !== "" && next.length >= MIN_LENGTH && next === confirm && !busy && !done;
 
   const icon = <img src={lockIcon} alt="" className="change-password__icon" />;
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!canSubmit) return;
+    setBusy(true);
+    setError("");
+    try {
+      await onSubmit?.({ current, next });
+      setDone(true);
+      // Muestra la confirmación y luego cierra la sesión para entrar con la contraseña nueva
+      setTimeout(() => onDone?.(), 1800);
+    } catch (err) {
+      setError(err?.message || "No se pudo cambiar la contraseña. Intenta de nuevo.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <>
       <AppHeader title="Cambiar contraseña" leftIcon={backIcon} onLeft={onBack} />
 
-      <form
-        className="change-password"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (canSubmit) onSubmit?.({ current, next });
-        }}
-      >
+      <form className="change-password" onSubmit={submit}>
         <IconInputField
           label="Contraseña actual"
           icon={icon}
@@ -74,12 +89,25 @@ function ChangePasswordPage({ onBack, onSubmit }) {
         </div>
 
         <InfoNotice>
-          Después de cambiar tu contraseña, cerraremos sesión en tus otros
-          dispositivos por seguridad.
+          Después de cambiar tu contraseña, cerraremos tu sesión en todos tus
+          dispositivos por seguridad y volverás a entrar con la nueva.
         </InfoNotice>
 
+        <p className="change-password__hint">{PASSWORD_POLICY_HINT}</p>
+
+        {error && (
+          <p className="change-password__error change-password__error--center" role="alert">
+            {error}
+          </p>
+        )}
+        {done && (
+          <p className="change-password__success" role="status">
+            ¡Contraseña actualizada! Vuelve a iniciar sesión con tu nueva contraseña.
+          </p>
+        )}
+
         <button type="submit" className="change-password__submit" disabled={!canSubmit}>
-          Guardar cambios
+          {busy ? "Guardando..." : "Guardar cambios"}
         </button>
       </form>
     </>

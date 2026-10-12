@@ -17,7 +17,12 @@ import {
   reportsNear,
   updatePet,
   deletePet,
+  changePassword,
+  getCommentById,
+  getPostByReportId,
 } from "./lib/api";
+import ForgotPasswordScreen from "./assets/components/auth/ForgotPasswordScreen.jsx";
+import ResetPasswordScreen from "./assets/components/auth/ResetPasswordScreen.jsx";
 import { ageFromBirthDate } from "./lib/format";
 import { useUserLocation } from "./hooks/useUserLocation";
 import { reportToPet } from "./lib/reportPet";
@@ -150,7 +155,7 @@ const speciesLabel = (name) => (name ? SPECIES_ES[name.toLowerCase()] ?? name : 
 const SIZE_DB = { Pequeño: "small", Mediano: "medium", Grande: "large" };
 
 function App() {
-  const { user, profile, loading, signOut } = useAuth();
+  const { user, profile, loading, signOut, recovering, endRecovery, authLinkError, clearAuthLinkError } = useAuth();
 
   const [authView, setAuthView] = useState("login");
   const [newAccountEmail, setNewAccountEmail] = useState("");
@@ -322,6 +327,28 @@ function App() {
     }
   };
 
+  // Al tocar una notificación: lleva a la publicación, al mapa o al perfil según su tipo
+  const openNotification = async (n) => {
+    const goPost = (postId) => {
+      setContactPostId(postId);
+      setActiveTab("community");
+    };
+    try {
+      if (n.type === "post_like" && n.reference_id) return goPost(n.reference_id);
+      if (n.type === "post_reply" && n.reference_id) {
+        const comment = await getCommentById(n.reference_id).catch(() => null);
+        return comment ? goPost(comment.post_id) : setActiveTab("community");
+      }
+      if (n.type === "geo_alert" || n.type === "report_match") {
+        const post = n.reference_id ? await getPostByReportId(n.reference_id).catch(() => null) : null;
+        return post ? goPost(post.id) : setActiveTab("map");
+      }
+      if (n.type === "pet_reminder") setActiveTab("profile");
+    } finally {
+      setShowNotifications(false);
+    }
+  };
+
   const removePet = async (id) => {
     await deletePet(id);
     await loadPets();
@@ -472,11 +499,43 @@ function App() {
   };
 
   /* CARGANDO */
-  if (loading && user && authView !== "register") {
+  if (loading && (user || recovering) && authView !== "register") {
     return (
       <div className="phone-frame">
         <p style={{ padding: 24, fontFamily: "Kodchasan, sans-serif", color: "#66557e" }}>Cargando…</p>
       </div>
+    );
+  }
+
+  /* NUEVA CONTRASEÑA (llegó desde el enlace de recuperación del correo) */
+  if (recovering) {
+    return (
+      <ResetPasswordScreen
+        hasSession={Boolean(user)}
+        onDone={() => {
+          endRecovery();
+          setAuthView("login");
+          setActiveTab("home");
+        }}
+        onRequestNew={() => {
+          endRecovery();
+          setAuthView("forgot");
+        }}
+      />
+    );
+  }
+
+  /* OLVIDÉ MI CONTRASEÑA (o volvió de un enlace del correo que no sirvió) */
+  if (!user && (authView === "forgot" || authLinkError)) {
+    return (
+      <ForgotPasswordScreen
+        initialEmail={newAccountEmail}
+        linkError={authLinkError}
+        onBack={() => {
+          clearAuthLinkError();
+          setAuthView("login");
+        }}
+      />
     );
   }
 
@@ -492,7 +551,14 @@ function App() {
         }}
       />
     ) : (
-      <LoginScreen initialEmail={newAccountEmail} onSwitchToRegister={() => setAuthView("register")} />
+      <LoginScreen
+        initialEmail={newAccountEmail}
+        onSwitchToRegister={() => setAuthView("register")}
+        onForgotPassword={(email) => {
+          if (email) setNewAccountEmail(email);
+          setAuthView("forgot");
+        }}
+      />
     );
   }
 
@@ -502,7 +568,7 @@ function App() {
       <div className="phone-frame">
         <main className="app">
           <PawBackground />
-          <NotificationsPage onBack={() => setShowNotifications(false)} />
+          <NotificationsPage onBack={() => setShowNotifications(false)} onOpen={(n) => void openNotification(n)} />
           <NavBar active={activeTab} onNavigate={goTab(() => setShowNotifications(false))} />
         </main>
       </div>
@@ -705,10 +771,16 @@ function App() {
               setShowChangePassword(false);
               setShowSettings(true);
             }}
-            onSubmit={() => {
-              console.log("Contraseña actualizada");
+            onSubmit={async ({ current, next }) => {
+              const err = await changePassword({ email: userEmail, currentPassword: current, newPassword: next });
+              if (err) throw new Error(err);
+            }}
+            onDone={async () => {
+              // Por seguridad se cierra sesión también aquí: hay que entrar con la contraseña nueva
               setShowChangePassword(false);
-              setShowSettings(true);
+              setActiveTab("home");
+              setAuthView("login");
+              await signOut();
             }}
           />
           <NavBar active={activeTab} onNavigate={goTab(() => setShowChangePassword(false))} />

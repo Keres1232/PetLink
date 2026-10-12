@@ -19,7 +19,7 @@ const LockIcon = () => (
   </svg>
 );
 
-function LoginScreen({ onSwitchToRegister, initialEmail = "" }) {
+function LoginScreen({ onSwitchToRegister, onForgotPassword, initialEmail = "" }) {
   const { signIn } = useAuth();
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState("");
@@ -57,7 +57,7 @@ function LoginScreen({ onSwitchToRegister, initialEmail = "" }) {
             <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
             Recordarme
           </label>
-          <button type="button" className="auth-link" onClick={() => console.log("Recuperar contraseña")}>
+          <button type="button" className="auth-link" onClick={() => onForgotPassword?.(email.trim())}>
             ¿Olvidaste tu contraseña?
           </button>
         </div>
