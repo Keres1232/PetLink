@@ -55,6 +55,18 @@ function MapPage({ onBack, onNotifications, onCall, onReportClick }) {
     }
   }, [filter, places, reports]);
 
+  // Lugar tocado en la lista (el mapa va hasta él)
+  const [focus, setFocus] = useState(null);
+
+  // Con Veterinarias o Refugios, el mapa se aleja lo necesario para mostrar todos los lugares y al usuario
+  const fitTo = useMemo(
+    () =>
+      filter === "Veterinarias" || filter === "Refugios"
+        ? [point, ...shown.places.map((p) => ({ lat: p.latitude, lon: p.longitude }))]
+        : [],
+    [filter, point, shown.places]
+  );
+
   return (
     <>
       <AppHeader title="Mapa" leftIcon={backIcon} onLeft={onBack} rightIcon={bellIcon} onRight={onNotifications} />
@@ -63,7 +75,7 @@ function MapPage({ onBack, onNotifications, onCall, onReportClick }) {
         <MapFilterTabs onChange={setFilter} />
       </div>
 
-      <MapView center={point} places={shown.places} reports={shown.reports} />
+      <MapView center={point} places={shown.places} reports={shown.reports} fitTo={fitTo} focus={focus} />
 
       <section className="map-page__nearby">
         <h2 className="map-page__title">Cerca de ti</h2>
@@ -91,6 +103,11 @@ function MapPage({ onBack, onNotifications, onCall, onReportClick }) {
               name={p.name}
               info={`${p.address ?? ""} · ${distanceLabel(p.distance_m)}`}
               onCall={p.phone ? () => onCall?.(p.phone) : undefined}
+              onClick={() => {
+                // Llevar el mapa hasta este lugar (y subir a verlo)
+                setFocus({ id: p.id, lat: p.latitude, lon: p.longitude, at: Date.now() });
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
             />
           ))}
           {!error && shown.reports.length + shown.places.length === 0 && (

@@ -12,8 +12,13 @@ const TABS = [
   { id: "rejected", label: "Rechazadas" },
 ];
 
-const FILTERS = ["Todo", "Médicos veterinarios", "Veterinarias", "Refugios"];
-const TYPE_BY_FILTER = { "Médicos veterinarios": "doctor", Veterinarias: "vet", Refugios: "refuge" };
+const FILTERS = ["Todo", "Por clasificar", "Médicos veterinarios", "Veterinarias", "Refugios"];
+const TYPE_BY_FILTER = {
+  "Por clasificar": "establishment",
+  "Médicos veterinarios": "doctor",
+  Veterinarias: "vet",
+  Refugios: "refuge",
+};
 
 const normalize = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 

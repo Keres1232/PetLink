@@ -711,6 +711,40 @@ export async function placeOfUser(userId: string): Promise<{ id: string; name: s
   return data ?? null;
 }
 
+/** Tipo de lugar en el mapa de varias cuentas a la vez (para clasificar la lista de solicitudes). */
+export async function placeKindsOfUsers(userIds: string[]): Promise<Record<string, "clinic" | "shelter">> {
+  if (!userIds.length) return {};
+  const { data, error } = await supabase
+    .from("vet_clinics")
+    .select("created_by, kind, created_at")
+    .in("created_by", userIds)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  const kinds: Record<string, "clinic" | "shelter"> = {};
+  for (const row of (data ?? []) as { created_by: string; kind: "clinic" | "shelter" }[]) {
+    if (!kinds[row.created_by]) kinds[row.created_by] = row.kind;
+  }
+  return kinds;
+}
+
+/**
+ * Lo que decide el admin para un establecimiento: Veterinaria → rol vet, Refugio → rol foundation.
+ * Se guarda en la solicitud (target_role) antes de aprobar, porque review_vet_application asigna ese rol.
+ */
+export const roleForKind = (kind: "clinic" | "shelter"): "vet" | "foundation" =>
+  kind === "clinic" ? "vet" : "foundation";
+
+export async function setApplicationRole(applicationId: string, role: "vet" | "foundation"): Promise<void> {
+  const { error } = await supabase.from("vet_applications").update({ target_role: role }).eq("id", applicationId);
+  if (error) throw error;
+}
+
+/** Cambia el rol de una cuenta ya aprobada (solo admin; la BD lo protege con protect_profile_role). */
+export async function setUserRole(userId: string, role: "vet" | "foundation"): Promise<void> {
+  const { error } = await supabase.from("profiles").update({ role }).eq("id", userId);
+  if (error) throw error;
+}
+
 /** El admin cambia la etiqueta de un lugar ya aprobado: clinic = Veterinaria, shelter = Refugio. */
 export async function updatePlaceKind(placeId: string, kind: "clinic" | "shelter"): Promise<void> {
   const { error } = await supabase.from("vet_clinics").update({ kind }).eq("id", placeId);

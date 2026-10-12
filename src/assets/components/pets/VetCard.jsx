@@ -82,11 +82,15 @@ function VetCard({
         {/* Badge (ej: "HOY") o botón llamar */}
         {badge ? (
           <span className="vet-card__badge">{badge}</span>
-        ) : (
+        ) : onCall && (
+          // Solo si hay teléfono; tocarlo no activa el clic de la tarjeta
           <button
             type="button"
             className="vet-card__call"
-            onClick={onCall}
+            onClick={(e) => {
+              e.stopPropagation();
+              onCall();
+            }}
             aria-label={`Llamar a ${name}`}
           >
             <span className="vet-card__call-icon">

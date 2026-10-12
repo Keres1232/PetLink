@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { placeOfUser, updatePlaceKind } from "../../../lib/api";
+import { placeOfUser } from "../../../lib/api";
 import AppHeader from "../shared/AppHeader.jsx";
 import InfoNotice from "../shared/InfoNotice.jsx";
 import ChipGroup from "../shared/ChipGroup.jsx";
@@ -14,7 +14,13 @@ import locationIcon from "../../svg/Location icon.svg";
 import "./RequestCard.css";
 import "./ReviewRequestPage.css";
 
-const TYPE_LABEL = { vet: "VETERINARIA", doctor: "MÉDICO VET.", refuge: "REFUGIO" };
+const TYPE_LABEL = { vet: "VETERINARIA", doctor: "MÉDICO VET.", refuge: "REFUGIO", establishment: "POR CLASIFICAR" };
+const TYPE_TEXT = {
+  doctor: "Médico veterinario",
+  vet: "Veterinaria",
+  refuge: "Refugio",
+  establishment: "Establecimiento (elige abajo si es refugio o veterinaria)",
+};
 const STATUS_LABEL = { pending: "Pendiente", approved: "Aprobado", rejected: "Rechazado" };
 
 const s = { stroke: "var(--titulos, #7519FF)", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round", fill: "none" };
@@ -39,21 +45,22 @@ const PLACE_KINDS = [
   { id: "clinic", label: "Veterinaria", icon: vetIcon },
 ];
 
-function ReviewRequestPage({ request, onBack, onAccept, onReject, onPlace, onOpenDocument }) {
-  const [kind, setKind] = useState("shelter");
+function ReviewRequestPage({ request, onBack, onAccept, onReject, onPlace, onChangeKind, onOpenDocument }) {
+  // El admin elige UNA etiqueta: Refugio o Veterinaria (sin preselección, para que decida a conciencia)
+  const [kind, setKind] = useState(null);
   const [address, setAddress] = useState(request?.address ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   // Lugar en el mapa de quien envió la solicitud (undefined = consultando)
   const [place, setPlace] = useState(undefined);
 
-  const approvedRefuge = request?.type === "refuge" && request?.status === "approved";
+  const approvedEstablishment = Boolean(request?.establishment) && request?.status === "approved";
   useEffect(() => {
-    if (!approvedRefuge) return;
+    if (!approvedEstablishment) return;
     placeOfUser(request.userId)
       .then(setPlace)
       .catch(() => setPlace(null));
-  }, [approvedRefuge, request?.userId]);
+  }, [approvedEstablishment, request?.userId]);
 
   if (!request) return null;
 
@@ -71,18 +78,22 @@ function ReviewRequestPage({ request, onBack, onAccept, onReject, onPlace, onOpe
 
   const { type, status, name, location, fields = {}, documents = [], photoUrl } = request;
   const decided = status !== "pending";
-  const refuge = type === "refuge";
+  const establishment = Boolean(request.establishment);
   const legacy = !Object.values(fields).some(Boolean);
-  // TYPE_LABEL: vet = VETERINARIA, refuge = REFUGIO, doctor = MÉDICO VET.
+  // Si ya está en el mapa, manda la etiqueta que eligió el admin
   const badgeType = place?.kind === "clinic" ? "vet" : place?.kind === "shelter" ? "refuge" : type;
 
   const rows = [
-    { label: "Tipo de solicitud", value: refuge ? "Refugio / Veterinaria" : "Médico veterinario", icon: img(refuge ? refugeIcon : vetIcon) },
+    {
+      label: "Tipo de solicitud",
+      value: TYPE_TEXT[badgeType],
+      icon: img(badgeType === "refuge" || badgeType === "establishment" ? refugeIcon : vetIcon),
+    },
     { label: "Nombre", value: fields.fullName, icon: <UserIcon /> },
     { label: "Correo de contacto", value: fields.email, icon: img(mailIcon) },
     { label: "Número de tarjeta profesional", value: fields.license, icon: img(idIcon) },
-    // Para refugios este campo guarda la dirección (mismo criterio que web-development)
-    refuge
+    // En los establecimientos este campo guarda la dirección (mismo criterio que web-development)
+    establishment
       ? { label: "Dirección", value: fields.degree, icon: img(locationIcon) }
       : { label: "Título y universidad", value: fields.degree, icon: img(degreeIcon) },
     { label: "Especialidad", value: fields.specialty, icon: img(degreeIcon) },
@@ -140,8 +151,8 @@ function ReviewRequestPage({ request, onBack, onAccept, onReject, onPlace, onOpe
           ))}
         </div>
 
-        {/* Refugio / veterinaria: el admin elige la etiqueta y confirma la dirección para el mapa */}
-        {approvedRefuge && place && (
+        {/* Establecimiento aprobado y en el mapa: el admin puede cambiar Refugio ↔ Veterinaria */}
+        {approvedEstablishment && place && (
           <>
             <h3 className="review__title">Etiqueta y ubicación en el mapa</h3>
             <div className="review__card review__place">
@@ -153,7 +164,8 @@ function ReviewRequestPage({ request, onBack, onAccept, onReject, onPlace, onOpe
                 onChange={(next) =>
                   next !== place.kind &&
                   void run(async () => {
-                    await updatePlaceKind(place.id, next);
+                    // Cambia el lugar del mapa, el rol de la cuenta y la solicitud (una etiqueta u otra)
+                    await onChangeKind?.(request, place, next);
                     setPlace({ ...place, kind: next });
                     setBusy(false);
                   })
@@ -171,14 +183,14 @@ function ReviewRequestPage({ request, onBack, onAccept, onReject, onPlace, onOpe
         )}
 
         {/* Pendiente: se elige al aprobar. Aprobada sin lugar (p. ej. aprobada con una versión anterior): se puede ubicar ahora */}
-        {refuge && (!decided || (approvedRefuge && place === null)) && (
+        {establishment && (!decided || (approvedEstablishment && place === null)) && (
           <>
             <h3 className="review__title">Etiqueta y ubicación en el mapa</h3>
             {decided && (
               <InfoNotice>Esta solicitud ya fue aprobada pero todavía no está en el mapa.</InfoNotice>
             )}
             <div className="review__card review__place">
-              <span className="review__small">¿Qué etiqueta se le asigna?</span>
+              <span className="review__small">¿Es un refugio o una veterinaria? Elige una</span>
               <ChipGroup options={PLACE_KINDS} value={kind} onChange={setKind} variant="tray solid" />
               <IconInputField
                 label="Dirección en el mapa"
@@ -188,8 +200,11 @@ function ReviewRequestPage({ request, onBack, onAccept, onReject, onPlace, onOpe
                 onChange={setAddress}
               />
               <p className="review__place-hint">
-                {decided ? "Al ubicarla" : "Al aceptar"}, aparecerá en el mapa como{" "}
-                {kind === "clinic" ? "veterinaria" : "refugio"} en esta dirección.
+                {kind
+                  ? `${decided ? "Al ubicarla" : "Al aceptar"}, la cuenta quedará como ${
+                      kind === "clinic" ? "veterinaria" : "refugio"
+                    } y aparecerá así en el mapa, en esta dirección.`
+                  : "Elige la etiqueta para poder aceptar."}
               </p>
               {decided && (
                 <>
@@ -197,7 +212,7 @@ function ReviewRequestPage({ request, onBack, onAccept, onReject, onPlace, onOpe
                   <button
                     type="button"
                     className="review__accept"
-                    disabled={busy || address.trim().length < 5}
+                    disabled={busy || !kind || address.trim().length < 5}
                     onClick={() => void run(() => onPlace?.(request, { kind, address }))}
                   >
                     <CheckIcon /> {busy ? "Guardando..." : "Ubicar en el mapa"}
@@ -228,8 +243,8 @@ function ReviewRequestPage({ request, onBack, onAccept, onReject, onPlace, onOpe
             <button
               type="button"
               className="review__accept"
-              disabled={decided || busy || (refuge && address.trim().length < 5)}
-              onClick={() => void run(() => onAccept?.(request, refuge ? { kind, address } : null))}
+              disabled={decided || busy || (establishment && (!kind || address.trim().length < 5))}
+              onClick={() => void run(() => onAccept?.(request, establishment ? { kind, address } : null))}
             >
               <CheckIcon /> {busy ? "Guardando..." : "Aceptar"}
             </button>

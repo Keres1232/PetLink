@@ -1,6 +1,6 @@
 import "./RequestCard.css";
 
-const TYPE_LABEL = { vet: "VETERINARIA", doctor: "MÉDICO VET.", refuge: "REFUGIO" };
+const TYPE_LABEL = { vet: "VETERINARIA", doctor: "MÉDICO VET.", refuge: "REFUGIO", establishment: "POR CLASIFICAR" };
 const STATUS_LABEL = { pending: "Pendiente", approved: "Aprobado", rejected: "Rechazado" };
 
 const CalendarIcon = () => (

@@ -19,9 +19,10 @@ import "../reports/ReportLostPage.css";
 import "../reports/ReportFoundPage.css";
 import "./VerificationPage.css";
 
+// El solicitante dice si es persona o establecimiento; si es establecimiento, el admin decide si es Refugio o Veterinaria
 const TYPES = [
   { id: "vet", label: "Médico veterinario", icon: vetIcon },
-  { id: "refuge", label: "Refugio/ Veterinaria", icon: refugeIcon },
+  { id: "establishment", label: "Establecimiento", icon: refugeIcon },
 ];
 
 const icon = (src) => <img src={src} alt="" className="verification__field-icon" />;
@@ -34,8 +35,8 @@ function VerificationPage({ onBack, onNotifications, onSubmit }) {
   const [degree, setDegree] = useState("");
   const [address, setAddress] = useState("");
   const [specialty, setSpecialty] = useState("");
-  // Refugio / veterinaria: se pide la dirección en vez del título (el médico veterinario no la necesita)
-  const refuge = type === "refuge";
+  // Establecimiento: se pide la dirección en vez del título (el médico veterinario no la necesita)
+  const refuge = type === "establishment";
   // Documento de soporte (support_document_url) + documento de identidad (id_document_url)
   const [docFile, setDocFile] = useState(null);
   const [idFile, setIdFile] = useState(null);
@@ -111,7 +112,9 @@ function VerificationPage({ onBack, onNotifications, onSubmit }) {
         <InfoNotice>
           {current?.status === "rejected"
             ? "Tu solicitud anterior fue rechazada. Puedes enviar una nueva con otro documento."
-            : "Verificamos cada solicitud. Una vez aprobada, tu cuenta mostrará la etiqueta correspondiente y la comunidad podrá identificarte."}
+            : refuge
+              ? "Un administrador revisará tu solicitud y definirá si tu establecimiento es un refugio o una veterinaria. Al aprobarla aparecerás en el mapa."
+              : "Verificamos cada solicitud. Una vez aprobada, tu cuenta mostrará la etiqueta correspondiente y la comunidad podrá identificarte."}
         </InfoNotice>
 
         <div className="found__group">
@@ -167,7 +170,7 @@ function VerificationPage({ onBack, onNotifications, onSubmit }) {
         />
 
         <FileDrop
-          label={type === "refuge" ? "Registro del refugio o veterinaria" : "Tarjeta profesional"}
+          label={refuge ? "Registro del establecimiento" : "Tarjeta profesional"}
           file={docFile}
           onChange={setDocFile}
         />

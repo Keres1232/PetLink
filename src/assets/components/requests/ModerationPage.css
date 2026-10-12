@@ -85,3 +85,18 @@
   opacity: 0.5;
   cursor: default;
 }
+
+.moderation__label {
+  color: #000000;
+  font-family: "Kodchasan", sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.moderation__hint {
+  margin: 0;
+  color: var(--desctivado, #66557e);
+  font-family: "Nata Sans", sans-serif;
+  font-size: 12px;
+  text-align: center;
+}

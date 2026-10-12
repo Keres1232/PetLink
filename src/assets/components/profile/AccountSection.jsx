@@ -1,6 +1,7 @@
 import infoPersonalIcon from "../../svg/Ajustes/info_personal.svg";
 import escudoIcon from "../../svg/Ajustes/Escudo.svg";
 import reportsIcon from "../../svg/Ajustes/Ajus_Report.svg";
+import locationIcon from "../../svg/Location icon.svg";
 import notificacionIcon from "../../svg/Ajustes/notificacion.svg";
 import privacidadIcon from "../../svg/Ajustes/Privacidad.svg";
 import ayudaIcon from "../../svg/Ajustes/Ayuda y soporte.svg";
@@ -35,15 +36,24 @@ const OPTIONS = [
   { id: "logout", icon: cerrarSesionIcon, label: "Cerrar sesión", danger: true },
 ];
 
-function AccountSection({ onOptionClick }) {
+// Solo para cuentas verificadas (veterinaria / refugio): su lugar en el mapa
+const CLINIC_OPTION = {
+  id: "clinic",
+  icon: locationIcon,
+  label: "Mi clínica",
+  sublabel: "Tu lugar en el mapa",
+};
+
+function AccountSection({ onOptionClick, professional = false }) {
   const { enabled: notifEnabled, setEnabled: setNotifEnabled } = useNotifications();
+  const options = professional ? [OPTIONS[0], CLINIC_OPTION, ...OPTIONS.slice(1)] : OPTIONS;
 
   return (
     <section className="account">
       <h2 className="account__title">Cuenta</h2>
 
       <div className="account__card">
-        {OPTIONS.map((option) =>
+        {options.map((option) =>
           option.id === "notifications" ? (
             // Notificaciones: interruptor para activarlas o desactivarlas (ya no abre la bandeja)
             <div key={option.id} className="account__row">

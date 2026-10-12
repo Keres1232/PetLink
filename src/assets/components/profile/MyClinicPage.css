@@ -1,0 +1,52 @@
+.my-clinic__status {
+  display: flex;
+  padding: 12px 14px;
+  flex-direction: column;
+  gap: 4px;
+
+  border: 1px solid #f0c98a;
+  border-radius: 12px;
+  background: #fff6e6;
+
+  font-family: "Nata Sans", sans-serif;
+  font-size: 13px;
+}
+
+.my-clinic__status strong {
+  font-family: "Kodchasan", sans-serif;
+  font-size: 14px;
+}
+
+.my-clinic__status.is-verified {
+  border-color: #9fdcb9;
+  background: #e3f7e9;
+  color: #1f5c43;
+}
+
+.my-clinic__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.my-clinic__icon {
+  width: 18px;
+  height: 18px;
+}
+
+.my-clinic__muted {
+  margin: 0;
+  color: var(--desctivado, #66557e);
+  font-family: "Nata Sans", sans-serif;
+  font-size: 12px;
+  text-align: center;
+}
+
+.my-clinic__saved {
+  margin: 0;
+  color: #2e7d5b;
+  font-family: "Kodchasan", sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}

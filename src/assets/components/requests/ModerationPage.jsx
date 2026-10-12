@@ -7,12 +7,23 @@ import {
   moderateComment,
   moderatePost,
   resolveCommentReports,
+  roleForKind,
+  setUserRole,
+  updatePlaceKind,
   verifyClinic,
 } from "../../../lib/api";
 import { timeAgo } from "../../../lib/format";
+import ChipGroup from "../shared/ChipGroup.jsx";
 import backIcon from "../../svg/Back.svg";
+import vetIcon from "../../svg/Adopcion/Vet.svg";
+import refugeIcon from "../../svg/Adopcion/Ref.svg";
 import "./RequestsPage.css";
 import "./ModerationPage.css";
+
+const PLACE_KINDS = [
+  { id: "shelter", label: "Refugio", icon: refugeIcon },
+  { id: "clinic", label: "Veterinaria", icon: vetIcon },
+];
 
 const TABS = [
   { id: "posts", label: "Publicaciones" },
@@ -27,6 +38,7 @@ function ModerationPage({ initialTab = "posts", onBack }) {
   const [tab, setTab] = useState(initialTab);
   const [posts, setPosts] = useState([]);
   const [clinics, setClinics] = useState([]);
+  const [clinicKinds, setClinicKinds] = useState({}); // id del lugar → "clinic" | "shelter" elegido por el admin
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
@@ -130,20 +142,40 @@ function ModerationPage({ initialTab = "posts", onBack }) {
               <article key={c.id} className="moderation__card">
                 <div className="moderation__head">
                   <strong>{c.name}</strong>
-                  <span>{c.kind === "shelter" ? "Refugio" : "Veterinaria"} · {timeAgo(c.created_at)}</span>
+                  <span>{timeAgo(c.created_at)}</span>
                 </div>
                 <p className="moderation__text">
                   {c.address || "Sin dirección"}
                   <br />
                   Creada por: {c.creator?.name ?? "Usuario"}
                 </p>
-                {actions(
-                  c.id,
-                  () => verifyClinic(c.id, false),
-                  () => verifyClinic(c.id, true),
-                  "Rechazar",
-                  "Verificar"
-                )}
+                {/* El admin decide: Refugio o Veterinaria (una u otra) */}
+                <span className="moderation__label">¿Es un refugio o una veterinaria?</span>
+                <ChipGroup
+                  options={PLACE_KINDS}
+                  value={clinicKinds[c.id] ?? null}
+                  onChange={(k) => setClinicKinds((prev) => ({ ...prev, [c.id]: k }))}
+                  variant="tray solid"
+                />
+                {clinicKinds[c.id]
+                  ? actions(
+                      c.id,
+                      () => verifyClinic(c.id, false),
+                      async () => {
+                        const kind = clinicKinds[c.id];
+                        await updatePlaceKind(c.id, kind);
+                        await verifyClinic(c.id, true);
+                        // El rol de la cuenta sigue a la etiqueta elegida
+                        if (c.created_by) {
+                          await setUserRole(c.created_by, roleForKind(kind)).catch((e) =>
+                            console.warn("[etiqueta] no se pudo cambiar el rol de la cuenta", e)
+                          );
+                        }
+                      },
+                      "Rechazar",
+                      "Verificar"
+                    )
+                  : <p className="moderation__hint">Elige la etiqueta para poder verificarla.</p>}
               </article>
             ))}
 

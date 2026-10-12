@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { MapContainer, TileLayer, Marker, Popup, CircleMarker, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -20,13 +21,41 @@ const ICONS = {
   shelter: pin("#e08a2f"),
 };
 
+// Centra en el usuario solo cuando cambia su ubicación (antes lo hacía en cada render y
+// devolvía el mapa a su punto aunque el usuario lo moviera)
 function Recenter({ point }) {
   const map = useMap();
-  map.setView([point.lat, point.lon]);
+  useEffect(() => {
+    map.setView([point.lat, point.lon]);
+  }, [map, point.lat, point.lon]);
   return null;
 }
 
-function MapView({ center, places = [], reports = [], onSelect }) {
+// Ajusta el zoom para que se vean todos los puntos (p. ej. al filtrar Veterinarias o Refugios)
+function FitPoints({ points }) {
+  const map = useMap();
+  const key = points.map((p) => `${p.lat},${p.lon}`).join("|");
+  useEffect(() => {
+    if (points.length < 2) return;
+    map.fitBounds(L.latLngBounds(points.map((p) => [p.lat, p.lon])), { padding: [30, 30], maxZoom: 15 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `key` resume `points`
+  }, [map, key]);
+  return null;
+}
+
+// Lleva el mapa a un lugar tocado en la lista y abre su globo
+function FocusPlace({ focus, markers }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!focus) return;
+    map.setView([focus.lat, focus.lon], 16);
+    markers.current[focus.id]?.openPopup();
+  }, [map, focus, markers]);
+  return null;
+}
+
+function MapView({ center, places = [], reports = [], onSelect, fitTo = [], focus = null }) {
+  const markers = useRef({});
   return (
     <div className="map-view">
       <div className="map-view__canvas">
@@ -41,6 +70,8 @@ function MapView({ center, places = [], reports = [], onSelect }) {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           <Recenter point={center} />
+          <FitPoints points={fitTo} />
+          <FocusPlace focus={focus} markers={markers} />
 
           <CircleMarker
             center={[center.lat, center.lon]}
@@ -50,6 +81,7 @@ function MapView({ center, places = [], reports = [], onSelect }) {
 
           {places.map((p) => (
             <Marker key={`p-${p.id}`} position={[p.latitude, p.longitude]} icon={ICONS[p.kind] ?? ICONS.clinic}
+              ref={(m) => { markers.current[p.id] = m; }}
               eventHandlers={{ click: () => onSelect?.({ type: "place", data: p }) }}>
               <Popup><b>{p.name}</b><br />{p.address}</Popup>
             </Marker>

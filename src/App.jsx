@@ -20,6 +20,11 @@ import {
   newestFirst,
   myReports,
   createVerifiedPlace,
+  placeKindsOfUsers,
+  setApplicationRole,
+  setUserRole,
+  roleForKind,
+  updatePlaceKind,
   myClinic,
   updatePet,
   deletePet,
@@ -70,6 +75,7 @@ import RequestsPage from "./assets/components/requests/RequestsPage.jsx";
 import ReviewRequestPage from "./assets/components/requests/ReviewRequestPage.jsx";
 import ModerationPage from "./assets/components/requests/ModerationPage.jsx";
 import MyReportsPage from "./assets/components/reports/MyReportsPage.jsx";
+import MyClinicPage from "./assets/components/profile/MyClinicPage.jsx";
 import backIcon from "./assets/svg/Back.svg";
 import "./App.css";
 
@@ -116,24 +122,34 @@ const ADOPTION_PETS = makeList(6);
 
 // support_document_url guarda una ruta; las solicitudes viejas pueden traer dos separadas por coma
 // Fila de vet_applications -> forma que usan RequestsPage / ReviewRequestPage
-const toRequest = (a) => {
+/*
+ * Tipos de solicitud:
+ *  - doctor:        médico veterinario (persona)
+ *  - establishment: refugio o veterinaria que el admin aún no clasifica ("POR CLASIFICAR")
+ *  - vet / refuge:  establecimiento ya clasificado por el admin como Veterinaria o Refugio (según su lugar en el mapa)
+ * `placeKind` es el tipo de lugar del solicitante en vet_clinics, si ya tiene uno.
+ */
+const toRequest = (a, placeKind) => {
   const foundation = a.target_role === "foundation";
+  const establishment = foundation || Boolean(placeKind);
+  const type = placeKind === "clinic" ? "vet" : placeKind === "shelter" ? "refuge" : foundation ? "establishment" : "doctor";
   // Las solicitudes viejas de esta rama guardaban dos rutas separadas por coma en support_document_url
   const [supportPath, legacyIdPath] = (a.support_document_url ?? "").split(",");
   // Supabase puede guardar el mismo archivo en support_document_url y license_document_url: se muestra una vez
   const seen = new Set();
   const docs = [
-    [supportPath, foundation ? "Registro del refugio o veterinaria" : "Tarjeta profesional"],
-    [a.license_document_url, foundation ? "Registro del refugio o veterinaria" : "Tarjeta profesional"],
+    [supportPath, establishment ? "Registro del establecimiento" : "Tarjeta profesional"],
+    [a.license_document_url, establishment ? "Registro del establecimiento" : "Tarjeta profesional"],
     [a.id_document_url ?? legacyIdPath, "Documento de identidad"],
   ].filter(([path]) => path && !seen.has(path) && seen.add(path));
 
   return {
     id: a.id,
     userId: a.user_id,
-    // Refugio / veterinaria: la dirección viene en `degree` (ver VerificationPage)
-    address: foundation ? a.degree ?? "" : "",
-    type: foundation ? "refuge" : "doctor",
+    // Establecimiento: la dirección viene en `degree` (ver VerificationPage)
+    address: establishment ? a.degree ?? "" : "",
+    establishment,
+    type,
     status: a.status,
     name: a.full_name || a.applicant?.name || "Usuario",
     location: `Cuenta: ${a.applicant?.name ?? "—"}`,
@@ -180,9 +196,9 @@ const ROLE_LABEL = {
   owner: "Miembro",
   admin: "Administrador",
   vet: "Médico veterinario",
-  foundation: "Refugio / Veterinaria",
+  foundation: "Refugio",
 };
-// Si ya tiene lugar en el mapa, la etiqueta es la que eligió el admin al aprobar
+// Establecimiento: la etiqueta es la que eligió el admin (una u otra, nunca las dos)
 const PLACE_LABEL = { clinic: "Veterinaria", shelter: "Refugio" };
 
 // Las especies vienen en inglés desde la base de datos
@@ -231,6 +247,7 @@ function App() {
   const [showVerification, setShowVerification] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showMyReports, setShowMyReports] = useState(false);
+  const [showMyClinic, setShowMyClinic] = useState(false);
   const [activeReports, setActiveReports] = useState(0);
   const [listPage, setListPage] = useState(null);
 
@@ -387,6 +404,7 @@ function App() {
     if (requestsTab) return done(() => setRequestsTab(null));
     if (listPage) return done(() => setListPage(null));
     if (showMyReports) return done(() => setShowMyReports(false), () => void loadActiveReports());
+    if (showMyClinic) return done(() => setShowMyClinic(false));
     if (showHelp) return done(() => setShowHelp(false));
     if (showReportLost) return done(() => setShowReportLost(false));
     if (showReportFound) return done(() => setShowReportFound(false));
@@ -417,7 +435,10 @@ function App() {
 
   const loadRequests = useCallback(async () => {
     try {
-      setRequests((await listVetApplications()).map(toRequest));
+      const apps = await listVetApplications();
+      // El tipo de lugar en el mapa dice cómo clasificó el admin cada establecimiento
+      const kinds = await placeKindsOfUsers([...new Set(apps.map((a) => a.user_id))]).catch(() => ({}));
+      setRequests(apps.map((a) => toRequest(a, kinds[a.user_id])));
     } catch (e) {
       console.error("No se pudieron cargar las solicitudes", e);
     }
@@ -605,6 +626,8 @@ function App() {
     if (status === "approved" && place) {
       point = await searchPlace(place.address);
       if (!point) throw new Error("No encontramos esa dirección en el mapa. Escríbela más completa (calle, número, ciudad).");
+      // La decisión del admin define el rol: Veterinaria → vet, Refugio → foundation (review_vet_application lo asigna)
+      await setApplicationRole(request.id, roleForKind(place.kind));
     }
     await reviewVetApplication(request.id, status === "approved");
     if (point) {
@@ -631,7 +654,23 @@ function App() {
       point,
       kind: place.kind,
     });
+    await applyKindToAccount(request, place.kind);
+    await loadRequests();
     setReviewing(null);
+  };
+
+  // El rol de la cuenta y la solicitud siguen a la etiqueta elegida (Veterinaria → vet, Refugio → foundation)
+  const applyKindToAccount = async (request, kind) => {
+    const role = roleForKind(kind);
+    await setApplicationRole(request.id, role).catch((e) => console.warn("[etiqueta] no se pudo actualizar la solicitud", e));
+    await setUserRole(request.userId, role).catch((e) => console.warn("[etiqueta] no se pudo cambiar el rol de la cuenta", e));
+  };
+
+  // Cambiar Refugio ↔ Veterinaria en un establecimiento ya aprobado
+  const changePlaceKind = async (request, place, kind) => {
+    await updatePlaceKind(place.id, kind);
+    await applyKindToAccount(request, kind);
+    await loadRequests();
   };
 
   const openDocument = async (doc) => {
@@ -648,7 +687,8 @@ function App() {
     const idDocumentPath = r.idFile ? await uploadVetDocument(r.idFile) : null;
     const clean = (v) => v?.trim() || null;
     try {
-      await submitVetApplication(r.type === "refuge" ? "foundation" : "vet", {
+      // Establecimiento → apply_as_foundation; el admin decide después si es Refugio o Veterinaria
+      await submitVetApplication(r.type === "establishment" ? "foundation" : "vet", {
         documentPath,
         idDocumentPath,
         fullName: clean(r.name),
@@ -808,6 +848,7 @@ function App() {
             onAccept={(r, place) => decide(r, "approved", place)}
             onReject={(r) => decide(r, "rejected")}
             onPlace={placeApproved}
+            onChangeKind={changePlaceKind}
             onOpenDocument={(d) => void openDocument(d)}
           />
           <NavBar
@@ -872,6 +913,34 @@ function App() {
           />
           <NavBar active={activeTab} onNavigate={goTab(() => setListPage(null))} />
           {sharedModals}
+        </main>
+      </div>
+    );
+  }
+
+  /* MI CLÍNICA (veterinaria / refugio verificado) */
+  if (showMyClinic) {
+    const closeMyClinic = () => {
+      setShowMyClinic(false);
+      setMyPlaceKind(null); // se vuelve a leer al abrir Perfil
+    };
+    return (
+      <div className="phone-frame">
+        <main className="app">
+          <PawBackground />
+          <MyClinicPage
+            role={profile?.role}
+            onBack={closeMyClinic}
+            onNotifications={() => {
+              closeMyClinic();
+              setShowNotifications(true);
+            }}
+            onGoMap={() => {
+              closeMyClinic();
+              setActiveTab("map");
+            }}
+          />
+          <NavBar active={activeTab} onNavigate={goTab(closeMyClinic)} />
         </main>
       </div>
     );
@@ -1254,12 +1323,14 @@ function App() {
             )}
 
             <AccountSection
+              professional={isProfessional}
               onOptionClick={(id) => {
                 if (id === "logout") setConfirmAction("logout");
                 else if (id === "help") setShowHelp(true);
                 else if (id === "edit") setShowChangeEmail(true);
                 else if (id === "verification") setShowVerification(true);
                 else if (id === "reports") setShowMyReports(true);
+                else if (id === "clinic") setShowMyClinic(true);
                 else console.log("Opción seleccionada:", id);
               }}
             />
