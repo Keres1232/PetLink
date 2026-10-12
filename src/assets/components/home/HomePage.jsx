@@ -9,6 +9,7 @@ import mapIcon from "../../svg/Ver_todo.svg";
 import commentIcon from "../../svg/Report/coment.svg";
 import heartIcon from "../../svg/Report/corazon.svg";
 import useLiveFeed from "../../../hooks/useLiveFeed.js";
+import { useNotifications } from "../../../context/NotificationsContext.jsx";
 import { timeAgo } from "../../../lib/format";
 import { POST_TYPE_LABEL } from "../../../lib/postTypes";
 
@@ -52,9 +53,12 @@ function HomePage({
   onSeeAllAdoption,
   onSeeAllFound,
   onOpenPost,
+  usingDefaultLocation = false,
+  onEnableLocation,
 }) {
   // Publicación más reciente, con me gusta y contadores en vivo
-  const { feed, toggleLike } = useLiveFeed({ limit: 1 });
+  const { feed, toggleLike } = useLiveFeed({ limit: 10 }); // se ordenan por fecha y se muestra la más nueva
+  const { unread } = useNotifications();
   const latest = feed[0];
 
   return (
@@ -70,6 +74,7 @@ function HomePage({
           iconAlt="Notificaciones"
           ariaLabel="Notificaciones"
           onClick={onNotifications}
+          badge={unread}
         />
       </header>
 
@@ -77,6 +82,11 @@ function HomePage({
 
       <section className="home-section">
         <SectionHeader title="Cerca de ti" icon={mapIcon} onSeeAll={onSeeAllNear} />
+        {usingDefaultLocation && (
+          <button type="button" className="home-location-hint" onClick={onEnableLocation}>
+            Mostrando reportes cerca del centro de Bogotá. Toca aquí para usar tu ubicación real.
+          </button>
+        )}
         <PetCarousel pets={nearPets} statusKey="status" onPetClick={onPetClick} />
       </section>
 

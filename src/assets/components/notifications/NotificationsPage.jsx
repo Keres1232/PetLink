@@ -3,7 +3,14 @@ import AppHeader from "../shared/AppHeader.jsx";
 import { listNotifications, markAllNotificationsRead, markNotificationRead } from "../../../lib/api";
 import { timeAgo } from "../../../lib/format";
 import { supabase } from "../../../lib/supabase";
+import { useNotifications } from "../../../context/NotificationsContext.jsx";
 import backIcon from "../../svg/Back.svg";
+import bellIcon from "../../svg/bell.svg";
+import locationIcon from "../../svg/Location icon.svg";
+import pawIcon from "../../svg/Huella.svg";
+import commentIcon from "../../svg/uil_comments.svg";
+import likeIcon from "../../svg/Likes.svg";
+import clockIcon from "../../svg/ExpCard/relog_card.svg";
 import "./NotificationsPage.css";
 
 // Campana morada (inline para poder controlar el color)
@@ -18,17 +25,23 @@ const BellIcon = ({ color = "#AE77FF", size = 60 }) => (
 
 // Ícono según el tipo de notificación (creadas por los triggers notify_* de Supabase)
 const TYPE_ICON = {
-  geo_alert: "📍",
-  report_match: "🐾",
-  post_reply: "💬",
-  post_like: "💜",
-  pet_reminder: "📅",
+  geo_alert: locationIcon,
+  report_match: pawIcon,
+  post_reply: commentIcon,
+  post_like: likeIcon,
+  pet_reminder: clockIcon,
 };
+
+// El SVG se usa como máscara pintada de morado: todos quedan del mismo color sin editar los archivos
+const MaskIcon = ({ src }) => (
+  <span className="notif-row__svg" style={{ WebkitMaskImage: `url("${src}")`, maskImage: `url("${src}")` }} />
+);
 
 function NotificationsPage({ onBack, onOpen }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const { refreshUnread } = useNotifications();
 
   const load = useCallback(async () => {
     try {
@@ -56,7 +69,9 @@ function NotificationsPage({ onBack, onOpen }) {
 
   const open = async (n) => {
     setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, is_read: true } : x)));
-    markNotificationRead(n.id).catch(() => {}); // marcar leída no es crítico
+    markNotificationRead(n.id)
+      .then(refreshUnread)
+      .catch(() => {}); // marcar leída no es crítico
     onOpen?.(n);
   };
 
@@ -64,6 +79,7 @@ function NotificationsPage({ onBack, onOpen }) {
     setItems((prev) => prev.map((x) => ({ ...x, is_read: true })));
     try {
       await markAllNotificationsRead();
+      void refreshUnread();
     } catch (e) {
       console.error(e);
     }
@@ -106,7 +122,7 @@ function NotificationsPage({ onBack, onOpen }) {
               onClick={() => void open(n)}
             >
               <span className="notif-row__icon" aria-hidden="true">
-                {TYPE_ICON[n.type] ?? <BellIcon size={16} />}
+                <MaskIcon src={TYPE_ICON[n.type] ?? bellIcon} />
               </span>
               <span className="notif-row__text">
                 <span className="notif-row__title">{n.title}</span>

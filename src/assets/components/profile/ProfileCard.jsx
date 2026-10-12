@@ -1,6 +1,7 @@
 import AvatarPlaceholder from "../pets/AvatarPlaceholder.jsx";
 import editIcon from "../../svg/edit_icono.svg";
 import pawIcon from "../../svg/Huella.svg";
+import shieldIcon from "../../svg/Ajustes/Escudo.svg";
 import "./ProfileCard.css";
 
 function ProfileCard({
@@ -9,6 +10,7 @@ function ProfileCard({
   memberLabel = "Miembro",
   photoUrl,
   onEditPhoto,
+  verified = false,
 }) {
   return (
     <article className="profile-card">
@@ -32,8 +34,9 @@ function ProfileCard({
           <h2 className="profile-card__name">{name}</h2>
           <p className="profile-card__location">{location}</p>
 
-          <span className="profile-card__badge">
-            <img src={pawIcon} alt="" className="profile-card__badge-icon" />
+          {/* Cuenta verificada (veterinario / refugio): etiqueta morada con el escudo de verificación */}
+          <span className={`profile-card__badge ${verified ? "profile-card__badge--verified" : ""}`}>
+            <img src={verified ? shieldIcon : pawIcon} alt="" className="profile-card__badge-icon" />
             {memberLabel}
           </span>
         </div>

@@ -1,4 +1,5 @@
 import StatusTag from "./StatusTag.jsx";
+import AvatarPlaceholder from "./AvatarPlaceholder.jsx";
 import PawBackground from "../shared/PawBackground.jsx";
 import pawIcon from "../../svg/ExpCard/huella_card.svg";
 import starIcon from "../../svg/ExpCard/stard_card.svg";
@@ -38,7 +39,7 @@ function PetDetailModal({ pet, onClose, onContact }) {
 
         <div className="pet-detail__scroll">
           <div className="pet-detail__photo">
-            {pet.photoUrl && <img src={pet.photoUrl} alt={pet.name} />}
+            {pet.photoUrl ? <img src={pet.photoUrl} alt={pet.name} /> : <AvatarPlaceholder />}
           </div>
 
           <div className="pet-detail__body">

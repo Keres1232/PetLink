@@ -19,6 +19,10 @@ import type {
   VetApplication,
 } from "./types";
 
+/** Orden de toda la app: la publicación más nueva primero. */
+export const newestFirst = <T extends { created_at: string }>(rows: T[]): T[] =>
+  [...rows].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
 export async function getFeed(opts?: {
   type?: string;
   limit?: number;
@@ -28,7 +32,7 @@ export async function getFeed(opts?: {
     p_limit: opts?.limit ?? 20,
   });
   if (error) throw error;
-  return data as FeedItem[];
+  return newestFirst(data as FeedItem[]);
 }
 
 export async function reportsNear(
@@ -340,6 +344,90 @@ export async function updateAvatar(file: File): Promise<string> {
   return url;
 }
 
+// ---------------------------------------------------------------
+// Mis reportes (alertas que publicó el usuario)
+// ---------------------------------------------------------------
+
+/** Texto con el que empieza el comentario de resolución que el dueño deja en su alerta. */
+export const RESOLUTION_PREFIX = "Resolución: ";
+
+/** Alertas del usuario, la más nueva primero, con su publicación y la última resolución escrita. */
+export async function myReports(): Promise<Record<string, unknown>[]> {
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+  if (!userId) return [];
+  const { data, error } = await supabase
+    .from("reports")
+    .select(
+      "id, type, status, description, photos, created_at, resolved_at, species:species(name), pet:pets(name, photo_url), post:posts(id)"
+    )
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  const rows = (data ?? []) as Record<string, unknown>[];
+
+  // La resolución no tiene columna propia: es el comentario más reciente del dueño que empieza por RESOLUTION_PREFIX
+  const postIdOf = (r: Record<string, unknown>) => {
+    const post = r.post as { id: string } | { id: string }[] | null;
+    return Array.isArray(post) ? post[0]?.id ?? null : post?.id ?? null;
+  };
+  const postIds = rows.map(postIdOf).filter(Boolean) as string[];
+  const resolutions: Record<string, string> = {};
+  if (postIds.length) {
+    const { data: comments } = await supabase
+      .from("comments")
+      .select("post_id, text, created_at")
+      .eq("user_id", userId)
+      .in("post_id", postIds)
+      .like("text", `${RESOLUTION_PREFIX}%`)
+      .order("created_at", { ascending: false });
+    for (const c of (comments ?? []) as { post_id: string; text: string }[]) {
+      if (!resolutions[c.post_id]) resolutions[c.post_id] = c.text.slice(RESOLUTION_PREFIX.length);
+    }
+  }
+  return rows.map((r) => {
+    const postId = postIdOf(r);
+    return { ...r, post_id: postId, resolution: postId ? resolutions[postId] ?? "" : "" };
+  });
+}
+
+/**
+ * Cambia el estado de una alerta propia (open | searching | resolved | closed).
+ * La resolución, si se escribe, se publica como comentario del dueño en la alerta.
+ * Al cerrar la alerta deja de aparecer en el mapa y la mascota vuelve a "activa" (trigger sync_pet_status_from_report).
+ */
+export async function updateMyReport(
+  reportId: string,
+  input: { status: "open" | "searching" | "resolved" | "closed"; resolution?: string; postId?: string | null }
+): Promise<void> {
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+  if (!userId) throw new Error("No hay sesión activa.");
+  const finished = input.status === "resolved" || input.status === "closed";
+  const { error } = await supabase
+    .from("reports")
+    .update({ status: input.status, resolved_at: finished ? new Date().toISOString() : null })
+    .eq("id", reportId)
+    .eq("user_id", userId);
+  if (error) throw error;
+  const text = input.resolution?.trim();
+  if (text && input.postId) await addComment(input.postId, `${RESOLUTION_PREFIX}${text}`);
+}
+
+/**
+ * Reporte completo para la ficha: `reports_near` solo trae un resumen (sin raza, sexo,
+ * tamaño, color ni edad). Incluye la mascota registrada si el reporte es de "perdí mi mascota".
+ */
+export async function getReportDetails(id: string): Promise<Record<string, unknown> | null> {
+  const { data, error } = await supabase
+    .from("reports")
+    .select(
+      "id, type, description, photos, sex, breed, color, size, age_estimate, lost_at, created_at, species:species(name), pet:pets(name, breed, sex, size, color, birth_date, photo_url, description, species:species(name))"
+    )
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as Record<string, unknown> | null) ?? null;
+}
+
 export async function getReportById(id: string): Promise<ReportNear | null> {
   const { data, error } = await supabase.rpc("report_by_id", { p_id: id });
   if (error) throw error;
@@ -542,7 +630,7 @@ export async function getModerationQueue(
     p_status: status,
   });
   if (error) throw error;
-  return data as ModerationPost[];
+  return newestFirst(data as ModerationPost[]);
 }
 
 export async function moderatePost(
@@ -608,6 +696,71 @@ export async function verifyClinic(
     p_approved: approved,
   });
   if (error) throw error;
+}
+
+/** Lugar en el mapa de una cuenta (para saber si una solicitud aprobada ya quedó ubicada). */
+export async function placeOfUser(userId: string): Promise<{ id: string; name: string; address: string | null; kind: string; verified: boolean } | null> {
+  const { data, error } = await supabase
+    .from("vet_clinics")
+    .select("id, name, address, kind, verified")
+    .eq("created_by", userId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data ?? null;
+}
+
+/** El admin cambia la etiqueta de un lugar ya aprobado: clinic = Veterinaria, shelter = Refugio. */
+export async function updatePlaceKind(placeId: string, kind: "clinic" | "shelter"): Promise<void> {
+  const { error } = await supabase.from("vet_clinics").update({ kind }).eq("id", placeId);
+  if (error) throw error;
+}
+
+/**
+ * Pone en el mapa la veterinaria o el refugio aprobado: crea su fila en vet_clinics ya verificada
+ * y a nombre del solicitante (así luego la ve como "Mi clínica"). El admin tiene gestión total
+ * sobre vet_clinics (RLS P3). Si la inserción directa no está permitida, usa create_clinic + verify_clinic.
+ */
+export async function createVerifiedPlace(input: {
+  ownerId: string;
+  name: string;
+  address: string;
+  point: GeoPoint;
+  kind: "clinic" | "shelter";
+}): Promise<void> {
+  const adminId = (await supabase.auth.getUser()).data.user?.id ?? null;
+  const { data: created, error } = await supabase
+    .from("vet_clinics")
+    .insert({
+      name: input.name,
+      address: input.address,
+      kind: input.kind,
+      location: `SRID=4326;POINT(${input.point.lon} ${input.point.lat})`,
+      created_by: input.ownerId,
+      verified: true,
+      verified_by: adminId,
+      verified_at: new Date().toISOString(),
+    })
+    .select("id")
+    .single();
+  if (!error) {
+    // Una regla de la BD puede forzar verified=false al crear: se sella con verify_clinic para que salga en el mapa
+    await verifyClinic((created as { id: string }).id, true);
+    return;
+  }
+
+  console.warn("[mapa] inserción directa en vet_clinics rechazada, se usa create_clinic:", error);
+  const { data: clinicId, error: rpcError } = await supabase.rpc("create_clinic", {
+    p_name: input.name,
+    p_address: input.address,
+    p_phone: null,
+    p_lat: input.point.lat,
+    p_lon: input.point.lon,
+    p_kind: input.kind,
+  });
+  if (rpcError) throw rpcError;
+  await verifyClinic(clinicId as string, true);
 }
 
 export async function listCommentReports(): Promise<CommentReport[]> {
@@ -681,12 +834,29 @@ export async function myVetApplication(): Promise<VetApplication | null> {
   return (data as VetApplication | null) ?? null;
 }
 
+/** Misma firma que en web-development: el RPC guarda todos los datos del formulario. */
 export async function submitVetApplication(
   role: "vet" | "foundation",
-  documentPath: string
+  input: {
+    documentPath: string;
+    idDocumentPath: string | null;
+    fullName: string | null;
+    contactEmail: string | null;
+    professionalLicense: string | null;
+    degree: string | null;
+    specialty: string | null;
+  }
 ): Promise<void> {
   const rpc = role === "foundation" ? "apply_as_foundation" : "apply_as_vet";
-  const { error } = await supabase.rpc(rpc, { p_document_url: documentPath });
+  const { error } = await supabase.rpc(rpc, {
+    p_document_url: input.documentPath,
+    p_full_name: input.fullName,
+    p_contact_email: input.contactEmail,
+    p_professional_license: input.professionalLicense,
+    p_degree: input.degree,
+    p_specialty: input.specialty,
+    p_id_document_url: input.idDocumentPath,
+  });
   if (error) throw error;
 }
 

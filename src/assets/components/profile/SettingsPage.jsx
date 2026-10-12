@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import CircleIconButton from "../shared/CircleIconButton.jsx";
 import LegalModal from "../shared/LegalModal.jsx";
 import { useUserLocation } from "../../../hooks/useUserLocation";
+import { useNotifications } from "../../../context/NotificationsContext.jsx";
 import { notificationsAllowed, requestNotificationPermission } from "../../../lib/notify";
 import ToggleSwitch from "./ToggleSwitch.jsx";
 import backIcon from "../../svg/Back.svg";
@@ -88,6 +89,7 @@ function SettingsPage({
   onDelete,
 }) {
   const { radius, consent, saveRadius, requestConsent } = useUserLocation();
+  const { unread } = useNotifications();
   const [petAlerts, setPetAlerts] = useState(false);
   const [notifMsg, setNotifMsg] = useState("");
   const [legal, setLegal] = useState(null);
@@ -110,16 +112,29 @@ function SettingsPage({
       setNotifMsg("Activa las notificaciones de PetClue en los ajustes de tu celular.");
       return;
     }
-    if (!consent) await requestConsent();
+    // Sin ubicación guardada en Supabase, el servidor nunca crea alertas para este usuario
+    if (!consent && !(await requestConsent())) {
+      setNotifMsg("Para recibir alertas cercanas, permite el acceso a tu ubicación.");
+      return;
+    }
     setPetAlerts(true);
   };
+
+  // Solo está activado de verdad si hay permiso de notificaciones Y ubicación guardada
+  const alertsOn = petAlerts && consent;
 
   return (
     <>
       <header className="page-header">
         <CircleIconButton icon={backIcon} iconAlt="Volver" ariaLabel="Volver" onClick={onBack} />
         <h1 className="page-header__title">Ajustes</h1>
-        <CircleIconButton icon={bellIcon} iconAlt="Notificaciones" ariaLabel="Notificaciones" onClick={onNotifications} />
+        <CircleIconButton
+          icon={bellIcon}
+          iconAlt="Notificaciones"
+          ariaLabel="Notificaciones"
+          onClick={onNotifications}
+          badge={unread}
+        />
       </header>
 
       {/* ===== Cuenta ===== */}
@@ -140,10 +155,10 @@ function SettingsPage({
             icon={notificacionIcon}
             label="Alerta de mascotas cerca"
             sublabel={notifMsg || undefined}
-            right={<ToggleSwitch checked={petAlerts} onChange={togglePetAlerts} ariaLabel="Alerta de mascotas cerca" />}
+            right={<ToggleSwitch checked={alertsOn} onChange={togglePetAlerts} ariaLabel="Alerta de mascotas cerca" />}
           />
 
-          {petAlerts && (
+          {alertsOn && (
             <div className="settings-row settings-row--chips">
               <div className="distance-chips">
                 {DISTANCES.map((d) => (

@@ -242,3 +242,26 @@ body {
 .profile-photo-status--error {
   color: #c02626;
 }
+
+/* Aviso en Inicio cuando se usa la ubicación por defecto */
+.home-location-hint {
+  width: 100%;
+  margin: 0 0 12px;
+  padding: 10px 14px;
+
+  border: 1px dashed #7519ff;
+  border-radius: 10px;
+  background: #ffffff;
+
+  color: #7519ff;
+  font-family: "Kodchasan", sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+
+  cursor: pointer;
+}
+
+.home-location-hint:active {
+  background: #f3edff;
+}

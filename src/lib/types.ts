@@ -140,6 +140,13 @@ export interface VetApplication {
   support_document_url: string | null;
   status: string;
   target_role: string | null;
+  full_name: string | null;
+  contact_email: string | null;
+  professional_license: string | null;
+  degree: string | null;
+  specialty: string | null;
+  license_document_url: string | null;
+  id_document_url: string | null;
   created_at: string;
   applicant?: { name: string } | null;
 }

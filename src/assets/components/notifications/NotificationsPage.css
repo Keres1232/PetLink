@@ -168,3 +168,19 @@
   border-radius: 50%;
   background: var(--titulos, #7519ff);
 }
+
+/* Ícono SVG del proyecto pintado de morado (máscara) */
+.notif-row__svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+
+  background-color: var(--titulos, #7519ff);
+
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}

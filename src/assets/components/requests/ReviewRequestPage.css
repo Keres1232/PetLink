@@ -182,3 +182,41 @@
 .review__accept:active:not(:disabled) { transform: scale(0.97); }
 .review__reject:disabled,
 .review__accept:disabled { opacity: 0.45; cursor: not-allowed; }
+/* Los datos de la solicitud vienen en varias líneas */
+.review__description {
+  white-space: pre-line;
+}
+
+/* Íconos del formulario de verificación dentro del círculo */
+.review__field-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
+.review__contact-text .review__value {
+  overflow-wrap: anywhere;
+}
+
+/* Etiqueta y dirección para el mapa (refugio / veterinaria) */
+.review__place {
+  display: flex;
+  padding: 14px;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.review__place .icon-input-field__label {
+  font-size: 13px;
+}
+
+.review__place .icon-input-field__box {
+  background: #ede8ff;
+}
+
+.review__place-hint {
+  margin: 0;
+  color: var(--desctivado, #66557e);
+  font-family: "Nata Sans", sans-serif;
+  font-size: 12px;
+}

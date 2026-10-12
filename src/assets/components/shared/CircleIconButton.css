@@ -74,3 +74,31 @@
 
   pointer-events: none;
 }
+/* Globito de notificaciones sin leer */
+.circle-icon-button__badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 2;
+
+  display: flex;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+
+  align-items: center;
+  justify-content: center;
+
+  border: 2px solid #ffffff;
+  border-radius: 9px;
+  background: #ef4b4b;
+
+  color: #ffffff;
+  font-family: "Kodchasan", sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+
+  box-sizing: content-box;
+  pointer-events: none;
+}

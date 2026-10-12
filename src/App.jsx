@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Capacitor } from "@capacitor/core";
+import { App as CapacitorApp } from "@capacitor/app";
 import { useAuth } from "./context/AuthContext";
 import {
   myPets,
@@ -15,20 +17,25 @@ import {
   submitVetApplication,
   myVetApplication,
   reportsNear,
+  newestFirst,
+  myReports,
+  createVerifiedPlace,
+  myClinic,
   updatePet,
   deletePet,
   changePassword,
   getCommentById,
   getPostByReportId,
+  getReportDetails,
 } from "./lib/api";
 import ForgotPasswordScreen from "./assets/components/auth/ForgotPasswordScreen.jsx";
 import ResetPasswordScreen from "./assets/components/auth/ResetPasswordScreen.jsx";
 import { ageFromBirthDate } from "./lib/format";
 import { useUserLocation } from "./hooks/useUserLocation";
-import { reportToPet } from "./lib/reportPet";
+import { reportToPet, withReportDetails } from "./lib/reportPet";
+import { DEFAULT_CENTER } from "./lib/types";
 import { searchPlace } from "./lib/geocode";
 import { supabase } from "./lib/supabase";
-import { showNotification } from "./lib/notify";
 import LoginScreen from "./assets/components/auth/LoginScreen.jsx";
 import RegisterScreen from "./assets/components/auth/RegisterScreen.jsx";
 import NavBar from "./assets/components/shared/NavBar.jsx";
@@ -62,6 +69,7 @@ import ReportAdoptionPage from "./assets/components/reports/ReportAdoptionPage.j
 import RequestsPage from "./assets/components/requests/RequestsPage.jsx";
 import ReviewRequestPage from "./assets/components/requests/ReviewRequestPage.jsx";
 import ModerationPage from "./assets/components/requests/ModerationPage.jsx";
+import MyReportsPage from "./assets/components/reports/MyReportsPage.jsx";
 import backIcon from "./assets/svg/Back.svg";
 import "./App.css";
 
@@ -107,22 +115,40 @@ const makeList = (n, status) =>
 const ADOPTION_PETS = makeList(6);
 
 // support_document_url guarda una ruta; las solicitudes viejas pueden traer dos separadas por coma
-const DOC_NAMES = ["Documento de soporte", "Documento de identidad"];
-
 // Fila de vet_applications -> forma que usan RequestsPage / ReviewRequestPage
-const toRequest = (a) => ({
-  id: a.id,
-  type: a.target_role === "foundation" ? "refuge" : "doctor",
-  status: a.status,
-  name: a.applicant?.name ?? "Usuario",
-  location: "",
-  sentLabel: `Enviada ${new Date(a.created_at).toLocaleDateString("es-CO")}`,
-  description: "",
-  documents: (a.support_document_url ?? "")
-    .split(",")
-    .filter(Boolean)
-    .map((path, i) => ({ id: i, name: DOC_NAMES[i] ?? `Documento ${i + 1}`, path })),
-});
+const toRequest = (a) => {
+  const foundation = a.target_role === "foundation";
+  // Las solicitudes viejas de esta rama guardaban dos rutas separadas por coma en support_document_url
+  const [supportPath, legacyIdPath] = (a.support_document_url ?? "").split(",");
+  // Supabase puede guardar el mismo archivo en support_document_url y license_document_url: se muestra una vez
+  const seen = new Set();
+  const docs = [
+    [supportPath, foundation ? "Registro del refugio o veterinaria" : "Tarjeta profesional"],
+    [a.license_document_url, foundation ? "Registro del refugio o veterinaria" : "Tarjeta profesional"],
+    [a.id_document_url ?? legacyIdPath, "Documento de identidad"],
+  ].filter(([path]) => path && !seen.has(path) && seen.add(path));
+
+  return {
+    id: a.id,
+    userId: a.user_id,
+    // Refugio / veterinaria: la dirección viene en `degree` (ver VerificationPage)
+    address: foundation ? a.degree ?? "" : "",
+    type: foundation ? "refuge" : "doctor",
+    status: a.status,
+    name: a.full_name || a.applicant?.name || "Usuario",
+    location: `Cuenta: ${a.applicant?.name ?? "—"}`,
+    sentLabel: `Enviada ${new Date(a.created_at).toLocaleDateString("es-CO")}`,
+    // Mismos campos que el formulario de "Solicitar verificación"
+    fields: {
+      fullName: a.full_name,
+      email: a.contact_email,
+      license: a.professional_license,
+      degree: a.degree,
+      specialty: a.specialty,
+    },
+    documents: docs.map(([path, name], i) => ({ id: i, name, path })),
+  };
+};
 
 const CONFIRMS = {
   logout: {
@@ -149,18 +175,50 @@ const SEX_LABEL = { male: "Macho", female: "Hembra", unknown: "No sé" };
 const SIZE_LABEL = { small: "Pequeño", medium: "Mediano", large: "Grande" };
 const SEX_DB = { Macho: "male", Hembra: "female", "No sé": "unknown" };
 
+// Etiqueta del perfil según el rol (review_vet_application cambia el rol al aprobar la verificación)
+const ROLE_LABEL = {
+  owner: "Miembro",
+  admin: "Administrador",
+  vet: "Médico veterinario",
+  foundation: "Refugio / Veterinaria",
+};
+// Si ya tiene lugar en el mapa, la etiqueta es la que eligió el admin al aprobar
+const PLACE_LABEL = { clinic: "Veterinaria", shelter: "Refugio" };
+
 // Las especies vienen en inglés desde la base de datos
 const SPECIES_ES = { dog: "Perro", cat: "Gato", bird: "Ave", rabbit: "Conejo", ferret: "Hurón", other: "Otro" };
 const speciesLabel = (name) => (name ? SPECIES_ES[name.toLowerCase()] ?? name : "Otro");
 const SIZE_DB = { Pequeño: "small", Mediano: "medium", Grande: "large" };
 
 function App() {
-  const { user, profile, loading, signOut, recovering, endRecovery, authLinkError, clearAuthLinkError } = useAuth();
+  const { user, profile, loading, signOut, recovering, endRecovery, authLinkError, clearAuthLinkError, refreshProfile } =
+    useAuth();
+
+  // refreshProfile cambia en cada render del contexto: se guarda en una ref para no recargar en bucle
+  const refreshProfileRef = useRef(refreshProfile);
+  useEffect(() => {
+    refreshProfileRef.current = refreshProfile;
+  });
 
   const [authView, setAuthView] = useState("login");
   const [newAccountEmail, setNewAccountEmail] = useState("");
 
   const [activeTab, setActiveTab] = useState("home");
+
+  // Al abrir Perfil se vuelve a leer el rol: si el admin aprobó la verificación, la etiqueta cambia sin cerrar sesión
+  useEffect(() => {
+    if (activeTab === "profile") void refreshProfileRef.current();
+  }, [activeTab]);
+
+  // Lugar en el mapa de la cuenta (si el admin la aprobó como veterinaria o refugio): define la etiqueta
+  const [myPlaceKind, setMyPlaceKind] = useState(null);
+  const isProfessional = profile?.role === "vet" || profile?.role === "foundation";
+  useEffect(() => {
+    if (!isProfessional || activeTab !== "profile") return;
+    myClinic()
+      .then((c) => setMyPlaceKind(c?.kind ?? null))
+      .catch(() => setMyPlaceKind(null));
+  }, [isProfessional, activeTab]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -172,6 +230,8 @@ function App() {
   const [showReportAdoption, setShowReportAdoption] = useState(false);
   const [showVerification, setShowVerification] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showMyReports, setShowMyReports] = useState(false);
+  const [activeReports, setActiveReports] = useState(0);
   const [listPage, setListPage] = useState(null);
 
   const [requests, setRequests] = useState([]);
@@ -196,12 +256,14 @@ function App() {
   const [editingPet, setEditingPet] = useState(null);
 
   // Reportes reales cerca del usuario (Inicio: "Cerca de ti" y "Encontrados")
-  const { point: userPoint, radius, loading: locLoading } = useUserLocation();
+  const { point: userPoint, radius, loading: locLoading, enableDeviceLocation } = useUserLocation();
+  // Sin permiso o sin GPS (p. ej. el emulador) se busca alrededor del centro de Bogotá
+  const usingDefaultLocation = !locLoading && userPoint === DEFAULT_CENTER;
   const [nearReports, setNearReports] = useState([]);
 
   const loadNear = useCallback(async () => {
     try {
-      setNearReports((await reportsNear(userPoint, radius, 20)).map(reportToPet));
+      setNearReports(newestFirst(await reportsNear(userPoint, radius, 20)).map(reportToPet));
     } catch (e) {
       console.error("No se pudieron cargar los reportes cercanos", e);
     }
@@ -210,6 +272,35 @@ function App() {
   useEffect(() => {
     if (user && !locLoading) void loadNear();
   }, [user, locLoading, loadNear]);
+
+  // Mantener las tarjetas al día: cuando alguien publica o cierra una alerta (Realtime en
+  // `reports`), cada 30 s como respaldo y al volver a la app.
+  useEffect(() => {
+    if (!user || locLoading) return;
+    let timer = null;
+    const refresh = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => void loadNear(), 400); // junta varios cambios seguidos en una sola recarga
+    };
+    const channel = supabase
+      .channel(`near-reports-${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "reports" }, refresh)
+      .subscribe();
+    const poll = setInterval(refresh, 30000);
+    const onVisible = () => document.visibilityState === "visible" && refresh();
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearTimeout(timer);
+      clearInterval(poll);
+      document.removeEventListener("visibilitychange", onVisible);
+      void supabase.removeChannel(channel);
+    };
+  }, [user, locLoading, loadNear]);
+
+  // Al volver a Inicio también se recargan
+  useEffect(() => {
+    if (user && !locLoading && activeTab === "home") void loadNear();
+  }, [activeTab, user, locLoading, loadNear]);
 
   const nearLost = nearReports.filter((p) => p.status === "Perdido");
   const nearFound = nearReports.filter((p) => p.status === "Encontrado");
@@ -251,6 +342,79 @@ function App() {
     }
   }, [user, loadPets]);
 
+  // "Reportes activos" del perfil: alertas propias que siguen abiertas o en búsqueda
+  const loadActiveReports = useCallback(async () => {
+    try {
+      const rows = await myReports();
+      setActiveReports(rows.filter((r) => r.status === "open" || r.status === "searching").length);
+    } catch (e) {
+      console.error("No se pudieron contar los reportes activos", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (user) void loadActiveReports();
+  }, [user, loadActiveReports]);
+
+  /*
+   * Botón "Atrás" del celular (Android). Antes cerraba la app; ahora retrocede dentro de ella:
+   * primero cierra la ventana emergente abierta, luego la pantalla actual (en el mismo orden en
+   * que se muestran abajo), después vuelve a Inicio, y solo desde Inicio sale de la app.
+   * Devuelve true si pudo retroceder.
+   */
+  const goBack = () => {
+    const done = (...steps) => {
+      steps.forEach((step) => step());
+      return true;
+    };
+
+    // 1. Ventanas emergentes
+    if (selectedPet) return done(() => setSelectedPet(null));
+    if (showReportModal) return done(() => setShowReportModal(false));
+    if (profilePhotoOpen) return done(() => setProfilePhotoOpen(false));
+    if (cityPickerOpen) return done(() => setCityPickerOpen(false));
+    if (confirmAction) return done(() => setConfirmAction(null));
+
+    // 2. Sin sesión: registro / recuperar contraseña → login
+    if (!user) {
+      return authView !== "login" ? done(() => setAuthView("login"), clearAuthLinkError) : false;
+    }
+
+    // 3. Pantallas abiertas
+    if (showNotifications) return done(() => setShowNotifications(false));
+    if (reviewing) return done(() => setReviewing(null));
+    if (moderationTab) return done(() => setModerationTab(null));
+    if (requestsTab) return done(() => setRequestsTab(null));
+    if (listPage) return done(() => setListPage(null));
+    if (showMyReports) return done(() => setShowMyReports(false), () => void loadActiveReports());
+    if (showHelp) return done(() => setShowHelp(false));
+    if (showReportLost) return done(() => setShowReportLost(false));
+    if (showReportFound) return done(() => setShowReportFound(false));
+    if (showReportAdoption) return done(() => setShowReportAdoption(false));
+    if (showVerification) return done(() => setShowVerification(false));
+    if (showChangePassword) return done(() => setShowChangePassword(false), () => setShowSettings(true));
+    if (showChangeEmail) return done(() => setShowChangeEmail(false), () => setShowSettings(true));
+    if (showSettings) return done(() => setShowSettings(false));
+    if (showAddPet || editingPet) return done(() => setShowAddPet(false), () => setEditingPet(null));
+
+    // 4. Otra pestaña → Inicio
+    if (activeTab !== "home") return done(() => setActiveTab("home"), () => setContactPostId(null));
+    return false;
+  };
+
+  // El listener se registra una vez; siempre llama a la versión más reciente de goBack
+  const goBackRef = useRef(goBack);
+  useEffect(() => {
+    goBackRef.current = goBack;
+  });
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const listener = CapacitorApp.addListener("backButton", () => {
+      if (!goBackRef.current()) void CapacitorApp.exitApp();
+    });
+    return () => void listener.then((l) => l.remove());
+  }, []);
+
   const loadRequests = useCallback(async () => {
     try {
       setRequests((await listVetApplications()).map(toRequest));
@@ -259,23 +423,29 @@ function App() {
     }
   }, []);
 
+  // Antes solo se cargaban al iniciar sesión: si llegaba una solicitud con la sesión abierta, el admin no la veía.
+  // Ahora se recargan con cada solicitud nueva (Realtime), cada 30 s y al volver a la app.
   useEffect(() => {
-    if (profile?.role === "admin") void loadRequests();
+    if (profile?.role !== "admin") return;
+    void loadRequests();
+    const channel = supabase
+      .channel("admin-vet-applications")
+      .on("postgres_changes", { event: "*", schema: "public", table: "vet_applications" }, () => void loadRequests())
+      .subscribe();
+    const poll = setInterval(() => void loadRequests(), 30000);
+    const onVisible = () => document.visibilityState === "visible" && void loadRequests();
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(poll);
+      document.removeEventListener("visibilitychange", onVisible);
+      void supabase.removeChannel(channel);
+    };
   }, [profile?.role, loadRequests]);
 
-  // Cada notificación nueva (alerta cercana, respuesta, etc.) también sale como notificación del celular
+  // Y siempre al abrir "Solicitudes"
   useEffect(() => {
-    if (!user) return;
-    const channel = supabase
-      .channel("my-notifications")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
-        ({ new: n }) => void showNotification(n.title, n.body)
-      )
-      .subscribe();
-    return () => void supabase.removeChannel(channel);
-  }, [user]);
+    if (requestsTab && profile?.role === "admin") void loadRequests();
+  }, [requestsTab, profile?.role, loadRequests]);
 
   // Crea la mascota o, si viene con id, actualiza la existente
   const savePet = async (pet) => {
@@ -325,6 +495,15 @@ function App() {
       setPhotoPreview(null);
       setAvatarStatus("error");
     }
+  };
+
+  // Abre la ficha. Si es un reporte, la muestra de una vez y luego la completa con el reporte completo
+  const showPet = (pet) => {
+    setSelectedPet(pet);
+    if (!pet?.isReport) return;
+    getReportDetails(pet.id)
+      .then((d) => setSelectedPet((cur) => (cur?.id === pet.id ? withReportDetails(cur, d) : cur)))
+      .catch((e) => console.error("No se pudo cargar el detalle del reporte", e));
   };
 
   // Al tocar una notificación: lleva a la publicación, al mapa o al perfil según su tipo
@@ -406,6 +585,7 @@ function App() {
     setShowReportFound(false);
     setActiveTab("map");
     void loadNear();
+    void loadActiveReports();
   };
 
   const handleCall = (phone) => {
@@ -414,14 +594,44 @@ function App() {
   const goHome = () => setActiveTab("home");
   const openNotifications = () => setShowNotifications(true);
 
-  const decide = async (request, status) => {
-    try {
-      await reviewVetApplication(request.id, status === "approved");
-      await loadRequests();
-      setReviewing(null);
-    } catch (e) {
-      console.error("No se pudo guardar la decisión", e);
+  /**
+   * Aprobar o rechazar. Si es un refugio / veterinaria aprobado, el admin eligió la etiqueta
+   * (place.kind: "shelter" = Refugio, "clinic" = Veterinaria) y la dirección: se ubica en el
+   * mapa ANTES de aprobar, para no dejar una cuenta aprobada sin su lugar.
+   * Los errores se lanzan para que ReviewRequestPage los muestre.
+   */
+  const decide = async (request, status, place) => {
+    let point = null;
+    if (status === "approved" && place) {
+      point = await searchPlace(place.address);
+      if (!point) throw new Error("No encontramos esa dirección en el mapa. Escríbela más completa (calle, número, ciudad).");
     }
+    await reviewVetApplication(request.id, status === "approved");
+    if (point) {
+      await createVerifiedPlace({
+        ownerId: request.userId,
+        name: request.name,
+        address: place.address.trim(),
+        point,
+        kind: place.kind,
+      });
+    }
+    await loadRequests();
+    setReviewing(null);
+  };
+
+  // Solicitud ya aprobada que quedó sin lugar en el mapa: el admin la ubica ahora
+  const placeApproved = async (request, place) => {
+    const point = await searchPlace(place.address);
+    if (!point) throw new Error("No encontramos esa dirección en el mapa. Escríbela más completa (calle, número, ciudad).");
+    await createVerifiedPlace({
+      ownerId: request.userId,
+      name: request.name,
+      address: place.address.trim(),
+      point,
+      kind: place.kind,
+    });
+    setReviewing(null);
   };
 
   const openDocument = async (doc) => {
@@ -434,9 +644,19 @@ function App() {
     if ((await myVetApplication())?.status === "pending") {
       throw new Error("Ya tienes una solicitud en revisión.");
     }
-    const path = await uploadVetDocument(r.docFile);
+    const documentPath = await uploadVetDocument(r.docFile);
+    const idDocumentPath = r.idFile ? await uploadVetDocument(r.idFile) : null;
+    const clean = (v) => v?.trim() || null;
     try {
-      await submitVetApplication(r.type === "refuge" ? "foundation" : "vet", path);
+      await submitVetApplication(r.type === "refuge" ? "foundation" : "vet", {
+        documentPath,
+        idDocumentPath,
+        fullName: clean(r.name),
+        contactEmail: clean(r.email),
+        professionalLicense: clean(r.license),
+        degree: clean(r.degree),
+        specialty: clean(r.specialty),
+      });
     } catch (e) {
       const msg = e?.message ?? "";
       if (msg.includes("pending application"))
@@ -582,10 +802,12 @@ function App() {
         <main className="app">
           <PawBackground />
           <ReviewRequestPage
+            key={reviewing.id}
             request={requests.find((r) => r.id === reviewing.id)}
             onBack={() => setReviewing(null)}
-            onAccept={(r) => decide(r, "approved")}
+            onAccept={(r, place) => decide(r, "approved", place)}
             onReject={(r) => decide(r, "rejected")}
+            onPlace={placeApproved}
             onOpenDocument={(d) => void openDocument(d)}
           />
           <NavBar
@@ -646,10 +868,34 @@ function App() {
               setListPage(null);
               setShowNotifications(true);
             }}
-            onPetClick={setSelectedPet}
+            onPetClick={showPet}
           />
           <NavBar active={activeTab} onNavigate={goTab(() => setListPage(null))} />
           {sharedModals}
+        </main>
+      </div>
+    );
+  }
+
+  /* MIS REPORTES */
+  if (showMyReports) {
+    const closeMyReports = () => {
+      setShowMyReports(false);
+      void loadActiveReports();
+      void loadNear(); // las alertas cerradas dejan de salir en Inicio y en el mapa
+    };
+    return (
+      <div className="phone-frame">
+        <main className="app">
+          <PawBackground />
+          <MyReportsPage
+            onBack={closeMyReports}
+            onNotifications={() => {
+              closeMyReports();
+              setShowNotifications(true);
+            }}
+          />
+          <NavBar active={activeTab} onNavigate={goTab(closeMyReports)} />
         </main>
       </div>
     );
@@ -893,13 +1139,15 @@ function App() {
         {activeTab === "home" && (
           <HomePage
             userName={userName}
+            usingDefaultLocation={usingDefaultLocation}
+            onEnableLocation={() => void enableDeviceLocation()}
             nearPets={nearLost}
             adoptionPets={ADOPTION_PETS}
             foundPets={nearFound}
             onNotifications={openNotifications}
             onLost={() => setShowReportLost(true)}
             onFound={() => setShowReportFound(true)}
-            onPetClick={setSelectedPet}
+            onPetClick={showPet}
             onSeeAllNear={() => setActiveTab("map")}
             onSeeAllCommunity={() => setActiveTab("community")}
             onSeeAllAdoption={() => setListPage("adoption")}
@@ -916,7 +1164,7 @@ function App() {
             onBack={goHome}
             onNotifications={openNotifications}
             onCall={handleCall}
-            onReportClick={setSelectedPet}
+            onReportClick={showPet}
           />
         )}
 
@@ -953,7 +1201,10 @@ function App() {
               <ProfileCard
                 name={userName}
                 location="Engativá, Bogotá"
-                memberLabel={isAdmin ? "Administrador" : "Miembro"}
+                memberLabel={
+                  (isProfessional && PLACE_LABEL[myPlaceKind]) || ROLE_LABEL[profile?.role] || "Miembro"
+                }
+                verified={profile?.role === "vet" || profile?.role === "foundation"}
                 photoUrl={profilePhoto}
                 onEditPhoto={() => setProfilePhotoOpen(true)}
               />
@@ -979,7 +1230,7 @@ function App() {
                   labels={["Pendientes", "Aprobadas", "Rechazadas"]}
                 />
               ) : (
-                <ProfileStats pets={pets.length} posts={0} activeReports={0} />
+                <ProfileStats pets={pets.length} posts={0} activeReports={activeReports} />
               )}
             </section>
 
@@ -1006,9 +1257,9 @@ function App() {
               onOptionClick={(id) => {
                 if (id === "logout") setConfirmAction("logout");
                 else if (id === "help") setShowHelp(true);
-                else if (id === "notifications") setShowNotifications(true);
                 else if (id === "edit") setShowChangeEmail(true);
                 else if (id === "verification") setShowVerification(true);
+                else if (id === "reports") setShowMyReports(true);
                 else console.log("Opción seleccionada:", id);
               }}
             />

@@ -191,3 +191,16 @@
 
   white-space: nowrap;
 }
+/* Cuenta verificada como veterinario o refugio */
+.profile-card__badge--verified {
+  padding: 2px 8px 1px 5px;
+
+  background: var(--titulos, #7519ff);
+  color: #ffffff;
+}
+
+.profile-card__badge--verified .profile-card__badge-icon {
+  width: 14px;
+  height: 14px;
+  filter: brightness(0) invert(1); /* escudo en blanco sobre el morado */
+}

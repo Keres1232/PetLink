@@ -1,4 +1,5 @@
 import CircleIconButton from "./CircleIconButton.jsx";
+import { useNotifications } from "../../../context/NotificationsContext.jsx";
 import "./AppHeader.css";
 
 function AppHeader({
@@ -11,6 +12,8 @@ function AppHeader({
   onRight,
   glass = true,
 }) {
+  const { unread } = useNotifications();
+
   return (
     <div className="app-header__spacer">
       <header className={`app-header ${glass ? "app-header--glass" : ""}`}>
@@ -33,6 +36,7 @@ function AppHeader({
             iconAlt={rightLabel}
             ariaLabel={rightLabel}
             onClick={onRight}
+            badge={rightLabel === "Notificaciones" ? unread : 0}
           />
         ) : (
           <span className="app-header__empty" />

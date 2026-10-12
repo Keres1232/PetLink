@@ -1,4 +1,5 @@
 import StatusTag from "./StatusTag.jsx";
+import AvatarPlaceholder from "./AvatarPlaceholder.jsx";
 import "./PetCard.css";
 
 const PencilIcon = () => (
@@ -27,11 +28,7 @@ function PetCard({
 
         {/* Foto (Foto1 / Rectangle 3) */}
         <div className="pet-card__photo">
-          {photoUrl ? (
-            <img src={photoUrl} alt={name} />
-          ) : (
-            <span>Foto</span>
-          )}
+          {photoUrl ? <img src={photoUrl} alt={name} /> : <AvatarPlaceholder />}
         </div>
 
         {/* Info (Info_Mascotas) */}

@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { getPrivateProfile, setMyLocation, updateSettings } from "../lib/api";
-import { setGeoConsent, getUserPoint, requestGeoConsent } from "../lib/geo";
+import { setGeoConsent, getUserPoint, hasGeoDecision, requestGeoConsent } from "../lib/geo";
 import { DEFAULT_CENTER, type GeoPoint } from "../lib/types";
 import { supabase } from "../lib/supabase";
 
 const DEFAULT_RADIUS_M = 5000;
+
+// Última vez que se guardó la ubicación en Supabase (compartido por todas las pantallas)
+let lastLocationSync = 0;
+// Una sola petición de permiso aunque varias pantallas usen el hook a la vez
+let devicePermission: Promise<boolean> | null = null;
 
 interface UseUserLocation {
   point: GeoPoint;
@@ -12,6 +17,7 @@ interface UseUserLocation {
   consent: boolean;
   loading: boolean;
   requestConsent: () => Promise<boolean>;
+  enableDeviceLocation: () => Promise<boolean>;
   saveRadius: (meters: number) => Promise<void>;
   reload: () => Promise<void>;
 }
@@ -32,10 +38,26 @@ export function useUserLocation(): UseUserLocation {
     try {
       const priv = await getPrivateProfile().catch(() => null);
       const granted = Boolean(priv?.geolocation_consent);
-      setRadius(priv?.alert_radius_m ?? DEFAULT_RADIUS_M);
+      const r = priv?.alert_radius_m ?? DEFAULT_RADIUS_M;
+      setRadius(r);
       setConsent(granted);
       if (granted) setGeoConsent(true);
-      setPoint(await getUserPoint());
+      // Ver lo que hay cerca NO depende de las alertas: con sesión iniciada se pide el permiso
+      // de ubicación del dispositivo una sola vez (queda solo en este dispositivo, no en Supabase).
+      if (!granted && !hasGeoDecision() && (await supabase.auth.getSession()).data.session) {
+        devicePermission ??= requestGeoConsent();
+        await devicePermission;
+      }
+      const p = await getUserPoint();
+      setPoint(p);
+      // Las alertas cercanas (trigger notify_on_report) usan la ubicación GUARDADA en Supabase:
+      // se actualiza al abrir la app (máximo cada 10 min) para que siga siendo la real.
+      if (granted && p !== DEFAULT_CENTER && Date.now() - lastLocationSync > 10 * 60 * 1000) {
+        lastLocationSync = Date.now();
+        setMyLocation(p, r).catch(() => {
+          lastLocationSync = 0;
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -85,5 +107,12 @@ export function useUserLocation(): UseUserLocation {
     [consent, point]
   );
 
-  return { point, radius, consent, loading, requestConsent, saveRadius, reload: load };
+  /** Solo para ver lo cercano: usa el GPS del dispositivo sin activar alertas ni guardar nada en Supabase. */
+  const enableDeviceLocation = useCallback(async () => {
+    const granted = await requestGeoConsent();
+    if (granted) setPoint(await getUserPoint());
+    return granted;
+  }, []);
+
+  return { point, radius, consent, loading, requestConsent, enableDeviceLocation, saveRadius, reload: load };
 }

@@ -9,11 +9,14 @@ import { placesNear, reportsNear } from "../../../lib/api";
 import { useUserLocation } from "../../../hooks/useUserLocation";
 import { dayLabel, distanceLabel } from "../../../lib/format";
 import { reportToPet } from "../../../lib/reportPet";
+import { DEFAULT_CENTER } from "../../../lib/types";
 import "./MapPage.css";
 
+const PLACES_MIN_RADIUS_M = 20000;
+
 function MapPage({ onBack, onNotifications, onCall, onReportClick }) {
-  // Punto y radio salen de private_profiles (si no hay consentimiento, centro por defecto)
-  const { point, radius, consent, loading, requestConsent } = useUserLocation();
+  // Punto: GPS del dispositivo si dio permiso (si no, centro de Bogotá). Radio: el guardado en private_profiles
+  const { point, radius, loading, enableDeviceLocation } = useUserLocation();
   const [filter, setFilter] = useState("Todo");
   const [places, setPlaces] = useState([]);
   const [reports, setReports] = useState([]);
@@ -25,7 +28,11 @@ function MapPage({ onBack, onNotifications, onCall, onReportClick }) {
     (async () => {
       try {
         setError("");
-        const [pl, rp] = await Promise.all([placesNear(point, radius), reportsNear(point, radius, 30)]);
+        // Veterinarias y refugios sirven para toda la ciudad: se buscan al menos a 20 km aunque el radio de alertas sea menor
+        const [pl, rp] = await Promise.all([
+          placesNear(point, Math.max(radius, PLACES_MIN_RADIUS_M)),
+          reportsNear(point, radius, 30),
+        ]);
         if (!alive) return;
         setPlaces(pl);
         setReports(rp);
@@ -60,8 +67,8 @@ function MapPage({ onBack, onNotifications, onCall, onReportClick }) {
 
       <section className="map-page__nearby">
         <h2 className="map-page__title">Cerca de ti</h2>
-        {!loading && !consent && (
-          <button type="button" className="map-page__consent" onClick={() => void requestConsent()}>
+        {!loading && point === DEFAULT_CENTER && (
+          <button type="button" className="map-page__consent" onClick={() => void enableDeviceLocation()}>
             Activa tu ubicación para ver los reportes cerca de ti
           </button>
         )}

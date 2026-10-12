@@ -138,9 +138,12 @@ function ReportLostPage({ pets = [], onBack, onNotifications, onNotListed, onSub
           <span className="report-lost__label">Fotos adicionales</span>
 
           <div className="report-lost__photos">
-            <div className="report-lost__photo">
-              {selectedPet?.photoUrl && <img src={selectedPet.photoUrl} alt={selectedPet.name} />}
-            </div>
+            {/* La foto registrada solo aparece si la mascota tiene una (sin cuadro vacío) */}
+            {selectedPet?.photoUrl && (
+              <div className="report-lost__photo">
+                <img src={selectedPet.photoUrl} alt={selectedPet.name} />
+              </div>
+            )}
 
             {photos.map((src) => (
               <div key={src} className="report-lost__photo">
@@ -157,8 +160,9 @@ function ReportLostPage({ pets = [], onBack, onNotifications, onNotListed, onSub
           </div>
 
           <p className="report-lost__hint">
-            La primera foto ya es la de {selectedPet?.name ?? "tu mascota"} registrada. Puedes agregar hasta{" "}
-            {MAX_EXTRA_PHOTOS} más recientes.
+            {selectedPet?.photoUrl
+              ? `La primera foto ya es la de ${selectedPet.name} registrada. Puedes agregar hasta ${MAX_EXTRA_PHOTOS} más recientes.`
+              : `${selectedPet?.name ?? "Tu mascota"} no tiene foto registrada. Agrega hasta ${MAX_EXTRA_PHOTOS} fotos recientes para que sea más fácil reconocerla.`}
           </p>
         </div>
 

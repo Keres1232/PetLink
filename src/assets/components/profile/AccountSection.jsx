@@ -1,9 +1,12 @@
 import infoPersonalIcon from "../../svg/Ajustes/info_personal.svg";
 import escudoIcon from "../../svg/Ajustes/Escudo.svg";
+import reportsIcon from "../../svg/Ajustes/Ajus_Report.svg";
 import notificacionIcon from "../../svg/Ajustes/notificacion.svg";
 import privacidadIcon from "../../svg/Ajustes/Privacidad.svg";
 import ayudaIcon from "../../svg/Ajustes/Ayuda y soporte.svg";
 import cerrarSesionIcon from "../../svg/Ajustes/cerrar sesión.svg";
+import ToggleSwitch from "./ToggleSwitch.jsx";
+import { useNotifications } from "../../../context/NotificationsContext.jsx";
 import "./AccountSection.css";
 
 const ChevronIcon = () => (
@@ -14,6 +17,12 @@ const ChevronIcon = () => (
 
 const OPTIONS = [
   { id: "edit", icon: infoPersonalIcon, label: "Editar información personal" },
+  {
+    id: "reports",
+    icon: reportsIcon,
+    label: "Mis reportes",
+    sublabel: "Cambia el estado de tus alertas",
+  },
   {
     id: "verification",
     icon: escudoIcon,
@@ -27,12 +36,29 @@ const OPTIONS = [
 ];
 
 function AccountSection({ onOptionClick }) {
+  const { enabled: notifEnabled, setEnabled: setNotifEnabled } = useNotifications();
+
   return (
     <section className="account">
       <h2 className="account__title">Cuenta</h2>
 
       <div className="account__card">
-        {OPTIONS.map((option) => (
+        {OPTIONS.map((option) =>
+          option.id === "notifications" ? (
+            // Notificaciones: interruptor para activarlas o desactivarlas (ya no abre la bandeja)
+            <div key={option.id} className="account__row">
+              <span className="account__row-left">
+                <span className="account__icon-circle">
+                  <img src={option.icon} alt="" className="account__icon" />
+                </span>
+                <span className="account__text">
+                  <span className="account__label">{option.label}</span>
+                  <span className="account__sublabel">{notifEnabled ? "Activadas" : "Desactivadas"}</span>
+                </span>
+              </span>
+              <ToggleSwitch checked={notifEnabled} onChange={(on) => void setNotifEnabled(on)} ariaLabel="Notificaciones" />
+            </div>
+          ) : (
           <button
             key={option.id}
             type="button"
@@ -54,7 +80,8 @@ function AccountSection({ onOptionClick }) {
               <ChevronIcon />
             </span>
           </button>
-        ))}
+          )
+        )}
       </div>
     </section>
   );

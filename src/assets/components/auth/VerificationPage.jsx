@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import AppHeader from "../shared/AppHeader.jsx";
 import { myVetApplication } from "../../../lib/api";
+import { useAuth } from "../../../context/AuthContext";
 import InfoNotice from "../shared/InfoNotice.jsx";
 import ChipGroup from "../shared/ChipGroup.jsx";
 import IconInputField from "../shared/IconInputField.jsx";
@@ -13,6 +14,7 @@ import refugeIcon from "../../svg/Adopcion/Ref.svg";
 import mailIcon from "../../svg/Verificacion/Correo.svg";
 import idIcon from "../../svg/Verificacion/id.svg";
 import degreeIcon from "../../svg/Verificacion/Titulo.svg";
+import locationIcon from "../../svg/Location icon.svg";
 import "../reports/ReportLostPage.css";
 import "../reports/ReportFoundPage.css";
 import "./VerificationPage.css";
@@ -30,9 +32,13 @@ function VerificationPage({ onBack, onNotifications, onSubmit }) {
   const [email, setEmail] = useState("");
   const [license, setLicense] = useState("");
   const [degree, setDegree] = useState("");
+  const [address, setAddress] = useState("");
   const [specialty, setSpecialty] = useState("");
-  // La base de datos guarda un solo documento de soporte por solicitud
+  // Refugio / veterinaria: se pide la dirección en vez del título (el médico veterinario no la necesita)
+  const refuge = type === "refuge";
+  // Documento de soporte (support_document_url) + documento de identidad (id_document_url)
   const [docFile, setDocFile] = useState(null);
+  const [idFile, setIdFile] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   // Última solicitud del usuario: si hay una pendiente o aprobada no se muestra el formulario
@@ -44,10 +50,20 @@ function VerificationPage({ onBack, onNotifications, onSubmit }) {
       .catch(() => setCurrent(null));
   }, []);
 
-  const blocked = current?.status === "pending" || current?.status === "approved";
+  // Una solicitud aprobada solo bloquea si la cuenta SIGUE siendo profesional: si el admin
+  // le devolvió el rol de miembro, puede volver a solicitar
+  const { profile } = useAuth();
+  const isProfessional = profile?.role === "vet" || profile?.role === "foundation";
+  const blocked = current?.status === "pending" || (current?.status === "approved" && isProfessional);
 
   const canSubmit =
-    name.trim() !== "" && email.trim() !== "" && license.trim() !== "" && docFile && !busy;
+    name.trim() !== "" &&
+    email.trim() !== "" &&
+    license.trim() !== "" &&
+    (!refuge || address.trim() !== "") &&
+    docFile &&
+    idFile &&
+    !busy;
 
   const submit = async (e) => {
     e.preventDefault();
@@ -55,8 +71,11 @@ function VerificationPage({ onBack, onNotifications, onSubmit }) {
     setBusy(true);
     setError("");
     try {
-      if (docFile.size > 10 * 1024 * 1024) throw new Error("El documento no puede superar los 10 MB.");
-      await onSubmit?.({ type, name, email, license, degree, specialty, docFile });
+      if ([docFile, idFile].some((f) => f.size > 10 * 1024 * 1024))
+        throw new Error("Cada documento puede pesar máximo 10 MB.");
+      // vet_applications no tiene columna de dirección: igual que en web-development,
+      // para refugios se guarda en `degree` y el admin la ve como "Dirección"
+      await onSubmit?.({ type, name, email, license, degree: refuge ? address : degree, specialty, docFile, idFile });
     } catch (err) {
       console.error(err);
       setError(err?.message || "No se pudo enviar la solicitud. Intenta de nuevo.");
@@ -120,13 +139,24 @@ function VerificationPage({ onBack, onNotifications, onSubmit }) {
           onChange={setLicense}
         />
 
-        <IconInputField
-          label="Título y universidad"
-          icon={icon(degreeIcon)}
-          placeholder="Médico veterinario · Universidad"
-          value={degree}
-          onChange={setDegree}
-        />
+        {refuge ? (
+          <IconInputField
+            label="Dirección"
+            icon={icon(locationIcon)}
+            placeholder="Ej: Cll 1 #2-3, Usaquén, Bogotá"
+            autoComplete="street-address"
+            value={address}
+            onChange={setAddress}
+          />
+        ) : (
+          <IconInputField
+            label="Título y universidad"
+            icon={icon(degreeIcon)}
+            placeholder="Médico veterinario · Universidad"
+            value={degree}
+            onChange={setDegree}
+          />
+        )}
 
         <TextInputField
           label="Especialidad"
@@ -141,6 +171,7 @@ function VerificationPage({ onBack, onNotifications, onSubmit }) {
           file={docFile}
           onChange={setDocFile}
         />
+        <FileDrop label="Documento de identidad" file={idFile} onChange={setIdFile} />
 
         <div className="verification__submit-card">
           <p className="verification__submit-text">Te avisaremos cuando revisemos tu solicitud</p>
