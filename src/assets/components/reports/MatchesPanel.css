@@ -1,0 +1,134 @@
+.matches-panel {
+  display: flex;
+  padding: 10px 12px;
+  flex-direction: column;
+  gap: 8px;
+
+  border: 1px dashed #b89cf0;
+  border-radius: 14px;
+  background: #f7f3ff;
+}
+
+.matches-panel__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+
+  font-family: "Kodchasan", sans-serif;
+  font-size: 14px;
+}
+
+.matches-panel__head span {
+  color: var(--titulos, #7519ff);
+  font-family: "Nata Sans", sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.matches-panel__count {
+  display: inline-flex;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 4px;
+  padding: 0 5px;
+
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 9px;
+  background: #ef4b4b;
+
+  color: #ffffff;
+  font-size: 11px;
+}
+
+.matches-panel__muted {
+  margin: 0;
+  color: var(--desctivado, #66557e);
+  font-family: "Nata Sans", sans-serif;
+  font-size: 12px;
+}
+
+.matches-panel__item {
+  display: flex;
+  padding: 8px 10px;
+  flex-direction: column;
+  gap: 4px;
+
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.matches-panel__item.is-resolved {
+  opacity: 0.75;
+}
+
+.matches-panel__item-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+
+  font-family: "Kodchasan", sans-serif;
+  font-size: 13px;
+}
+
+.matches-panel__item-head span {
+  color: var(--desctivado, #66557e);
+  font-family: "Nata Sans", sans-serif;
+  font-size: 11px;
+}
+
+.matches-panel__badge {
+  padding: 1px 8px;
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+.matches-panel__badge.is-confirmed { background: #c9f3df; color: #1f6b45 !important; }
+.matches-panel__badge.is-dismissed { background: #eeeeee; }
+
+.matches-panel__message,
+.matches-panel__contact {
+  margin: 0;
+  font-family: "Nata Sans", sans-serif;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.matches-panel__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.matches-panel__dismiss,
+.matches-panel__confirm {
+  flex: 1;
+  padding: 7px 8px;
+
+  border-radius: 18px;
+
+  font-family: "Kodchasan", sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.matches-panel__dismiss {
+  border: 1.5px solid #c9bde6;
+  background: #ffffff;
+  color: #66557e;
+}
+
+.matches-panel__confirm {
+  border: none;
+  background: #2e9e6b;
+  color: #ffffff;
+}
+
+.matches-panel__dismiss:disabled,
+.matches-panel__confirm:disabled {
+  opacity: 0.5;
+}

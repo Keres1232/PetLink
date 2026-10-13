@@ -238,3 +238,29 @@
   /* ícono gris del proyecto pintado de morado */
   filter: invert(17%) sepia(97%) saturate(6223%) hue-rotate(266deg) brightness(97%) contrast(109%);
 }
+
+/* Acciones de una alerta: ver en el mapa + aviso privado */
+.community__alert-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.community__match-btn {
+  padding: 7px 14px;
+
+  border: none;
+  border-radius: 20px;
+  background: var(--titulos, #7519ff);
+
+  color: #ffffff;
+  font-family: "Kodchasan", sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.community__match-btn:active {
+  transform: scale(0.96);
+}

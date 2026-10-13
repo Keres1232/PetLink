@@ -69,9 +69,9 @@ function PetDetailModal({ pet, onClose, onContact, onAdoptionChanged }) {
             {/* Mascota en adopción: pedir adoptarla, o (si es tuya) ver y responder a los interesados */}
             {pet.isAdoption && <AdoptionPanel key={pet.id} pet={pet} isOwner={pet.isMine} onChanged={onAdoptionChanged} />}
 
-            {/* Contactar al dueño de una mascota en adopción: por ahora solo el botón (sin acción todavía) */}
-            {pet.isAdoption && !pet.isMine && (
-              <button type="button" className="pet-detail__contact">
+            {/* Contactar al dueño de una mascota en adopción: mensaje privado (le llega como interesado) */}
+            {pet.isAdoption && !pet.isMine && onContact && (
+              <button type="button" className="pet-detail__contact" onClick={() => onContact(pet)}>
                 Contactar al dueño
               </button>
             )}

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import AppHeader from "../shared/AppHeader.jsx";
 import ChipGroup from "../shared/ChipGroup.jsx";
 import IconInputField from "../shared/IconInputField.jsx";
@@ -10,6 +10,12 @@ import bellIcon from "../../svg/bell.svg";
 import editIcon from "../../svg/edit_icono.svg";
 import { speciesChipOptions } from "../shared/speciesOptions.jsx";
 import { setGeoConsent } from "../../../lib/geo";
+import { newestFirst, reportsNear } from "../../../lib/api";
+import { reportToPet } from "../../../lib/reportPet";
+import { useUserLocation } from "../../../hooks/useUserLocation";
+import InfoNotice from "../shared/InfoNotice.jsx";
+import PetCard from "../pets/PetCard.jsx";
+import MatchSheet from "./MatchSheet.jsx";
 import "./ReportLostPage.css";
 import "./ReportFoundPage.css";
 
@@ -40,6 +46,24 @@ const SIZES = ["Pequeño", "Mediano", "Grande"];
 const MAX_PHOTOS = 3;
 
 function ReportFoundPage({ species = [], onBack, onNotifications, onSubmit }) {
+  // Mascotas perdidas cerca (hasta 20 km, igual que el mapa) para el paso previo
+  const { point: userPoint, radius, loading: locLoading } = useUserLocation();
+  const [step, setStep] = useState("select");
+  const [lostNearby, setLostNearby] = useState(null); // null = cargando
+  const [matchTarget, setMatchTarget] = useState(null);
+  const matchSent = useRef(false);
+
+  useEffect(() => {
+    if (locLoading) return;
+    let alive = true;
+    reportsNear(userPoint, Math.max(radius, 20000), 40)
+      .then((rows) => alive && setLostNearby(newestFirst(rows.filter((r) => r.type === "lost")).map(reportToPet)))
+      .catch(() => alive && setLostNearby([]));
+    return () => {
+      alive = false;
+    };
+  }, [locLoading, userPoint, radius]);
+
   const [mainPhoto, setMainPhoto] = useState(null);
   const [mainFile, setMainFile] = useState(null);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -105,6 +129,59 @@ function ReportFoundPage({ species = [], onBack, onNotifications, onSubmit }) {
       setBusy(false);
     }
   };
+
+  // Paso previo: ¿es alguna de las mascotas perdidas cerca? (como web-development).
+  // Si la reconoce, le avisa al dueño en privado sin crear una alerta nueva.
+  const showSelect = step === "select" && (lostNearby === null || lostNearby.length > 0);
+
+  if (showSelect) {
+    return (
+      <>
+        <AppHeader title="Encontré mascota" leftIcon={backIcon} onLeft={onBack} rightIcon={bellIcon} onRight={onNotifications} />
+
+        <div className="report-lost found-match">
+          <InfoNotice>
+            ¿Es alguna de estas mascotas perdidas? Si la reconoces, avísale a su dueño en privado. Si no, publica una
+            alerta de mascota encontrada.
+          </InfoNotice>
+
+          {lostNearby === null && <p className="found-match__muted">Buscando mascotas perdidas cerca…</p>}
+
+          {lostNearby?.length > 0 && (
+            <div className="found-match__grid">
+              {lostNearby.map((p) => (
+                <PetCard
+                  key={p.id}
+                  status="Perdido"
+                  name={p.name}
+                  location={p.location}
+                  photoUrl={p.photoUrl}
+                  onClick={() => setMatchTarget({ id: p.id, name: p.name, photoUrl: p.photoUrl, lost: true })}
+                />
+              ))}
+            </div>
+          )}
+
+          <button type="button" className="report-lost__submit report-found__submit" onClick={() => setStep("form")}>
+            No es ninguna — publicar mascota encontrada
+          </button>
+          <button type="button" className="report-lost__cancel" onClick={onBack}>
+            Cancelar
+          </button>
+        </div>
+
+        <MatchSheet
+          key={matchTarget?.id ?? "none"}
+          report={matchTarget}
+          onSent={() => (matchSent.current = true)}
+          onClose={() => {
+            setMatchTarget(null);
+            if (matchSent.current) onBack?.(); // aviso enviado: no hace falta publicar otra alerta
+          }}
+        />
+      </>
+    );
+  }
 
   return (
     <>

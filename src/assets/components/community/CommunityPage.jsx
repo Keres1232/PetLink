@@ -19,6 +19,7 @@ import { timeAgo } from "../../../lib/format";
 import backIcon from "../../svg/Back.svg";
 import searchIcon from "../../svg/Buscar.svg";
 import locationIcon from "../../svg/Location icon.svg";
+import MatchesPanel from "../reports/MatchesPanel.jsx";
 import SearchBar from "../shared/SearchBar.jsx";
 import "./CommunityPage.css";
 
@@ -38,7 +39,7 @@ const DRAFT_TYPES = [
   { id: "story", label: "Historia" },
 ];
 
-function CommunityPage({ avatarUrl, openPostId, onBack, onViewOnMap }) {
+function CommunityPage({ avatarUrl, openPostId, onBack, onViewOnMap, onContactOwner, myUserId }) {
   const [filter, setFilter] = useState("Todo");
   const [error, setError] = useState("");
 
@@ -220,11 +221,21 @@ function CommunityPage({ avatarUrl, openPostId, onBack, onViewOnMap }) {
                 <div className="community__thread">
                   {/* Alertas de mascota perdida/encontrada: ir al reporte en el mapa */}
                   {post.report_id && (
-                    <button type="button" className="community__map-btn" onClick={() => onViewOnMap?.(post.report_id)}>
-                      <img src={locationIcon} alt="" />
-                      Ver en el mapa
-                    </button>
+                    <div className="community__alert-actions">
+                      <button type="button" className="community__map-btn" onClick={() => onViewOnMap?.(post.report_id)}>
+                        <img src={locationIcon} alt="" />
+                        Ver en el mapa
+                      </button>
+                      {/* Respuesta privada a la alerta: solo la ve quien la publicó */}
+                      {post.user_id !== myUserId && (
+                        <button type="button" className="community__match-btn" onClick={() => onContactOwner?.(post)}>
+                          {post.type === "found" ? "Es mi mascota" : "¡La encontré!"}
+                        </button>
+                      )}
+                    </div>
                   )}
+                  {/* El dueño de la alerta ve aquí los avisos privados que le enviaron */}
+                  {post.report_id && post.user_id === myUserId && <MatchesPanel reportId={post.report_id} />}
                   {comments.length === 0 && <p className="community__empty">Sé el primero en responder.</p>}
                   {comments.map((c) => (
                     <div key={c.id} className="community__comment-row">

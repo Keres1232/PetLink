@@ -14,6 +14,7 @@ import type {
   Pet,
   PlaceNear,
   PrivateProfile,
+  ReportMatch,
   ReportNear,
   Species,
   VetApplication,
@@ -462,6 +463,52 @@ export async function listAdoptionInterests(petId: string): Promise<AdoptionInte
 /** El dueño aprueba o rechaza; al aprobar la mascota pasa a "adopted" (lo hace la RPC). */
 export async function respondAdoptionInterest(interestId: string, status: "approved" | "rejected"): Promise<void> {
   const { error } = await supabase.rpc("respond_adoption_interest", { p_interest_id: interestId, p_status: status });
+  if (error) throw error;
+}
+
+// ---------------------------------------------------------------
+// "¡La encontré!" (report_matches): respuesta PRIVADA a una alerta.
+// No es un chat: es como un comentario a la publicación que solo ve quien la publicó.
+// Igual que en web-development (FoundPetReportPage + panel en CommunityPage).
+// ---------------------------------------------------------------
+
+export async function createReportMatch(input: {
+  reportId: string;
+  message?: string | null;
+  contact?: string | null;
+}): Promise<void> {
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+  if (!userId) throw new Error("No hay sesión activa.");
+  const { error } = await supabase.from("report_matches").insert({
+    report_id: input.reportId,
+    finder_id: userId,
+    message: input.message?.trim() || null,
+    contact: input.contact?.trim() || null,
+  });
+  if (error) {
+    const msg = error.message ?? "";
+    if (msg.includes("duplicate")) throw new Error("Ya le enviaste un aviso al dueño de esta alerta.", { cause: error });
+    if (msg.includes("muchas coincidencias"))
+      throw new Error("Esta alerta ya recibió muchos avisos recientes. Intenta más tarde.", { cause: error });
+    throw error;
+  }
+}
+
+/** Avisos recibidos en una alerta propia (la RLS solo se los muestra al dueño de la alerta). */
+export async function listReportMatches(reportId: string): Promise<ReportMatch[]> {
+  const { data, error } = await supabase
+    .from("report_matches")
+    .select(
+      "id, report_id, finder_id, message, contact, status, created_at, resolved_at, finder:profiles!report_matches_finder_id_fkey(name)"
+    )
+    .eq("report_id", reportId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data as unknown as ReportMatch[];
+}
+
+export async function resolveReportMatch(matchId: string, status: "confirmed" | "dismissed"): Promise<void> {
+  const { error } = await supabase.from("report_matches").update({ status }).eq("id", matchId);
   if (error) throw error;
 }
 

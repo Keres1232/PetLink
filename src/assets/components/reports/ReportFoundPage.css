@@ -90,3 +90,28 @@
 .report-found__submit {
   background: #ef4b4b;
 }
+/* Paso previo: mascotas perdidas cerca */
+.found-match__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+@media (min-width: 480px) {
+  .found-match__grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.found-match__grid .pet-card {
+  width: 100%;
+  max-width: none;
+}
+
+.found-match__muted {
+  margin: 12px 0;
+  color: var(--desctivado, #66557e);
+  font-family: "Kodchasan", sans-serif;
+  font-size: 13px;
+  text-align: center;
+}

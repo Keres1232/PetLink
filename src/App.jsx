@@ -81,6 +81,7 @@ import ReportAdoptionPage from "./assets/components/reports/ReportAdoptionPage.j
 import RequestsPage from "./assets/components/requests/RequestsPage.jsx";
 import ReviewRequestPage from "./assets/components/requests/ReviewRequestPage.jsx";
 import ModerationPage from "./assets/components/requests/ModerationPage.jsx";
+import MatchSheet from "./assets/components/reports/MatchSheet.jsx";
 import MyReportsPage from "./assets/components/reports/MyReportsPage.jsx";
 import MyClinicPage from "./assets/components/profile/MyClinicPage.jsx";
 import EditProfilePage from "./assets/components/profile/EditProfilePage.jsx";
@@ -309,6 +310,7 @@ function App() {
   const [species, setSpecies] = useState([]);
   const [contactPostId, setContactPostId] = useState(null);
   const [mapFocusReportId, setMapFocusReportId] = useState(null); // "Ver en el mapa" desde Comunidad
+  const [matchTarget, setMatchTarget] = useState(null); // alerta a la que se le envía un aviso privado
   const [editingPet, setEditingPet] = useState(null);
 
   // Reportes reales cerca del usuario (Inicio: "Cerca de ti" y "Encontrados")
@@ -794,13 +796,17 @@ function App() {
           setSelectedPet(null);
         }}
         onContact={(pet) => {
-          // Se habla con el dueño en la publicación del reporte (comentarios)
+          // Mensaje PRIVADO a quien publicó (no comentario público): solo él lo ve.
+          // Adopción → adoption_interests; alerta → report_matches
           setSelectedPet(null);
-          setListPage(null);
-          setContactPostId(pet.postId);
-          setActiveTab("community");
+          setMatchTarget(
+            pet.isAdoption
+              ? { id: pet.id, name: pet.name, photoUrl: pet.photoUrl, adoption: true }
+              : { id: pet.id, name: pet.name, photoUrl: pet.photoUrl, lost: pet.status !== "Encontrado" }
+          );
         }}
       />
+      <MatchSheet key={matchTarget?.id ?? "none"} report={matchTarget} onClose={() => setMatchTarget(null)} />
       <PhotoPickerModal
         open={profilePhotoOpen}
         onClose={() => setProfilePhotoOpen(false)}
@@ -1352,6 +1358,15 @@ function App() {
             avatarUrl={profilePhoto}
             openPostId={contactPostId}
             onBack={goHome}
+            myUserId={user?.id}
+            onContactOwner={(post) =>
+              setMatchTarget({
+                id: post.report_id,
+                name: "esta mascota",
+                photoUrl: post.image_url,
+                lost: post.type !== "found",
+              })
+            }
             onViewOnMap={(reportId) => {
               // Alerta de Comunidad → mapa centrado en ese reporte
               setMapFocusReportId(reportId);

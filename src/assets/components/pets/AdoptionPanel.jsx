@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { expressAdoptionInterest, listAdoptionInterests, respondAdoptionInterest } from "../../../lib/api";
+import { listAdoptionInterests, respondAdoptionInterest } from "../../../lib/api";
 import { timeAgo } from "../../../lib/format";
 import "./AdoptionPanel.css";
 
@@ -7,16 +7,14 @@ const STATUS_LABEL = { pending: "Pendiente", approved: "Aprobado", rejected: "Re
 
 /**
  * Adopción dentro de la ficha de una mascota en adopción (pets.status = 'for_adoption').
- * - Otra persona: deja un mensaje "Quiero adoptarlo" (express_adoption_interest).
+ * - Otra persona: no ve nada aquí; escribe con "Contactar al dueño" (MatchSheet → express_adoption_interest).
  * - Dueño: ve a los interesados y aprueba o rechaza (respond_adoption_interest; al aprobar la
  *   mascota pasa a "adoptada").
  */
 function AdoptionPanel({ pet, isOwner, onChanged }) {
-  const [message, setMessage] = useState("");
   const [interests, setInterests] = useState([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [sent, setSent] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -91,38 +89,8 @@ function AdoptionPanel({ pet, isOwner, onChanged }) {
     );
   }
 
-  return (
-    <div className="adoption">
-      <h3 className="pet-detail__section">¿Quieres adoptarla?</h3>
-      {sent ? (
-        <p className="adoption__sent" role="status">
-          ¡Listo! Le avisamos a quien la publicó. Te contactará si aprueba tu solicitud.
-        </p>
-      ) : (
-        <>
-          <textarea
-            className="adoption__textarea"
-            rows={3}
-            placeholder="Cuéntale por qué quieres adoptarla y cómo contactarte."
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-          />
-          {error && <p className="auth-error" role="alert">{error}</p>}
-          <button
-            type="button"
-            className="pet-detail__contact"
-            disabled={busy || message.trim().length < 5}
-            onClick={() => void run(async () => {
-              await expressAdoptionInterest(pet.id, message.trim());
-              setSent(true);
-            })}
-          >
-            {busy ? "Enviando..." : "Quiero adoptarla"}
-          </button>
-        </>
-      )}
-    </div>
-  );
+  // Otra persona: escribe con "Contactar al dueño" (MatchSheet en modo adopción)
+  return null;
 }
 
 export default AdoptionPanel;

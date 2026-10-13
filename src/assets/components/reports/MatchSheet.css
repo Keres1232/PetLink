@@ -1,0 +1,178 @@
+.match-sheet__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 320;
+
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.match-sheet__sheet {
+  display: flex;
+  width: 100%;
+  max-width: 420px;
+  padding: 12px 18px calc(24px + env(safe-area-inset-bottom, 0px));
+
+  flex-direction: column;
+  gap: 12px;
+
+  border-radius: 30px 30px 0 0;
+  background: #ffffff;
+  box-sizing: border-box;
+
+  animation: match-sheet-up 0.25s ease-out;
+}
+
+@keyframes match-sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.match-sheet__handle {
+  align-self: center;
+  width: 48px;
+  height: 5px;
+  border-radius: 3px;
+  background: #ded5f3;
+}
+
+.match-sheet__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.match-sheet__photo {
+  display: flex;
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #e6e7e8;
+}
+
+.match-sheet__photo img {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: cover;
+}
+
+.match-sheet__title {
+  margin: 0;
+  color: #000000;
+  font-family: "Kodchasan", sans-serif;
+  font-size: 18px;
+}
+
+.match-sheet__privacy {
+  margin: 2px 0 0;
+  color: var(--titulos, #7519ff);
+  font-family: "Nata Sans", sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.match-sheet__text {
+  margin: 0;
+  font-family: "Nata Sans", sans-serif;
+  font-size: 14px;
+  color: #14101c;
+}
+
+.match-sheet__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  font-family: "Kodchasan", sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.match-sheet__field textarea,
+.match-sheet__field input {
+  width: 100%;
+  padding: 10px 12px;
+
+  border: 1px solid #e1d9ec;
+  border-radius: 12px;
+  background: #faf8ff;
+
+  font-family: "Nata Sans", sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.match-sheet__send {
+  height: 44px;
+
+  border: none;
+  border-radius: 12px;
+  background: var(--titulos, #7519ff);
+
+  color: #ffffff;
+  font-family: "Kodchasan", sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.match-sheet__send:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.match-sheet__cancel {
+  border: none;
+  background: transparent;
+  color: var(--desctivado, #66557e);
+  font-family: "Kodchasan", sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ===== Fondo lila de la app con huellas ===== */
+.match-sheet__sheet {
+  position: relative;
+  overflow: hidden;
+  background: #ede8ff;
+}
+
+.match-sheet__content {
+  position: relative;
+  z-index: 1; /* por encima de las huellas */
+
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.match-sheet__handle {
+  background: #c9b8f2;
+}
+
+.match-sheet__field textarea,
+.match-sheet__field input {
+  border-color: #d9cdf5;
+  background: #ffffff;
+}
+
+/* Que arrastrar sobre el fondo oscuro no mueva la página de atrás */
+.match-sheet__overlay {
+  overscroll-behavior: contain;
+  touch-action: none;
+}
+
+.match-sheet__field textarea {
+  touch-action: pan-y; /* el texto largo sí se puede desplazar */
+}
