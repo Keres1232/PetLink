@@ -2,6 +2,7 @@ import { Capacitor } from "@capacitor/core";
 import { supabase } from "./supabase";
 import { translateAuthError } from "./authErrors";
 import { APP_RESET_URL } from "./authLinks";
+import { ageFromBirthDate } from "./format";
 import type {
   CommentReport,
   CommentRow,
@@ -693,10 +694,64 @@ export async function updateMyReport(
 }
 
 /**
+ * Repara las alertas VIEJAS del usuario: antes la APK guardaba solo pet_id en las alertas de
+ * "perdida", y como la tabla pets solo la lee su dueño (RLS), las demás cuentas veían la ficha
+ * vacía. El dueño sí puede leer su mascota y editar sus alertas: se copian los datos que falten.
+ * Devuelve cuántas alertas se completaron. (El SQL 2026-10-13_alertas_con_datos_de_mascota.sql
+ * hace lo mismo para todas de una vez.)
+ */
+export async function repairMyLostReports(): Promise<number> {
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+  if (!userId) return 0;
+  const { data, error } = await supabase
+    .from("reports")
+    .select("id, species_id, sex, breed, size, color, age_estimate, pet:pets(species_id, sex, breed, size, color, birth_date)")
+    .eq("user_id", userId)
+    .not("pet_id", "is", null);
+  if (error) throw error;
+
+  const empty = (v: unknown) => v === null || v === undefined || v === "";
+  let fixed = 0;
+  for (const r of (data ?? []) as any[]) {
+    const p = r.pet;
+    if (!p) continue;
+    const patch: Record<string, unknown> = {};
+    if (empty(r.species_id) && p.species_id) patch.species_id = p.species_id;
+    if (empty(r.sex) && p.sex) patch.sex = p.sex;
+    if (empty(r.breed) && p.breed) patch.breed = p.breed;
+    if (empty(r.size) && p.size) patch.size = p.size;
+    if (empty(r.color) && p.color) patch.color = p.color;
+    const age = ageFromBirthDate(p.birth_date ?? null);
+    if (empty(r.age_estimate) && age) patch.age_estimate = age;
+    if (!Object.keys(patch).length) continue;
+    const { error: e } = await supabase.from("reports").update(patch).eq("id", r.id).eq("user_id", userId);
+    if (e) console.warn("[alertas] no se pudo completar", r.id, e);
+    else fixed++;
+  }
+  return fixed;
+}
+
+/**
  * Reporte completo para la ficha: `reports_near` solo trae un resumen (sin raza, sexo,
  * tamaño, color ni edad). Incluye la mascota registrada si el reporte es de "perdí mi mascota".
  */
+let reportDetailsRpcMissing = false;
+
 export async function getReportDetails(id: string): Promise<Record<string, unknown> | null> {
+  // 1. RPC report_details (SQL 2026-10-13_report_details.sql): trae también los datos de la mascota
+  //    aunque no sea tuya (la tabla pets por RLS solo la lee su dueño → la ficha salía vacía).
+  if (!reportDetailsRpcMissing) {
+    const rpc = await supabase.rpc("report_details", { p_id: id });
+    if (!rpc.error) return (rpc.data as Record<string, unknown> | null) ?? null;
+    if (rpc.error.code === "PGRST202" || rpc.error.code === "42883") {
+      reportDetailsRpcMissing = true; // aún no se ejecutó el SQL: se usa la consulta de siempre
+      console.warn("[ficha] falta la función report_details: ejecuta supabase/sql/2026-10-13_report_details.sql");
+    } else {
+      console.warn("[ficha] report_details falló, se usa la consulta directa", rpc.error);
+    }
+  }
+
+  // 2. Consulta directa (sin el SQL): la mascota solo llega si es del usuario que mira
   const { data, error } = await supabase
     .from("reports")
     .select(

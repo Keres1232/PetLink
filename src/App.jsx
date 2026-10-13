@@ -42,6 +42,7 @@ import {
   markNotificationRead,
   getReportDetails,
   publisherKinds,
+  repairMyLostReports,
   getReportById,
   putPetUpForAdoption,
   removePetFromAdoption,
@@ -61,6 +62,7 @@ import CircleIconButton from "./assets/components/shared/CircleIconButton.jsx";
 import PawBackground from "./assets/components/shared/PawBackground.jsx";
 import ConfirmModal from "./assets/components/shared/ConfirmModal.jsx";
 import PhotoPickerModal from "./assets/components/shared/PhotoPickerModal.jsx";
+import PhotoCropModal from "./assets/components/shared/PhotoCropModal.jsx";
 import SuccessToast from "./assets/components/shared/SuccessToast.jsx";
 import HomePage from "./assets/components/home/HomePage.jsx";
 import MapPage from "./assets/components/map/MapPage.jsx";
@@ -95,6 +97,7 @@ import EditProfilePage from "./assets/components/profile/EditProfilePage.jsx";
 import backIcon from "./assets/svg/Back.svg";
 import "./App.css";
 import PawLoader from "./assets/components/shared/PawLoader.jsx";
+import PullToRefresh from "./assets/components/shared/PullToRefresh.jsx";
 
 // "Mascotas encontradas" en Inicio busca al menos en 20 km, igual que el mapa
 const FOUND_MIN_RADIUS_M = 20000;
@@ -305,6 +308,7 @@ function App() {
 
   const [selectedPet, setSelectedPet] = useState(null);
   const [profilePhotoOpen, setProfilePhotoOpen] = useState(false);
+  const [avatarCropFile, setAvatarCropFile] = useState(null); // foto de perfil elegida, esperando el ajuste
   const [photoPreview, setPhotoPreview] = useState(null);
   const [avatarStatus, setAvatarStatus] = useState(null); // "saving" | "saved" | "error"
   const clearAvatarStatus = useCallback(() => setAvatarStatus(null), []);
@@ -386,6 +390,15 @@ function App() {
   }, [activeTab, user, locLoading, loadNear]);
 
   const nearLost = nearReports.filter((p) => p.status === "Perdido");
+
+  // Al entrar: completa las alertas viejas de este usuario que solo tenían pet_id (las otras
+  // cuentas las veían vacías). Una vez por sesión; si no hay nada que reparar no hace cambios.
+  useEffect(() => {
+    if (!user?.id) return;
+    repairMyLostReports()
+      .then((n) => n > 0 && console.info(`[alertas] se completaron ${n} alertas con los datos de la mascota`))
+      .catch((e) => console.warn("[alertas] no se pudieron completar las alertas viejas", e));
+  }, [user?.id]);
 
   const loadPets = useCallback(async () => {
     try {
@@ -485,6 +498,7 @@ function App() {
     // 1. Ventanas emergentes
     if (selectedPet) return done(() => setSelectedPet(null));
     if (showReportModal) return done(() => setShowReportModal(false));
+    if (avatarCropFile) return done(() => setAvatarCropFile(null));
     if (profilePhotoOpen) return done(() => setProfilePhotoOpen(false));
     if (cityPickerOpen) return done(() => setCityPickerOpen(false));
     if (confirmAction) return done(() => setConfirmAction(null));
@@ -735,23 +749,27 @@ function App() {
     if (!point) {
       throw new Error("No encontramos ese lugar. Escríbelo más específico o usa tu ubicación actual.");
     }
-    const petPhoto = type === "lost" ? pets.find((p) => p.id === r.petId)?.photoUrl : null;
+    const lostPet = type === "lost" ? pets.find((p) => p.id === r.petId) : null;
+    const petPhoto = lostPet?.photoUrl ?? null;
     const photos = [
       ...(petPhoto ? [petPhoto] : []),
       ...(r.photoFiles?.length ? await uploadPhotos(r.photoFiles, "pet-photos") : []),
     ];
 
+    // Perdida: los datos de la mascota se COPIAN en la alerta (como la web). Si solo se guarda pet_id,
+    // las demás cuentas ven la ficha vacía: la tabla pets solo la puede leer su dueño (RLS).
     const payload = {
       petId: type === "lost" ? r.petId : null,
       type,
       description,
       point,
       photos,
-      speciesId: type === "found" ? r.speciesId : null,
-      sex: type === "found" ? SEX_DB[r.sex] ?? "unknown" : null,
-      breed: type === "found" ? r.breed?.trim() || null : null,
-      size: type === "found" ? SIZE_DB[r.size] ?? null : null,
-      ageEstimate: type === "found" ? r.age?.trim() || null : null,
+      speciesId: type === "found" ? r.speciesId : lostPet?.speciesId ?? null,
+      sex: type === "found" ? SEX_DB[r.sex] ?? "unknown" : SEX_DB[lostPet?.sex] ?? null,
+      breed: type === "found" ? r.breed?.trim() || null : lostPet?.breed?.trim() || null,
+      size: type === "found" ? SIZE_DB[r.size] ?? null : SIZE_DB[lostPet?.size] ?? null,
+      color: type === "found" ? null : lostPet?.color?.trim() || null,
+      ageEstimate: type === "found" ? r.age?.trim() || null : lostPet?.age || null,
       lostAt:
         type === "lost" && r.date
           ? new Date(`${r.date}T${r.time || "00:00"}`).toISOString()
@@ -920,7 +938,18 @@ function App() {
       <PhotoPickerModal
         open={profilePhotoOpen}
         onClose={() => setProfilePhotoOpen(false)}
-        onFile={(file) => void saveAvatar(file)}
+        onFile={setAvatarCropFile}
+      />
+      {/* Foto de perfil: se ajusta en un marco redondo (mover, acercar, girar) antes de guardarla */}
+      <PhotoCropModal
+        file={avatarCropFile}
+        round
+        subtitle="Arrastra para elegir cómo se verá tu foto de perfil."
+        onCancel={() => setAvatarCropFile(null)}
+        onDone={(file) => {
+          setAvatarCropFile(null);
+          void saveAvatar(file);
+        }}
       />
     </>
   );
@@ -939,6 +968,21 @@ function App() {
       }}
     />
   );
+
+  // "Desliza hacia abajo para recargar": vuelve a pedir los datos de App y remonta la pantalla
+  // actual (refreshKey en su key) para que las que cargan sus propios datos también se actualicen
+  const [refreshKey, setRefreshKey] = useState(0);
+  const pullRefresh = async () => {
+    setRefreshKey((k) => k + 1);
+    await Promise.allSettled([
+      loadNear(),
+      loadAdoption(),
+      loadPets(),
+      loadActiveReports(),
+      refreshProfileRef.current?.(),
+      refreshUnread?.(),
+    ]);
+  };
 
   const goTab = (close) => (id) => {
     close();
@@ -1017,7 +1061,10 @@ function App() {
       <div className="phone-frame">
         <main className="app">
           <PawBackground />
-          <NotificationsPage onBack={() => setShowNotifications(false)} onOpen={(n) => void openNotification(n)} />
+          <PullToRefresh onRefresh={pullRefresh} />
+          <NotificationsPage
+            key={`notifications-${refreshKey}`}
+            onBack={() => setShowNotifications(false)} onOpen={(n) => void openNotification(n)} />
           <NavBar active={activeTab} onNavigate={goTab(() => setShowNotifications(false))} />
         </main>
       </div>
@@ -1089,6 +1136,7 @@ function App() {
       <div className="phone-frame">
         <main className="app">
           <PawBackground />
+          <PullToRefresh onRefresh={pullRefresh} />
           <ReportPetsPage
             key={listPage}
             kind={listPage}
@@ -1119,6 +1167,7 @@ function App() {
       <div className="phone-frame">
         <main className="app">
           <PawBackground />
+          <PullToRefresh onRefresh={pullRefresh} />
           <PetListPage
             title={isAdoption ? "En adopción" : "Encontrados"}
             pets={isAdoption ? adoptionPets : foundPets}
@@ -1459,9 +1508,11 @@ function App() {
     <div className="phone-frame">
       <main className="app">
         <PawBackground />
+        <PullToRefresh onRefresh={pullRefresh} />
 
         {activeTab === "home" && (
           <HomePage
+            key={`home-${refreshKey}`}
             userName={userName}
             usingDefaultLocation={usingDefaultLocation}
             onEnableLocation={() => void enableDeviceLocation()}
@@ -1487,6 +1538,7 @@ function App() {
 
         {activeTab === "map" && (
           <MapPage
+            key={`map-${refreshKey}`}
             onBack={goHome}
             onNotifications={openNotifications}
             onCall={handleCall}
@@ -1498,7 +1550,7 @@ function App() {
 
         {activeTab === "community" && (
           <CommunityPage
-            key={contactPostId ? `${contactPostId}-${contactNonce}` : "feed"}
+            key={`${contactPostId ? `${contactPostId}-${contactNonce}` : "feed"}-${refreshKey}`}
             avatarUrl={profilePhoto}
             openPostId={contactPostId}
             openCommentId={contactCommentId}

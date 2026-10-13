@@ -6,7 +6,7 @@ import { getPublisher } from "../../../lib/api";
  * "Publicado por: nombre" en la ficha de una mascota: quien publicó la alerta o la
  * mascota (en adopción o registrada). Si es tuya dice "Tú".
  */
-function PublishedBy({ pet, myUserId }) {
+function PublishedBy({ pet, myUserId, onLoaded }) {
   // undefined = cargando · null = no se pudo saber
   const [publisher, setPublisher] = useState(undefined);
 
@@ -14,10 +14,16 @@ function PublishedBy({ pet, myUserId }) {
     let alive = true;
     const query = pet.isReport ? { reportId: pet.id } : { userId: pet.ownerId };
     getPublisher(query)
-      .then((p) => alive && setPublisher(p))
+      .then((p) => {
+        if (!alive) return;
+        setPublisher(p);
+        onLoaded?.(p); // la ficha lo usa para no mostrar "Contactar" en lo que es tuyo
+      })
       .catch((e) => {
         console.error("No se pudo cargar quién publicó", e);
-        if (alive) setPublisher(null);
+        if (!alive) return;
+        setPublisher(null);
+        onLoaded?.(null); // no se supo quién: la ficha deja contactar
       });
     return () => {
       alive = false;

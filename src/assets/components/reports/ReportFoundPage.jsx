@@ -12,7 +12,7 @@ import editIcon from "../../svg/edit_icono.svg";
 import SpeciesPicker from "../shared/SpeciesPicker.jsx";
 import { defaultSpeciesId } from "../../../lib/species";
 import { setGeoConsent } from "../../../lib/geo";
-import { newestFirst, reportsNear } from "../../../lib/api";
+import { myReports, newestFirst, reportsNear } from "../../../lib/api";
 import { reportToPet } from "../../../lib/reportPet";
 import { useUserLocation } from "../../../hooks/useUserLocation";
 import InfoNotice from "../shared/InfoNotice.jsx";
@@ -59,8 +59,13 @@ function ReportFoundPage({ species = [], onBack, onNotifications, onSubmit }) {
   useEffect(() => {
     if (locLoading) return;
     let alive = true;
-    reportsNear(userPoint, Math.max(radius, 20000), 40)
-      .then((rows) => alive && setLostNearby(newestFirst(rows.filter((r) => r.type === "lost")).map(reportToPet)))
+    // Sin tus propias alertas: no te puedes avisar a ti mismo
+    Promise.all([reportsNear(userPoint, Math.max(radius, 20000), 40), myReports().catch(() => [])])
+      .then(([rows, mine]) => {
+        if (!alive) return;
+        const mineIds = new Set(mine.map((r) => r.id));
+        setLostNearby(newestFirst(rows.filter((r) => r.type === "lost" && !mineIds.has(r.id))).map(reportToPet));
+      })
       .catch(() => alive && setLostNearby([]));
     return () => {
       alive = false;

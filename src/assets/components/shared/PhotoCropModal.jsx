@@ -25,7 +25,19 @@ const RotateIcon = ({ flip = false }) => (
  *
  * `file`: la foto elegida (null = cerrado). `onDone(fileRecortado)` / `onCancel()`.
  */
-function PhotoCropModal({ file, aspect = CARD_PHOTO_ASPECT, onDone, onCancel }) {
+/**
+ * Foto de perfil: `round` = marco circular 1:1 (así se ve el avatar) y salida de 600 px.
+ */
+function PhotoCropModal({
+  file,
+  aspect: aspectProp,
+  round = false,
+  subtitle = "Arrastra para elegir qué parte se verá en la ficha de la mascota.",
+  onDone,
+  onCancel,
+}) {
+  const aspect = aspectProp ?? (round ? 1 : CARD_PHOTO_ASPECT);
+  const outputWidth = round ? 600 : OUTPUT_WIDTH;
   useLockBodyScroll(Boolean(file));
   const fileSrc = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
   // Foto girada (se genera con un canvas); va ligada a su archivo para no mezclarla con la siguiente
@@ -39,7 +51,7 @@ function PhotoCropModal({ file, aspect = CARD_PHOTO_ASPECT, onDone, onCancel }) 
   const drag = useRef(null);
 
   // Marco: el ancho de la pantalla (con márgenes), hasta 360 px
-  const frameW = Math.min((typeof window !== "undefined" ? window.innerWidth : 393) - 48, 360);
+  const frameW = Math.min((typeof window !== "undefined" ? window.innerWidth : 393) - 48, round ? 280 : 360);
   const frameH = Math.round(frameW / aspect);
 
   useEffect(() => () => fileSrc && URL.revokeObjectURL(fileSrc), [fileSrc]);
@@ -118,7 +130,7 @@ function PhotoCropModal({ file, aspect = CARD_PHOTO_ASPECT, onDone, onCancel }) 
       const sy = -pos.y / scale;
       const sw = frameW / scale;
       const sh = frameH / scale;
-      const outW = Math.min(OUTPUT_WIDTH, Math.round(sw));
+      const outW = Math.min(outputWidth, Math.round(sw));
       const outH = Math.round(outW / aspect);
       const canvas = document.createElement("canvas");
       canvas.width = outW;
@@ -142,10 +154,10 @@ function PhotoCropModal({ file, aspect = CARD_PHOTO_ASPECT, onDone, onCancel }) 
         <PawBackground contained />
 
         <h2 className="photo-crop__title">Ajusta la foto</h2>
-        <p className="photo-crop__subtitle">Arrastra para elegir qué parte se verá en la ficha de la mascota.</p>
+        <p className="photo-crop__subtitle">{subtitle}</p>
 
         <div
-          className="photo-crop__frame"
+          className={`photo-crop__frame ${round ? "photo-crop__frame--round" : ""}`}
           style={{ width: frameW, height: frameH }}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}

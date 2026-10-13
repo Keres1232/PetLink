@@ -174,3 +174,8 @@
 .photo-crop__rotate button:disabled {
   opacity: 0.5;
 }
+
+/* Foto de perfil: marco redondo, como se ve el avatar */
+.photo-crop__frame--round {
+  border-radius: 50%;
+}

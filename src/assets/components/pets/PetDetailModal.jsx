@@ -1,3 +1,4 @@
+import { useState } from "react";
 import StatusTag from "./StatusTag.jsx";
 import AvatarPlaceholder from "./AvatarPlaceholder.jsx";
 import AdoptionPanel from "./AdoptionPanel.jsx";
@@ -31,8 +32,14 @@ function InfoItem({ icon, label, value }) {
 function PetDetailModal({ pet, myUserId, onClose, onContact, onAdoptionChanged, onGiveForAdoption, onRemoveFromAdoption }) {
   useLockBodyScroll(Boolean(pet));
   const swipe = useSwipeToClose(onClose);
+  // Quién publicó (lo carga "Publicado por"): con eso se sabe si la ficha es tuya
+  const [publisher, setPublisher] = useState({ petId: null, userId: null });
   
     if (!pet) return null;
+
+  // Es tuya si lo dice la tarjeta (mascotas/adopciones) o si "Publicado por" resultó ser tu cuenta
+  const publisherKnown = publisher.petId === pet.id;
+  const isMine = Boolean(pet.isMine) || (publisherKnown && Boolean(myUserId) && publisher.userId === myUserId);
 
   return (
     <div className="pet-detail__overlay" onClick={onClose}>
@@ -68,7 +75,12 @@ function PetDetailModal({ pet, myUserId, onClose, onContact, onAdoptionChanged, 
             <h3 className="pet-detail__section">Señas particulares</h3>
             <p className="pet-detail__marks">{pet.marks || "Sin señas registradas."}</p>
 
-            <PublishedBy key={`publisher-${pet.id}`} pet={pet} myUserId={myUserId} />
+            <PublishedBy
+              key={`publisher-${pet.id}`}
+              pet={pet}
+              myUserId={myUserId}
+              onLoaded={(p) => setPublisher({ petId: pet.id, userId: p?.id ?? null })}
+            />
 
             {/* Tu mascota registrada: darla en adopción, o quitarla si ya está publicada */}
             {pet.isMine && !pet.isReport && !pet.isAdopted && (
@@ -79,14 +91,15 @@ function PetDetailModal({ pet, myUserId, onClose, onContact, onAdoptionChanged, 
             {pet.isAdoption && <AdoptionPanel key={`adoption-${pet.id}`} pet={pet} isOwner={pet.isMine} onChanged={onAdoptionChanged} />}
 
             {/* Contactar al dueño de una mascota en adopción: mensaje privado (le llega como interesado) */}
-            {pet.isAdoption && !pet.isMine && onContact && (
+            {pet.isAdoption && !isMine && onContact && (
               <button type="button" className="pet-detail__contact" onClick={() => onContact(pet)}>
                 Contactar al dueño
               </button>
             )}
 
-            {/* Solo los reportes tienen dueño a quien escribir (vía su publicación en Comunidad) */}
-            {pet.postId && onContact && (
+            {/* Solo los reportes tienen dueño a quien escribir (vía su publicación en Comunidad).
+                No se puede contactar a uno mismo: el botón sale cuando ya se sabe que la alerta es de otra persona */}
+            {pet.postId && onContact && publisherKnown && !isMine && (
               <button type="button" className="pet-detail__contact" onClick={() => onContact(pet)}>
                 {pet.status === "Encontrado" ? "Contactar a quien la encontró" : "Contactar al dueño"}
               </button>
