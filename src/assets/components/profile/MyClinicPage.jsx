@@ -13,6 +13,7 @@ import bellIcon from "../../svg/bell.svg";
 import locationIcon from "../../svg/Location icon.svg";
 import "../reports/ReportLostPage.css";
 import "./MyClinicPage.css";
+import PawLoader from "../shared/PawLoader.jsx";
 
 const KIND_LABEL = { clinic: "Veterinaria", shelter: "Refugio" };
 
@@ -167,7 +168,7 @@ function MyClinicPage({ role, onBack, onNotifications, onGoMap }) {
       <AppHeader title="Mi clínica" leftIcon={backIcon} onLeft={onBack} rightIcon={bellIcon} onRight={onNotifications} />
 
       <div className="report-lost my-clinic">
-        {loading && <p className="my-clinic__muted">Cargando…</p>}
+        {loading && <PawLoader />}
 
         {!loading && clinic && (
           <div className={`my-clinic__status ${clinic.verified ? "is-verified" : ""}`}>

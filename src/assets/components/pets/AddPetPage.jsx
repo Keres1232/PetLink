@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import AppHeader from "../shared/AppHeader.jsx";
 import ChipGroup from "../shared/ChipGroup.jsx";
 import TextInputField from "../shared/TextInputField.jsx";
@@ -7,29 +7,12 @@ import AvatarPlaceholder from "./AvatarPlaceholder.jsx";
 import backIcon from "../../svg/Back.svg";
 import bellIcon from "../../svg/bell.svg";
 import editIcon from "../../svg/edit_icono.svg";
-import dogIcon from "../../svg/Inscribir/perro.svg";
-import catIcon from "../../svg/Inscribir/gato.svg";
+import SpeciesPicker from "../shared/SpeciesPicker.jsx";
+import { defaultSpeciesId } from "../../../lib/species";
 import "./AddPetPage.css";
-
-const HeartIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path
-      d="M12 20.5C12 20.5 3 15.5 3 9C3 6 5.5 4 8 4C10 4 11.3 5.2 12 6.3C12.7 5.2 14 4 16 4C18.5 4 21 6 21 9C21 15.5 12 20.5 12 20.5Z"
-      stroke="#7519FF"
-      strokeWidth="2"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
 
 const SEX = ["Macho", "Hembra"];
 const SIZES = ["Pequeño", "Mediano", "Grande"];
-const SPECIES_OPTIONS = [
-  { names: ["dog", "perro"], label: "Perro", icon: dogIcon },
-  { names: ["cat", "gato"], label: "Gato", icon: catIcon },
-  { names: ["bird", "otro"], label: "Otro", icon: <HeartIcon /> },
-];
-const normalizeSpeciesName = (name) => name.trim().toLowerCase();
 
 const YEAR_MS = 365.25 * 24 * 60 * 60 * 1000;
 
@@ -61,18 +44,7 @@ function AddPetPage({ species = [], pet = null, onBack, onNotifications, onSave,
     marks: pet?.marks ?? "",
   });
 
-  const options = useMemo(
-    () =>
-      SPECIES_OPTIONS.flatMap(({ names, label, icon }) => {
-        const speciesEntry = species.find((item) =>
-          names.includes(normalizeSpeciesName(item.name))
-        );
-        return speciesEntry ? [{ id: speciesEntry.id, label, icon }] : [];
-      }),
-    [species]
-  );
-
-  const speciesId = form.speciesId || options[0]?.id || "";
+  const speciesId = form.speciesId || defaultSpeciesId(species);
 
   const update = (key) => (value) => setForm((f) => ({ ...f, [key]: value }));
   const canSave = form.name.trim().length >= 2 && Boolean(speciesId) && !saving;
@@ -144,8 +116,8 @@ function AddPetPage({ species = [], pet = null, onBack, onNotifications, onSave,
 
         <div className="add-pet__group">
           <span className="add-pet__label">Especie</span>
-          {options.length > 0 ? (
-            <ChipGroup options={options} value={speciesId} onChange={update("speciesId")} />
+          {species.length > 0 ? (
+            <SpeciesPicker species={species} value={speciesId} onChange={update("speciesId")} />
           ) : (
             <p className="add-pet__error">
               No hay especies disponibles. Revisa la tabla species en la base de datos.

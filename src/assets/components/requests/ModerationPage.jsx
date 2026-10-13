@@ -19,6 +19,7 @@ import vetIcon from "../../svg/Adopcion/Vet.svg";
 import refugeIcon from "../../svg/Adopcion/Ref.svg";
 import "./RequestsPage.css";
 import "./ModerationPage.css";
+import PawLoader from "../shared/PawLoader.jsx";
 
 const PLACE_KINDS = [
   { id: "shelter", label: "Refugio", icon: refugeIcon },
@@ -113,7 +114,7 @@ function ModerationPage({ initialTab = "posts", onBack }) {
         {error && <p className="auth-error" role="alert">{error}</p>}
 
         <div className="requests__list">
-          {loading && <p className="requests__empty">Cargando…</p>}
+          {loading && <PawLoader />}
           {!loading && counts[tab] === 0 && <p className="requests__empty">No hay nada por revisar aquí.</p>}
 
           {!loading &&

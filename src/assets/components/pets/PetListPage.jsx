@@ -26,6 +26,7 @@ function PetListPage({ title, pets = [], onBack, onNotifications, onPetClick }) 
               name={pet.name}
               location={pet.location}
               photoUrl={pet.photoUrl}
+              publisherKind={pet.publisherKind}
               onClick={() => onPetClick?.(pet)}
             />
           ))}

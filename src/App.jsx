@@ -39,6 +39,9 @@ import {
   getCommentById,
   getPostByReportId,
   getReportDetails,
+  publisherKinds,
+  putPetUpForAdoption,
+  removePetFromAdoption,
 } from "./lib/api";
 import ForgotPasswordScreen from "./assets/components/auth/ForgotPasswordScreen.jsx";
 import ResetPasswordScreen from "./assets/components/auth/ResetPasswordScreen.jsx";
@@ -88,8 +91,8 @@ import MyClinicPage from "./assets/components/profile/MyClinicPage.jsx";
 import EditProfilePage from "./assets/components/profile/EditProfilePage.jsx";
 import backIcon from "./assets/svg/Back.svg";
 import "./App.css";
+import PawLoader from "./assets/components/shared/PawLoader.jsx";
 
-const HIDDEN_SPECIES = ["ferret", "rabbit"];
 // "Mascotas encontradas" en Inicio busca al menos en 20 km, igual que el mapa
 const FOUND_MIN_RADIUS_M = 20000;
 
@@ -126,6 +129,7 @@ const petToCard = (p, myId) => {
     isAdoption: p.status === "for_adoption",
     isAdopted: p.status === "adopted",
     isMine: Boolean(myId) && p.user_id === myId,
+    ownerId: p.user_id, // "Publicado por" en la ficha
   };
 };
 
@@ -280,6 +284,7 @@ function App() {
   const [showReportLost, setShowReportLost] = useState(false);
   const [showReportFound, setShowReportFound] = useState(false);
   const [showReportAdoption, setShowReportAdoption] = useState(false);
+  const [adoptionPetId, setAdoptionPetId] = useState(null); // mascota registrada elegida desde su ficha
   const [showVerification, setShowVerification] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showMyReports, setShowMyReports] = useState(false);
@@ -387,7 +392,10 @@ function App() {
   const [adoptionPets, setAdoptionPets] = useState([]);
   const loadAdoption = useCallback(async () => {
     try {
-      setAdoptionPets((await listAdoptionPets()).map((p) => petToCard(p, user?.id)));
+      const rows = await listAdoptionPets();
+      // Etiqueta extra si quien la publicó es una veterinaria o un refugio (cualquiera puede publicar)
+      const kinds = await publisherKinds(rows.map((p) => p.user_id)).catch(() => ({}));
+      setAdoptionPets(rows.map((p) => ({ ...petToCard(p, user?.id), publisherKind: kinds[p.user_id] ?? null })));
     } catch (e) {
       console.error("No se pudieron cargar las mascotas en adopción", e);
     }
@@ -397,8 +405,17 @@ function App() {
     if (user && activeTab === "home") void loadAdoption();
   }, [user, activeTab, loadAdoption]);
 
-  // Publicar "Dar en adopción": crea la mascota con status for_adoption
+  // Publicar "Dar en adopción": una mascota registrada pasa a for_adoption, o se crea una nueva así
   const publishAdoption = async (r) => {
+    if (r.petId) {
+      // pets no tiene ubicación: el lugar va en la descripción, junto con lo que cuente el dueño
+      await putPetUpForAdoption(r.petId, [r.place.trim(), r.description?.trim()].filter(Boolean).join(" · ") || null);
+      await Promise.all([loadPets(), loadAdoption()]);
+      setShowReportAdoption(false);
+      setAdoptionPetId(null);
+      setActiveTab("home");
+      return;
+    }
     const photoUrl = r.photoFiles?.length ? await uploadPhoto(r.photoFiles[0], "pet-photos") : null;
     const years = parseFloat(String(r.age).replace(",", "."));
     const ageNote = r.age?.trim() && !Number.isFinite(years) ? `Edad aproximada: ${r.age.trim()}` : null;
@@ -422,7 +439,7 @@ function App() {
     if (user) {
       loadPets();
       listSpecies()
-        .then((s) => setSpecies(s.filter((x) => !HIDDEN_SPECIES.includes(x.name.toLowerCase()))))
+        .then(setSpecies) // catálogo completo en español: Perro y Gato en botones, el resto en "Otro"
         .catch((e) => console.error("No se pudo cargar species", e));
     } else {
       setPets([]);
@@ -799,7 +816,19 @@ function App() {
     <>
       <PetDetailModal
         pet={selectedPet}
+        myUserId={user?.id}
         onClose={() => setSelectedPet(null)}
+        onGiveForAdoption={(pet) => {
+          // Desde la ficha de tu mascota: abre "Dar en adopción" con ella ya elegida
+          setSelectedPet(null);
+          setAdoptionPetId(pet.id);
+          setShowReportAdoption(true);
+        }}
+        onRemoveFromAdoption={async (pet) => {
+          await removePetFromAdoption(pet.id);
+          await Promise.all([loadPets(), loadAdoption()]);
+          setSelectedPet(null);
+        }}
         onAdoptionChanged={() => {
           // Al aprobar una adopción la mascota pasa a "adoptada": se recargan las listas
           void loadPets();
@@ -852,7 +881,7 @@ function App() {
   if (loading && (user || recovering) && authView !== "register") {
     return (
       <div className="phone-frame">
-        <p style={{ padding: 24, fontFamily: "Kodchasan, sans-serif", color: "#66557e" }}>Cargando…</p>
+        <PawLoader fullScreen />
       </div>
     );
   }
@@ -1124,7 +1153,7 @@ function App() {
       <div className="phone-frame">
         <main className="app">
           <PawBackground />
-          <HelpPage onBack={() => setShowHelp(false)} />
+          <HelpPage onBack={() => setShowHelp(false)} defaultEmail={user?.email ?? ""} />
           <NavBar active={activeTab} onNavigate={goTab(() => setShowHelp(false))} />
         </main>
       </div>
@@ -1185,7 +1214,10 @@ function App() {
         <main className="app">
           <PawBackground />
           <ReportAdoptionPage
+            key={adoptionPetId ?? "nueva"}
             species={species}
+            myPets={pets.filter((p) => !p.isAdoption && !p.isAdopted)}
+            initialPetId={adoptionPetId}
             onBack={() => setShowReportAdoption(false)}
             onNotifications={() => {
               setShowReportAdoption(false);
@@ -1516,7 +1548,10 @@ function App() {
             setShowReportModal(false);
             if (optionId === "lost") setShowReportLost(true);
             else if (optionId === "found") setShowReportFound(true);
-            else if (optionId === "adoption") setShowReportAdoption(true);
+            else if (optionId === "adoption") {
+              setAdoptionPetId(null);
+              setShowReportAdoption(true);
+            }
           }}
           onCommunityPost={() => {
             setShowReportModal(false);

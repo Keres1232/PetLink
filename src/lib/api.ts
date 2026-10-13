@@ -335,6 +335,7 @@ export async function createPet(input: {
     status: input.status ?? "active",
   });
   if (error) {
+    if (input.status === "for_adoption") throw adoptionError(error);
     // Trigger prevent_duplicate_pet: mismo nombre y especie en los últimos 90 s (doble envío)
     if (/ya registraste/i.test(error.message ?? ""))
       throw new Error("Esta mascota ya fue registrada hace un momento. Revisa tu perfil.");
@@ -478,6 +479,46 @@ export async function myPostsCount(): Promise<number> {
 // ---------------------------------------------------------------
 // Adopción (pets.status = 'for_adoption' + adoption_interests)
 // ---------------------------------------------------------------
+
+/**
+ * Trigger enforce_adoption_verified (migración 0046): mientras no se ejecute
+ * supabase/sql/2026-10-13_adopcion_abierta.sql, solo veterinarias y refugios verificados pueden publicar.
+ */
+function adoptionError(error: { message?: string }): Error | { message?: string } {
+  if (/refugios verificados/i.test(error.message ?? ""))
+    return new Error(
+      "Por ahora el servidor solo deja publicar en adopción a veterinarias y refugios verificados. Pídele al administrador que active la adopción para todos."
+    );
+  return error;
+}
+
+/**
+ * Dar en adopción una mascota que ya está registrada: la misma fila de pets pasa a for_adoption
+ * (no se crea otra). `description` reemplaza las señas: lleva el lugar y lo que cuente el dueño.
+ */
+export async function putPetUpForAdoption(petId: string, description: string | null): Promise<void> {
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+  if (!userId) throw new Error("No hay sesión activa.");
+  const { error } = await supabase
+    .from("pets")
+    .update({ status: "for_adoption", ...(description ? { description } : {}) })
+    .eq("id", petId)
+    .eq("user_id", userId);
+  if (error) throw adoptionError(error);
+}
+
+/** Quitar de adopción: la mascota vuelve a ser solo tuya (status active). */
+export async function removePetFromAdoption(petId: string): Promise<void> {
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+  if (!userId) throw new Error("No hay sesión activa.");
+  const { error } = await supabase
+    .from("pets")
+    .update({ status: "active" })
+    .eq("id", petId)
+    .eq("user_id", userId)
+    .eq("status", "for_adoption");
+  if (error) throw error;
+}
 
 export async function listAdoptionPets(limit = 20): Promise<Pet[]> {
   const { data, error } = await supabase
@@ -653,6 +694,57 @@ export async function getReportDetails(id: string): Promise<Record<string, unkno
   return (data as Record<string, unknown> | null) ?? null;
 }
 
+/**
+ * Qué cuentas son una veterinaria o un refugio (para la etiqueta extra en adopción y en "Publicado por"):
+ * - con un lugar VERIFICADO en el mapa (vet_clinics): su tipo, que eligió el admin;
+ * - sin lugar todavía pero con rol foundation: refugio.
+ * El médico veterinario (persona) no lleva etiqueta.
+ */
+export async function publisherKinds(userIds: string[]): Promise<Record<string, "clinic" | "shelter">> {
+  const ids = [...new Set(userIds.filter(Boolean))];
+  if (!ids.length) return {};
+  const [places, roles] = await Promise.all([
+    supabase.from("vet_clinics").select("created_by, kind, created_at").in("created_by", ids).eq("verified", true).order("created_at", { ascending: false }),
+    supabase.from("profiles").select("id, role").in("id", ids),
+  ]);
+  if (places.error) throw places.error;
+  const kinds: Record<string, "clinic" | "shelter"> = {};
+  for (const row of (places.data ?? []) as { created_by: string; kind: "clinic" | "shelter" }[]) {
+    if (!kinds[row.created_by]) kinds[row.created_by] = row.kind;
+  }
+  for (const p of (roles.data ?? []) as { id: string; role: string }[]) {
+    if (!kinds[p.id] && p.role === "foundation") kinds[p.id] = "shelter";
+  }
+  return kinds;
+}
+
+/**
+ * "Publicado por" de una ficha: el autor de un reporte (reportId) o el dueño de una mascota (userId).
+ * Devuelve su nombre y foto (profiles.avatar_url, si la columna existe).
+ */
+export async function getPublisher(input: {
+  reportId?: string;
+  userId?: string;
+}): Promise<{ id: string; name: string; avatarUrl: string | null; kind: "clinic" | "shelter" | null } | null> {
+  let userId = input.userId;
+  if (!userId && input.reportId) {
+    const { data, error } = await supabase.from("reports").select("user_id").eq("id", input.reportId).maybeSingle();
+    if (error) throw error;
+    userId = (data as { user_id: string } | null)?.user_id;
+  }
+  if (!userId) return null;
+  const { data, error } = await supabase.from("profiles").select("id, name").eq("id", userId).maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const [avatars, kinds] = await Promise.all([avatarsOf([userId]), publisherKinds([userId]).catch(() => ({}))]);
+  return {
+    id: userId,
+    name: (data as { name: string | null }).name || "Usuario de PetClue",
+    avatarUrl: avatars[userId] ?? null,
+    kind: (kinds as Record<string, "clinic" | "shelter">)[userId] ?? null,
+  };
+}
+
 export async function getReportById(id: string): Promise<ReportNear | null> {
   const { data, error } = await supabase.rpc("report_by_id", { p_id: id });
   if (error) throw error;
@@ -820,6 +912,34 @@ export async function setNewPassword(newPassword: string): Promise<string | null
   }
   const email = data.user?.email;
   return email ? verifyPasswordSaved(email, newPassword) : null;
+}
+
+export const SUPPORT_EMAIL = "soporte@petclue.co";
+
+/**
+ * Ayuda y soporte (igual que web-development): la Edge Function `send-support-message` guarda el
+ * mensaje y lo envía a soporte@petclue.co (Resend, secreto RESEND_API_KEY). Si la función no
+ * responde, el mensaje se guarda directo en `support_messages` (RLS: inserta el usuario, lee el admin).
+ * `emailed` = false → el correo no salió y conviene ofrecer el mailto.
+ */
+export async function sendSupportMessage(input: {
+  message: string;
+  email: string;
+  subject?: string;
+}): Promise<{ emailed: boolean }> {
+  const { data, error } = await supabase.functions.invoke("send-support-message", { body: input });
+  if (!error) return { emailed: Boolean((data as { emailed?: boolean } | null)?.emailed) };
+
+  console.warn("[soporte] send-support-message no respondió; se guarda en support_messages", error);
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+  const { error: insertError } = await supabase.from("support_messages").insert({
+    user_id: userId ?? null,
+    email: input.email,
+    subject: input.subject ?? null,
+    message: input.message,
+  });
+  if (insertError) throw insertError;
+  return { emailed: false };
 }
 
 export async function searchGuides(query: string, limit = 10): Promise<GuideRow[]> {

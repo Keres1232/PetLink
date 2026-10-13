@@ -8,7 +8,7 @@ const PlusIcon = () => (
   </svg>
 );
 
-function PetPicker({ pets = [], value, onChange, onNotListed }) {
+function PetPicker({ pets = [], value, onChange, onNotListed, notListedLabel = "No está en lista", notListedActive = false }) {
   return (
     <div className="pet-picker">
       {pets.map((pet) => (
@@ -25,9 +25,9 @@ function PetPicker({ pets = [], value, onChange, onNotListed }) {
         </button>
       ))}
 
-      <button type="button" className="pet-picker__item pet-picker__item--add" onClick={onNotListed}>
+      <button type="button" className={`pet-picker__item pet-picker__item--add ${notListedActive ? "is-active" : ""}`} onClick={onNotListed}>
         <PlusIcon />
-        <span className="pet-picker__not-listed">No está en lista</span>
+        <span className="pet-picker__not-listed">{notListedLabel}</span>
       </button>
     </div>
   );

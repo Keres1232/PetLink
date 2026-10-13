@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { listReportMatches, resolveReportMatch } from "../../../lib/api";
 import { timeAgo } from "../../../lib/format";
 import "./MatchesPanel.css";
+import PawLoader from "../shared/PawLoader.jsx";
 
 const STATUS_LABEL = { confirmed: "Confirmado", dismissed: "Descartado" };
 
@@ -53,7 +54,7 @@ function MatchesPanel({ reportId }) {
         <span>Solo tú los ves</span>
       </div>
 
-      {loading && <p className="matches-panel__muted">Cargando…</p>}
+      {loading && <PawLoader size={40} label="" />}
       {!loading && matches.length === 0 && (
         <p className="matches-panel__muted">Todavía nadie te ha enviado un aviso sobre esta alerta.</p>
       )}

@@ -1,5 +1,6 @@
 import StatusTag from "./StatusTag.jsx";
 import AvatarPlaceholder from "./AvatarPlaceholder.jsx";
+import { PUBLISHER_LABEL } from "../../../lib/publisher";
 import "./PetCard.css";
 
 const PencilIcon = () => (
@@ -21,7 +22,9 @@ function PetCard({
   photoUrl,
   onClick,
   onEdit,
+  publisherKind,
 }) {
+  const publisherLabel = PUBLISHER_LABEL[publisherKind];
   return (
     <article className="pet-card" onClick={onClick}>
       <div className="pet-card__body">
@@ -29,6 +32,9 @@ function PetCard({
         {/* Foto (Foto1 / Rectangle 3) */}
         <div className="pet-card__photo">
           {photoUrl ? <img src={photoUrl} alt={name} /> : <AvatarPlaceholder />}
+          {publisherLabel && (
+            <span className={`pet-card__publisher pet-card__publisher--${publisherKind}`}>✓ {publisherLabel}</span>
+          )}
         </div>
 
         {/* Info (Info_Mascotas) */}

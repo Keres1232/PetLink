@@ -5,7 +5,7 @@ import MapView from "./MapView.jsx";
 import VetCard from "../pets/VetCard.jsx";
 import backIcon from "../../svg/Back.svg";
 import bellIcon from "../../svg/bell.svg";
-import { getReportById, placesNear, reportsNear } from "../../../lib/api";
+import { getReportById, newestFirst, placesNear, reportsNear } from "../../../lib/api";
 import { useUserLocation } from "../../../hooks/useUserLocation";
 import { dayLabel, distanceLabel } from "../../../lib/format";
 import { reportToPet } from "../../../lib/reportPet";
@@ -13,6 +13,9 @@ import { DEFAULT_CENTER } from "../../../lib/types";
 import "./MapPage.css";
 
 const MAP_MIN_RADIUS_M = 20000;
+
+// Título de la lista según el filtro (los de reportes van de la más nueva a la más vieja)
+const LIST_TITLE = { Veterinarias: "Veterinarias", Refugios: "Refugios" };
 
 function MapPage({ onBack, onNotifications, onCall, onReportClick, focusReportId, onFocusDone }) {
   // Punto: GPS del dispositivo si dio permiso (si no, centro de Bogotá). Radio: el guardado en private_profiles
@@ -46,14 +49,16 @@ function MapPage({ onBack, onNotifications, onCall, onReportClick, focusReportId
     return () => { alive = false; };
   }, [loading, point, radius]);
 
+  // Lista de abajo: publicaciones en general, la más reciente primero (no por distancia).
+  // Veterinarias y refugios no tienen fecha: siguen por cercanía.
   const shown = useMemo(() => {
-    const showReports = (t) => reports.filter((r) => r.type === t);
+    const showReports = (t) => newestFirst(reports.filter((r) => r.type === t));
     switch (filter) {
       case "Perdidas": return { places: [], reports: showReports("lost") };
       case "Encontradas": return { places: [], reports: showReports("found") };
       case "Veterinarias": return { places: places.filter((p) => p.kind === "clinic"), reports: [] };
       case "Refugios": return { places: places.filter((p) => p.kind === "shelter"), reports: [] };
-      default: return { places, reports };
+      default: return { places, reports: newestFirst(reports) };
     }
   }, [filter, places, reports]);
 
@@ -109,7 +114,7 @@ function MapPage({ onBack, onNotifications, onCall, onReportClick, focusReportId
       />
 
       <section className="map-page__nearby">
-        <h2 className="map-page__title">Cerca de ti</h2>
+        <h2 className="map-page__title">{LIST_TITLE[filter] ?? "Publicaciones recientes"}</h2>
         {!loading && point === DEFAULT_CENTER && (
           <button type="button" className="map-page__consent" onClick={() => void enableDeviceLocation()}>
             Activa tu ubicación para ver los reportes cerca de ti

@@ -22,6 +22,7 @@ import locationIcon from "../../svg/Location icon.svg";
 import MatchesPanel from "../reports/MatchesPanel.jsx";
 import SearchBar from "../shared/SearchBar.jsx";
 import "./CommunityPage.css";
+import PawLoader from "../shared/PawLoader.jsx";
 
 // Filtro de la franja -> tipo de post en la base de datos
 const TYPE_BY_FILTER = {
@@ -194,7 +195,7 @@ function CommunityPage({ avatarUrl, openPostId, onBack, onViewOnMap, onContactOw
         <MapFilterTabs filters={FILTERS} onChange={setFilter} />
 
         <div className="community__list">
-          {loading && <p className="community__empty">Cargando…</p>}
+          {loading && <PawLoader />}
           {!loading && visible.length === 0 && (
             <p className="community__empty">
               {searching ? `No encontramos publicaciones con «${query.trim()}».` : "Aún no hay publicaciones aquí."}

@@ -11,6 +11,7 @@ import backIcon from "../../svg/Back.svg";
 import bellIcon from "../../svg/bell.svg";
 import "./ReportLostPage.css";
 import "./MyReportsPage.css";
+import PawLoader from "../shared/PawLoader.jsx";
 
 // Estados de la tabla reports
 const STATUS = [
@@ -156,7 +157,7 @@ function MyReportsPage({ onBack, onNotifications }) {
 
         <MapFilterTabs filters={FILTERS} onChange={setFilter} />
 
-        {loading && <p className="my-reports__empty">Cargando…</p>}
+        {loading && <PawLoader />}
         {error && <p className="auth-error" role="alert">{error}</p>}
         {!loading && !error && visible.length === 0 && (
           <p className="my-reports__empty">No tienes reportes {filter === "Todas" ? "publicados" : filter.toLowerCase()}.</p>

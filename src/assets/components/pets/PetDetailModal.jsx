@@ -2,6 +2,8 @@ import StatusTag from "./StatusTag.jsx";
 import AvatarPlaceholder from "./AvatarPlaceholder.jsx";
 import AdoptionPanel from "./AdoptionPanel.jsx";
 import PawBackground from "../shared/PawBackground.jsx";
+import PublishedBy from "./PublishedBy.jsx";
+import AdoptionToggle from "./AdoptionToggle.jsx";
 import pawIcon from "../../svg/ExpCard/huella_card.svg";
 import starIcon from "../../svg/ExpCard/stard_card.svg";
 import clockIcon from "../../svg/ExpCard/relog_card.svg";
@@ -26,7 +28,7 @@ function InfoItem({ icon, label, value }) {
   );
 }
 
-function PetDetailModal({ pet, onClose, onContact, onAdoptionChanged }) {
+function PetDetailModal({ pet, myUserId, onClose, onContact, onAdoptionChanged, onGiveForAdoption, onRemoveFromAdoption }) {
   useLockBodyScroll(Boolean(pet));
   const swipe = useSwipeToClose(onClose);
   
@@ -65,6 +67,13 @@ function PetDetailModal({ pet, onClose, onContact, onAdoptionChanged }) {
 
             <h3 className="pet-detail__section">Señas particulares</h3>
             <p className="pet-detail__marks">{pet.marks || "Sin señas registradas."}</p>
+
+            <PublishedBy key={pet.id} pet={pet} myUserId={myUserId} />
+
+            {/* Tu mascota registrada: darla en adopción, o quitarla si ya está publicada */}
+            {pet.isMine && !pet.isReport && !pet.isAdopted && (
+              <AdoptionToggle key={`adopt-${pet.id}`} pet={pet} onGive={onGiveForAdoption} onRemove={onRemoveFromAdoption} />
+            )}
 
             {/* Mascota en adopción: pedir adoptarla, o (si es tuya) ver y responder a los interesados */}
             {pet.isAdoption && <AdoptionPanel key={pet.id} pet={pet} isOwner={pet.isMine} onChanged={onAdoptionChanged} />}

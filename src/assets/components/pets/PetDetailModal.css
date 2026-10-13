@@ -247,3 +247,59 @@
 .pet-detail__scroll {
   touch-action: pan-y;
 }
+/* "Publicado por: nombre" (una sola línea, sin foto) */
+.pet-detail__published {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+
+  margin: 14px 0 0;
+
+  color: var(--desctivado, #66557e);
+  font-family: "Kodchasan", sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.pet-detail__published strong {
+  color: #000000;
+  font-weight: 700;
+}
+
+/* Tu mascota: darla en adopción o quitarla */
+.pet-detail__adopt-hint {
+  margin: 14px 0 0;
+  text-align: center;
+  color: var(--desctivado, #66557e);
+  font-family: "Kodchasan", sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pet-detail__remove-adoption {
+  display: block;
+
+  width: 70%;
+  height: 44px;
+  margin: 12px auto 0;
+
+  border: 2px solid var(--activado, #ae77ff);
+  border-radius: 10px;
+  background: #ffffff;
+
+  color: var(--titulos, #7519ff);
+  font-family: "Kodchasan", sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.pet-detail__remove-adoption:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.pet-detail__remove-adoption:disabled {
+  opacity: 0.6;
+}

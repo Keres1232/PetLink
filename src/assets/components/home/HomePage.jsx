@@ -33,6 +33,7 @@ function PetCarousel({ pets, statusKey, onPetClick }) {
           name={pet.name}
           location={pet.location}
           photoUrl={pet.photoUrl}
+          publisherKind={pet.publisherKind}
           onClick={() => onPetClick?.(pet)}
         />
       ))}

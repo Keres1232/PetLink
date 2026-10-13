@@ -199,3 +199,57 @@
 
   cursor: pointer;
 }
+
+
+/* ========================================
+   ETIQUETA "VETERINARIA" / "REFUGIO"
+   (adopción publicada por un establecimiento verificado)
+======================================== */
+
+.pet-card__photo {
+  position: relative;
+}
+
+.pet-card__publisher {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+
+  display: inline-flex;
+  align-items: center;
+
+  height: 18px;
+  padding: 0 8px;
+
+  border-radius: 9px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+
+  color: #ffffff;
+  font-family: "Kodchasan", sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.pet-card__publisher--clinic {
+  background: #2f80ed;
+}
+
+.pet-card__publisher--shelter {
+  background: #7519ff;
+}
+
+/* Dentro de "Publicado por" va junto al nombre, no sobre una foto */
+.pet-card__publisher--inline {
+  position: static;
+  box-shadow: none;
+}
+
+/* Texto blanco siempre: ".pet-card__photo span" (gris) es más específico y lo pisaba */
+.pet-card__photo .pet-card__publisher,
+.pet-card__publisher {
+  color: #ffffff;
+  font-family: "Kodchasan", sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+}

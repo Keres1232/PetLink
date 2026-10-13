@@ -1,0 +1,57 @@
+.paw-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+
+  padding: 24px 0;
+}
+
+/* Arranque de la app: centrada en toda la pantalla, con el fondo lila */
+.paw-loader--full {
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 0;
+  background: #ede8ff;
+}
+
+.paw-loader__paw path {
+  stroke: var(--activado, #ae77ff);
+  stroke-miterlimit: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill-rule: evenodd;
+}
+
+.paw-loader__pad {
+  fill: var(--activado, #ae77ff);
+}
+
+/* Cada dedo se rellena durante 1/4 del ciclo (0.15 s), en orden: abajo-izq, arriba-izq, arriba, derecha */
+.paw-loader__toe {
+  fill: transparent;
+  animation: paw-loader-toe 0.6s infinite step-end;
+}
+
+@keyframes paw-loader-toe {
+  0% { fill: var(--activado, #ae77ff); }
+  25% { fill: transparent; }
+}
+
+.paw-loader__label {
+  margin: 0;
+
+  color: var(--desctivado, #66557e);
+  font-family: "Kodchasan", sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Sin animaciones si el usuario las desactivó en su teléfono: la huella completa, fija */
+@media (prefers-reduced-motion: reduce) {
+  .paw-loader__toe {
+    animation: none;
+    fill: var(--activado, #ae77ff);
+  }
+}

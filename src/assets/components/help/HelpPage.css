@@ -102,3 +102,16 @@
 .help__submit:focus { outline: none; }
 .help__submit:active:not(:disabled) { transform: scale(0.98); }
 .help__submit:disabled { opacity: 0.6; cursor: not-allowed; }
+.help__error {
+  margin: 0 12px;
+  text-align: center;
+  color: #d32f2f;
+  font-family: "Kodchasan", sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.help__sent a {
+  color: inherit;
+  font-weight: 700;
+}

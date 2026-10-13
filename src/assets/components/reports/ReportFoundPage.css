@@ -115,3 +115,17 @@
   font-size: 13px;
   text-align: center;
 }
+
+/* Dar en adopción una mascota registrada: aviso de que se usan los datos de su perfil */
+.adoption-form__note {
+  margin: 0;
+  padding: 10px 14px;
+
+  border-radius: 10px;
+  background: #ffffff;
+
+  color: #14101c;
+  font-family: "Nata Sans", sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+}

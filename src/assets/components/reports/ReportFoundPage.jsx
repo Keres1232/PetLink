@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import AppHeader from "../shared/AppHeader.jsx";
 import ChipGroup from "../shared/ChipGroup.jsx";
 import IconInputField from "../shared/IconInputField.jsx";
@@ -8,7 +8,8 @@ import AvatarPlaceholder from "../pets/AvatarPlaceholder.jsx";
 import backIcon from "../../svg/Back.svg";
 import bellIcon from "../../svg/bell.svg";
 import editIcon from "../../svg/edit_icono.svg";
-import { speciesChipOptions } from "../shared/speciesOptions.jsx";
+import SpeciesPicker from "../shared/SpeciesPicker.jsx";
+import { defaultSpeciesId } from "../../../lib/species";
 import { setGeoConsent } from "../../../lib/geo";
 import { newestFirst, reportsNear } from "../../../lib/api";
 import { reportToPet } from "../../../lib/reportPet";
@@ -18,6 +19,7 @@ import PetCard from "../pets/PetCard.jsx";
 import MatchSheet from "./MatchSheet.jsx";
 import "./ReportLostPage.css";
 import "./ReportFoundPage.css";
+import PawLoader from "../shared/PawLoader.jsx";
 
 const stroke = { stroke: "#66557E", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round", fill: "none" };
 
@@ -80,8 +82,7 @@ function ReportFoundPage({ species = [], onBack, onNotifications, onSubmit }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  const options = useMemo(() => speciesChipOptions(species), [species]);
-  const currentSpecies = speciesId || options[0]?.id || "";
+  const currentSpecies = speciesId || defaultSpeciesId(species);
   const canSubmit = place.trim() !== "" && !busy;
 
   const addPhoto = (e) => {
@@ -150,7 +151,7 @@ function ReportFoundPage({ species = [], onBack, onNotifications, onSubmit }) {
             alerta de mascota encontrada.
           </InfoNotice>
 
-          {lostNearby === null && <p className="found-match__muted">Buscando mascotas perdidas cerca…</p>}
+          {lostNearby === null && <PawLoader label="Buscando mascotas perdidas cerca…" />}
 
           {lostNearby?.length > 0 && (
             <div className="found-match__grid">
@@ -207,8 +208,8 @@ function ReportFoundPage({ species = [], onBack, onNotifications, onSubmit }) {
 
         <div className="found__group">
           <span className="report-lost__label">Especie</span>
-          {options.length > 0 ? (
-            <ChipGroup options={options} value={currentSpecies} onChange={setSpeciesId} />
+          {species.length > 0 ? (
+            <SpeciesPicker species={species} value={currentSpecies} onChange={setSpeciesId} />
           ) : (
             <p className="auth-error">No hay especies disponibles.</p>
           )}

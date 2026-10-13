@@ -12,6 +12,7 @@ import commentIcon from "../../svg/uil_comments.svg";
 import likeIcon from "../../svg/Likes.svg";
 import clockIcon from "../../svg/ExpCard/relog_card.svg";
 import "./NotificationsPage.css";
+import PawLoader from "../shared/PawLoader.jsx";
 
 // Campana morada (inline para poder controlar el color)
 const BellIcon = ({ color = "#AE77FF", size = 60 }) => (
@@ -106,7 +107,7 @@ function NotificationsPage({ onBack, onOpen }) {
         </section>
       ) : (
         <section className="notif-list">
-          {loading && <p className="notif-list__empty">Cargando…</p>}
+          {loading && <PawLoader />}
 
           {unread > 0 && (
             <button type="button" className="notif-list__mark-all" onClick={() => void markAll()}>
