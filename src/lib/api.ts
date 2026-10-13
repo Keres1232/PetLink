@@ -735,23 +735,10 @@ export async function repairMyLostReports(): Promise<number> {
  * Reporte completo para la ficha: `reports_near` solo trae un resumen (sin raza, sexo,
  * tamaño, color ni edad). Incluye la mascota registrada si el reporte es de "perdí mi mascota".
  */
-let reportDetailsRpcMissing = false;
-
 export async function getReportDetails(id: string): Promise<Record<string, unknown> | null> {
-  // 1. RPC report_details (SQL 2026-10-13_report_details.sql): trae también los datos de la mascota
-  //    aunque no sea tuya (la tabla pets por RLS solo la lee su dueño → la ficha salía vacía).
-  if (!reportDetailsRpcMissing) {
-    const rpc = await supabase.rpc("report_details", { p_id: id });
-    if (!rpc.error) return (rpc.data as Record<string, unknown> | null) ?? null;
-    if (rpc.error.code === "PGRST202" || rpc.error.code === "42883") {
-      reportDetailsRpcMissing = true; // aún no se ejecutó el SQL: se usa la consulta de siempre
-      console.warn("[ficha] falta la función report_details: ejecuta supabase/sql/2026-10-13_report_details.sql");
-    } else {
-      console.warn("[ficha] report_details falló, se usa la consulta directa", rpc.error);
-    }
-  }
-
-  // 2. Consulta directa (sin el SQL): la mascota solo llega si es del usuario que mira
+  // Complemento de reports_near / report_by_id (que ya traen los datos de la ficha): fotos extra y
+  // fecha de pérdida. La mascota (pet) solo llega si es del usuario que mira (RLS), por eso
+  // withReportDetails nunca borra lo que ya vino de la RPC.
   const { data, error } = await supabase
     .from("reports")
     .select(

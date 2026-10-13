@@ -70,6 +70,16 @@ export interface ReportNear {
   photos: string[];
   lost_at: string | null;
   post_id: string | null;
+  // Desde la migración 0042: datos de la ficha (de la mascota o del reporte) y quién la publicó
+  pet_id?: string | null;
+  breed?: string | null;
+  sex?: string | null;
+  size?: string | null;
+  color?: string | null;
+  age_estimate?: string | null;
+  pet_birth_date?: string | null;
+  owner_name?: string | null;
+  user_id?: string | null;
   distance_m: number;
   longitude: number;
   latitude: number;

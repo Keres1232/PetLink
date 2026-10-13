@@ -38,8 +38,10 @@ function PetDetailModal({ pet, myUserId, onClose, onContact, onAdoptionChanged, 
     if (!pet) return null;
 
   // Es tuya si lo dice la tarjeta (mascotas/adopciones) o si "Publicado por" resultó ser tu cuenta
-  const publisherKnown = publisher.petId === pet.id;
-  const isMine = Boolean(pet.isMine) || (publisherKnown && Boolean(myUserId) && publisher.userId === myUserId);
+  // El dueño ya viene en la tarjeta (ownerId, de reports_near / report_by_id); si no, lo averigua "Publicado por"
+  const ownerId = pet.ownerId ?? (publisher.petId === pet.id ? publisher.userId : undefined);
+  const publisherKnown = ownerId !== undefined;
+  const isMine = Boolean(pet.isMine) || (Boolean(myUserId) && ownerId === myUserId);
 
   return (
     <div className="pet-detail__overlay" onClick={onClose}>

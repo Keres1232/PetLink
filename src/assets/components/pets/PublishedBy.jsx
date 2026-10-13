@@ -12,7 +12,8 @@ function PublishedBy({ pet, myUserId, onLoaded }) {
 
   useEffect(() => {
     let alive = true;
-    const query = pet.isReport ? { reportId: pet.id } : { userId: pet.ownerId };
+    // Las alertas ya traen su dueño (user_id de reports_near / report_by_id); si no, se busca por el reporte
+    const query = pet.ownerId ? { userId: pet.ownerId } : { reportId: pet.id };
     getPublisher(query)
       .then((p) => {
         if (!alive) return;
