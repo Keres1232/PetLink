@@ -10,8 +10,16 @@ const MAX_ZOOM = 3;
 
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
 
+// Flecha circular (girar a la derecha; `flip` = a la izquierda)
+const RotateIcon = ({ flip = false }) => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={flip ? { transform: "scaleX(-1)" } : undefined}>
+    <path d="M20 12a8 8 0 1 1-2.34-5.66" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+    <path d="M20 4v5h-5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 /**
- * "Ajusta la foto": antes de subirla, el usuario mueve (arrastrando) y acerca (barra) la imagen
+ * "Ajusta la foto": antes de subirla, el usuario mueve (arrastrando), acerca (barra) y gira (90°) la imagen
  * dentro de un marco con la forma de la foto de la ficha. Se sube YA recortada, así que en las
  * tarjetas y en la ficha expandida se ve exactamente esa parte (sin guardar nada extra en la BD).
  *
@@ -19,7 +27,10 @@ const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
  */
 function PhotoCropModal({ file, aspect = CARD_PHOTO_ASPECT, onDone, onCancel }) {
   useLockBodyScroll(Boolean(file));
-  const src = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
+  const fileSrc = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
+  // Foto girada (se genera con un canvas); va ligada a su archivo para no mezclarla con la siguiente
+  const [rotated, setRotated] = useState(null); // { file, url }
+  const src = rotated?.file === file ? rotated.url : fileSrc;
   const [natural, setNatural] = useState(null); // { w, h }
   const [zoom, setZoom] = useState(1);
   const [pos, setPos] = useState({ x: 0, y: 0 }); // esquina de la imagen dentro del marco (px)
@@ -31,7 +42,8 @@ function PhotoCropModal({ file, aspect = CARD_PHOTO_ASPECT, onDone, onCancel }) 
   const frameW = Math.min((typeof window !== "undefined" ? window.innerWidth : 393) - 48, 360);
   const frameH = Math.round(frameW / aspect);
 
-  useEffect(() => () => src && URL.revokeObjectURL(src), [src]);
+  useEffect(() => () => fileSrc && URL.revokeObjectURL(fileSrc), [fileSrc]);
+  useEffect(() => () => rotated && URL.revokeObjectURL(rotated.url), [rotated]);
 
   if (!file) return null;
 
@@ -73,6 +85,28 @@ function PhotoCropModal({ file, aspect = CARD_PHOTO_ASPECT, onDone, onCancel }) 
     const s = cover * z;
     setZoom(z);
     setPos(fit({ x: frameW / 2 - cx * s, y: frameH / 2 - cy * s }, natural.w * s, natural.h * s));
+  };
+
+  // Girar 90° (dir = 1 derecha, -1 izquierda): se dibuja la foto rotada y se vuelve a encuadrar centrada
+  const rotate = async (dir) => {
+    const img = imgRef.current;
+    if (!natural || busy || !img) return;
+    setBusy(true);
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = natural.h;
+      canvas.height = natural.w;
+      const ctx = canvas.getContext("2d");
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate((dir * Math.PI) / 2);
+      ctx.drawImage(img, -natural.w / 2, -natural.h / 2);
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
+      if (blob) setRotated({ file, url: URL.createObjectURL(blob) });
+    } catch (e) {
+      console.error("No se pudo girar la foto", e);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const confirm = async () => {
@@ -145,6 +179,17 @@ function PhotoCropModal({ file, aspect = CARD_PHOTO_ASPECT, onDone, onCancel }) 
           />
           <span aria-hidden="true">+</span>
         </label>
+
+        <div className="photo-crop__rotate">
+          <button type="button" disabled={!natural || busy} onClick={() => void rotate(-1)} aria-label="Girar a la izquierda">
+            <RotateIcon flip />
+            Girar
+          </button>
+          <button type="button" disabled={!natural || busy} onClick={() => void rotate(1)} aria-label="Girar a la derecha">
+            Girar
+            <RotateIcon />
+          </button>
+        </div>
 
         <button type="button" className="photo-crop__done" disabled={!natural || busy} onClick={() => void confirm()}>
           {busy ? "Preparando..." : "Usar foto"}

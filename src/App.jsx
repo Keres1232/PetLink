@@ -40,6 +40,7 @@ import {
   getPostByReportId,
   getReportDetails,
   publisherKinds,
+  getReportById,
   putPetUpForAdoption,
   removePetFromAdoption,
 } from "./lib/api";
@@ -1443,6 +1444,15 @@ function App() {
                 lost: post.type !== "found",
               })
             }
+            onOpenReport={async (reportId) => {
+              // "Ver ficha completa" de una alerta de Comunidad → la misma ficha que en Inicio y el mapa
+              try {
+                const r = await getReportById(reportId);
+                if (r) showPet(reportToPet(r));
+              } catch (e) {
+                console.error("No se pudo abrir la ficha de la alerta", e);
+              }
+            }}
             onViewOnMap={(reportId) => {
               // Alerta de Comunidad → mapa centrado en ese reporte
               setMapFocusReportId(reportId);

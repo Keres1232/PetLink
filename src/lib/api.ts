@@ -745,6 +745,42 @@ export async function getPublisher(input: {
   };
 }
 
+/**
+ * Contexto de las alertas que aparecen en Comunidad (el post solo trae el texto/dirección):
+ * perdida o encontrada, nombre, especie, sexo, tamaño y color — de la mascota registrada o del reporte.
+ */
+export async function alertSummaries(reportIds: string[]): Promise<Record<string, {
+  type: "lost" | "found";
+  status: string | null;
+  petName: string | null;
+  species: string | null;
+  sex: string | null;
+  size: string | null;
+  color: string | null;
+}>> {
+  const ids = [...new Set(reportIds.filter(Boolean))];
+  if (!ids.length) return {};
+  const { data, error } = await supabase
+    .from("reports")
+    .select("id, type, status, sex, size, color, species:species(name), pet:pets(name, sex, size, color, species:species(name))")
+    .in("id", ids);
+  if (error) throw error;
+  const out: Record<string, any> = {};
+  for (const r of (data ?? []) as any[]) {
+    const pet = r.pet ?? {};
+    out[r.id] = {
+      type: r.type,
+      status: r.status ?? null,
+      petName: pet.name ?? null,
+      species: pet.species?.name ?? r.species?.name ?? null,
+      sex: pet.sex ?? r.sex ?? null,
+      size: pet.size ?? r.size ?? null,
+      color: pet.color ?? r.color ?? null,
+    };
+  }
+  return out;
+}
+
 export async function getReportById(id: string): Promise<ReportNear | null> {
   const { data, error } = await supabase.rpc("report_by_id", { p_id: id });
   if (error) throw error;

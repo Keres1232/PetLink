@@ -140,3 +140,37 @@
   font-weight: 700;
   cursor: pointer;
 }
+
+/* Girar 90° a la izquierda / derecha */
+.photo-crop__rotate {
+  display: flex;
+  gap: 10px;
+}
+
+.photo-crop__rotate button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  height: 36px;
+  padding: 0 14px;
+
+  border: 2px solid var(--activado, #ae77ff);
+  border-radius: 18px;
+  background: #ffffff;
+
+  color: var(--titulos, #7519ff);
+  font-family: "Kodchasan", sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.photo-crop__rotate button:active:not(:disabled) {
+  transform: scale(0.96);
+  background: #f6f2ff;
+}
+
+.photo-crop__rotate button:disabled {
+  opacity: 0.5;
+}

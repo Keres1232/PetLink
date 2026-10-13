@@ -14,7 +14,8 @@ export function reportToPet(r) {
     name: r.pet_name ?? (lost ? "Mascota perdida" : "Mascota encontrada"),
     species: speciesLabel(r.species_name),
     status: lost ? "Perdido" : "Encontrado",
-    location: `${distanceLabel(r.distance_m)} · ${dayLabel(r.created_at)}`,
+    // Desde Comunidad (report_by_id) puede no venir la distancia
+    location: r.distance_m == null ? dayLabel(r.created_at) : `${distanceLabel(r.distance_m)} · ${dayLabel(r.created_at)}`,
     breed: "",
     age: "",
     sex: "",

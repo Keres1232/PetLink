@@ -197,3 +197,91 @@
   border-radius: 14px;
   object-fit: cover;
 }
+
+/* ========================================
+   ALERTAS DE MASCOTA (perdida / encontrada)
+======================================== */
+
+.forum-post__tag--lost {
+  background: #ffd6d6;
+  color: #c62828;
+}
+
+.forum-post__tag--found {
+  background: #d4f5dd;
+  color: #1e8e3e;
+}
+
+.forum-post__alert {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  width: 100%;
+  padding: 10px 12px;
+
+  border-left: 4px solid;
+  border-radius: 10px;
+  box-sizing: border-box;
+}
+
+.forum-post__alert--lost {
+  border-color: #e53935;
+  background: #fff1f1;
+}
+
+.forum-post__alert--found {
+  border-color: #2e9e4f;
+  background: #effaf2;
+}
+
+.forum-post__alert-kind {
+  font-family: "Kodchasan", sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.forum-post__alert--lost .forum-post__alert-kind {
+  color: #c62828;
+}
+
+.forum-post__alert--found .forum-post__alert-kind {
+  color: #1e8e3e;
+}
+
+.forum-post__alert-title {
+  margin: 0;
+  color: #000000;
+  font-family: "Kodchasan", sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.forum-post__alert-details {
+  margin: 0;
+  color: var(--desctivado, #66557e);
+  font-family: "Nata Sans", sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.forum-post__alert-open {
+  align-self: stretch;
+  height: 38px;
+
+  border: none;
+  border-radius: 10px;
+  background: var(--titulos, #7519ff);
+
+  color: #ffffff;
+  font-family: "Kodchasan", sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.forum-post__alert-open:active {
+  transform: scale(0.98);
+}

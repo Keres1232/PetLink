@@ -7,6 +7,7 @@ import ForumPost from "./ForumPost.jsx";
 import AvatarPlaceholder from "../pets/AvatarPlaceholder.jsx";
 import {
   addComment,
+  alertSummaries,
   createPost,
   getPostById,
   listComments,
@@ -24,6 +25,22 @@ import SearchBar from "../shared/SearchBar.jsx";
 import "./CommunityPage.css";
 import PawLoader from "../shared/PawLoader.jsx";
 
+const SEX_LABEL = { male: "Macho", female: "Hembra" };
+const SIZE_LABEL = { small: "Pequeño", medium: "Mediano", large: "Grande" };
+
+/** Contexto de una alerta (alertSummaries) -> lo que muestra la tarjeta del foro. */
+function alertInfo(post, summary) {
+  const lost = summary ? summary.type === "lost" : post.type !== "found";
+  const species = summary?.species ?? null;
+  return {
+    lost,
+    title: summary?.petName || species || (lost ? "Mascota perdida" : "Mascota encontrada"),
+    details: [summary?.petName ? species : null, SEX_LABEL[summary?.sex], SIZE_LABEL[summary?.size], summary?.color]
+      .filter(Boolean)
+      .join(" · "),
+  };
+}
+
 // Filtro de la franja -> tipo de post en la base de datos
 const TYPE_BY_FILTER = {
   Preguntas: "question",
@@ -40,7 +57,7 @@ const DRAFT_TYPES = [
   { id: "story", label: "Historia" },
 ];
 
-function CommunityPage({ avatarUrl, openPostId, onBack, onViewOnMap, onContactOwner, myUserId }) {
+function CommunityPage({ avatarUrl, openPostId, onBack, onViewOnMap, onContactOwner, onOpenReport, myUserId }) {
   const [filter, setFilter] = useState("Todo");
   const [error, setError] = useState("");
 
@@ -72,6 +89,26 @@ function CommunityPage({ avatarUrl, openPostId, onBack, onViewOnMap, onContactOw
         [p.content, p.author_name, POST_TYPE_LABEL[p.type]].some((field) => normalize(field).includes(q))
       )
     : feed;
+
+  // Contexto de las alertas del feed (perdida/encontrada, nombre, especie…), se pide una sola vez por reporte
+  const [summaries, setSummaries] = useState({});
+  const missingIds = feed
+    .map((p) => p.report_id)
+    .filter((id) => id && !(id in summaries))
+    .join(",");
+  useEffect(() => {
+    if (!missingIds) return;
+    let alive = true;
+    const ids = missingIds.split(",");
+    alertSummaries(ids)
+      .then((rows) =>
+        alive && setSummaries((cur) => ({ ...cur, ...Object.fromEntries(ids.map((id) => [id, rows[id] ?? null])) }))
+      )
+      .catch((e) => console.error("No se pudo cargar el contexto de las alertas", e));
+    return () => {
+      alive = false;
+    };
+  }, [missingIds]);
 
   const [composing, setComposing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -209,7 +246,18 @@ function CommunityPage({ avatarUrl, openPostId, onBack, onViewOnMap, onContactOw
                 avatarUrl={post.avatar_url}
                 imageUrl={post.image_url}
                 timeAgo={timeAgo(post.created_at)}
-                category={POST_TYPE_LABEL[post.type] ?? post.type}
+                category={
+                  post.report_id
+                    ? alertInfo(post, summaries[post.report_id]).lost
+                      ? "Perdida"
+                      : "Encontrada"
+                    : POST_TYPE_LABEL[post.type] ?? post.type
+                }
+                alert={
+                  post.report_id
+                    ? { ...alertInfo(post, summaries[post.report_id]), onOpen: onOpenReport && (() => onOpenReport(post.report_id)) }
+                    : undefined
+                }
                 question={post.content}
                 likes={post.like_count}
                 liked={post.liked_by_me}

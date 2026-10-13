@@ -28,6 +28,7 @@ function ForumPost({
   liked = false,
   onLike,
   onClick,
+  alert, // alerta de mascota: { lost, title, details, onOpen } (contexto + botón a la ficha)
 }) {
   return (
     <article className="forum-post" onClick={onClick}>
@@ -42,12 +43,41 @@ function ForumPost({
         </div>
       </div>
 
-      <span className="forum-post__tag">{category}</span>
+      <span className={`forum-post__tag ${alert ? `forum-post__tag--${alert.lost ? "lost" : "found"}` : ""}`}>{category}</span>
 
-      <p className="forum-post__question">{question}</p>
+      {/* Alerta de mascota perdida / encontrada: qué pasó y con qué mascota */}
+      {alert && (
+        <div className={`forum-post__alert forum-post__alert--${alert.lost ? "lost" : "found"}`}>
+          <span className="forum-post__alert-kind">{alert.lost ? "Mascota perdida" : "Mascota encontrada"}</span>
+          <p className="forum-post__alert-title">{alert.title}</p>
+          {alert.details && <p className="forum-post__alert-details">{alert.details}</p>}
+        </div>
+      )}
+
+      {alert && question ? (
+        <p className="forum-post__question">
+          <strong>{alert.lost ? "Se perdió en: " : "La encontraron en: "}</strong>
+          {question}
+        </p>
+      ) : (
+        <p className="forum-post__question">{question}</p>
+      )}
 
       {/* Imagen de la publicación: siempre visible dentro de la tarjeta */}
       {imageUrl && <img className="forum-post__image" src={imageUrl} alt="" loading="lazy" />}
+
+      {alert?.onOpen && (
+        <button
+          type="button"
+          className="forum-post__alert-open"
+          onClick={(e) => {
+            e.stopPropagation();
+            alert.onOpen();
+          }}
+        >
+          Ver ficha completa ›
+        </button>
+      )}
 
       <div className="forum-post__interactions">
         {onLike ? (
