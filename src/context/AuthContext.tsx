@@ -39,7 +39,7 @@ function readAuthLinkError(): string | null {
   if (!code && !description) return null;
   window.history.replaceState(null, "", window.location.pathname);
   if (code === "otp_expired")
-    return "El enlace del correo expiró o ya se usó. Solicita uno nuevo o usa el código de 6 dígitos.";
+    return "El enlace del correo expiró o ya se usó. Solicita uno nuevo.";
   return `No pudimos usar el enlace del correo (${description ?? code}). Solicita uno nuevo.`;
 }
 

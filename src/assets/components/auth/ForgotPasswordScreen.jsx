@@ -3,7 +3,7 @@ import AuthField from "./AuthField.jsx";
 import AuthLogo from "./AuthLogo.jsx";
 import CircleIconButton from "../shared/CircleIconButton.jsx";
 import backIcon from "../../svg/Back.svg";
-import { requestPasswordReset, verifyRecoveryCode } from "../../../lib/api";
+import { requestPasswordReset } from "../../../lib/api";
 import "./AuthPages.css";
 
 const MailIcon = () => (
@@ -13,27 +13,17 @@ const MailIcon = () => (
   </svg>
 );
 
-const KeyIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#66557E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="8" cy="15" r="4" />
-    <path d="M10.85 12.15L19 4M17 6L20 9M15 8L17 10" />
-  </svg>
-);
-
 /**
- * "¿Olvidaste tu contraseña?": Supabase envía un correo con un enlace y un código de 6 dígitos.
- * El código funciona también en el APK (el enlace abre el navegador, no la app).
- * Al verificarlo, la app muestra la pantalla "Nueva contraseña".
+ * "¿Olvidaste tu contraseña?": Supabase envía un correo con un enlace. Al abrirlo, Supabase
+ * emite PASSWORD_RECOVERY y la app muestra directamente la pantalla "Nueva contraseña".
  */
 function ForgotPasswordScreen({ initialEmail = "", linkError, onBack }) {
   const [email, setEmail] = useState(initialEmail);
-  const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(linkError ?? "");
   const [sent, setSent] = useState(false);
 
   const validEmail = email.includes("@") && email.trim().length >= 5;
-  const validCode = /^\d{6}$/.test(code.trim());
 
   const send = async (e) => {
     e?.preventDefault();
@@ -44,17 +34,6 @@ function ForgotPasswordScreen({ initialEmail = "", linkError, onBack }) {
     setBusy(false);
     if (err) setError(err);
     else setSent(true);
-  };
-
-  const verify = async (e) => {
-    e.preventDefault();
-    if (!validCode || busy) return;
-    setBusy(true);
-    setError("");
-    const err = await verifyRecoveryCode(email.trim(), code);
-    setBusy(false);
-    if (err) setError(err);
-    // Si sale bien, Supabase emite PASSWORD_RECOVERY y la app cambia sola a "Nueva contraseña"
   };
 
   return (
@@ -84,34 +63,16 @@ function ForgotPasswordScreen({ initialEmail = "", linkError, onBack }) {
             {busy ? "Enviando..." : "Enviar correo"}
           </button>
 
-          <p className="auth-switch">
-            <button type="button" className="auth-link" onClick={() => setSent(true)} disabled={!validEmail}>
-              Ya tengo un código
-            </button>
-          </p>
         </form>
       ) : (
-        <form className="auth-card" onSubmit={verify}>
+        <div className="auth-card">
+          {/* Sin código: el enlace del correo abre directamente la pantalla "Nueva contraseña" */}
           <p className="auth-notice" role="status">
-            Enviamos un correo a <strong>{email.trim()}</strong>. Escribe aquí el <strong>código de 6 dígitos</strong>{" "}
-            que trae, o abre el enlace del correo en este mismo dispositivo. Revisa también la carpeta de spam.
+            Enviamos un correo a <strong>{email.trim()}</strong>. Abre el enlace <strong>«Restablecer contraseña»</strong>{" "}
+            y te llevará a la pantalla para elegir tu nueva contraseña. Revisa también la carpeta de spam.
           </p>
 
-          <AuthField
-            label="Código de 6 dígitos"
-            icon={<KeyIcon />}
-            type="text"
-            placeholder="123456"
-            autoComplete="one-time-code"
-            value={code}
-            onChange={(v) => setCode(v.replace(/\D/g, "").slice(0, 6))}
-          />
-
           {error && <p className="auth-error" role="alert">{error}</p>}
-
-          <button type="submit" className="auth-submit" disabled={!validCode || busy}>
-            {busy ? "Verificando..." : "Verificar código"}
-          </button>
 
           <p className="auth-switch">
             ¿No te llegó?{" "}
@@ -119,7 +80,7 @@ function ForgotPasswordScreen({ initialEmail = "", linkError, onBack }) {
               Reenviar correo
             </button>
           </p>
-        </form>
+        </div>
       )}
 
       <p className="auth-switch">

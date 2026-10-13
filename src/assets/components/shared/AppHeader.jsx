@@ -11,11 +11,12 @@ function AppHeader({
   rightLabel = "Notificaciones",
   onRight,
   glass = true,
+  compact = false, // menos espacio debajo del header (Mapa)
 }) {
   const { unread } = useNotifications();
 
   return (
-    <div className="app-header__spacer">
+    <div className={`app-header__spacer ${compact ? "app-header__spacer--compact" : ""}`}>
       <header className={`app-header ${glass ? "app-header--glass" : ""}`}>
         {leftIcon ? (
           <CircleIconButton

@@ -281,6 +281,7 @@ function App() {
   const [showMyReports, setShowMyReports] = useState(false);
   const [showMyClinic, setShowMyClinic] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
+  const [settingsFocus, setSettingsFocus] = useState(null); // "privacy" al abrir Ajustes desde el perfil
   const [activeReports, setActiveReports] = useState(0);
   const [myPosts, setMyPosts] = useState(0);
   const [listPage, setListPage] = useState(null);
@@ -307,6 +308,7 @@ function App() {
   const [pets, setPets] = useState([]);
   const [species, setSpecies] = useState([]);
   const [contactPostId, setContactPostId] = useState(null);
+  const [mapFocusReportId, setMapFocusReportId] = useState(null); // "Ver en el mapa" desde Comunidad
   const [editingPet, setEditingPet] = useState(null);
 
   // Reportes reales cerca del usuario (Inicio: "Cerca de ti" y "Encontrados")
@@ -1234,7 +1236,11 @@ function App() {
         <main className="app">
           <PawBackground />
           <SettingsPage
-            onBack={() => setShowSettings(false)}
+            focusSection={settingsFocus}
+            onBack={() => {
+              setShowSettings(false);
+              setSettingsFocus(null);
+            }}
             onNotifications={() => {
               setShowSettings(false);
               setShowNotifications(true);
@@ -1256,7 +1262,10 @@ function App() {
             onDeactivate={() => setConfirmAction("deactivate")}
             onDelete={() => setConfirmAction("delete")}
           />
-          <NavBar active={activeTab} onNavigate={goTab(() => setShowSettings(false))} />
+          <NavBar active={activeTab} onNavigate={goTab(() => {
+            setShowSettings(false);
+            setSettingsFocus(null);
+          })} />
           <CityPickerModal
             open={cityPickerOpen}
             value={city}
@@ -1332,6 +1341,8 @@ function App() {
             onNotifications={openNotifications}
             onCall={handleCall}
             onReportClick={showPet}
+            focusReportId={mapFocusReportId}
+            onFocusDone={() => setMapFocusReportId(null)}
           />
         )}
 
@@ -1341,7 +1352,11 @@ function App() {
             avatarUrl={profilePhoto}
             openPostId={contactPostId}
             onBack={goHome}
-            onNotifications={openNotifications}
+            onViewOnMap={(reportId) => {
+              // Alerta de Comunidad → mapa centrado en ese reporte
+              setMapFocusReportId(reportId);
+              setActiveTab("map");
+            }}
           />
         )}
 
@@ -1354,7 +1369,10 @@ function App() {
               <button
                 type="button"
                 className="circle-icon-button"
-                onClick={() => setShowSettings(true)}
+                onClick={() => {
+                  setSettingsFocus(null);
+                  setShowSettings(true);
+                }}
                 aria-label="Ajustes"
               >
                 <span className="circle-icon-button__shadow" aria-hidden="true" />
@@ -1429,7 +1447,10 @@ function App() {
                 else if (id === "verification") setShowVerification(true);
                 else if (id === "reports") setShowMyReports(true);
                 else if (id === "clinic") setShowMyClinic(true);
-                else console.log("Opción seleccionada:", id);
+                else if (id === "privacy") {
+                  setSettingsFocus("privacy");
+                  setShowSettings(true);
+                }
               }}
             />
           </>

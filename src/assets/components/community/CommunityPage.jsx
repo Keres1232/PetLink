@@ -17,7 +17,9 @@ import useLiveFeed from "../../../hooks/useLiveFeed.js";
 import { POST_TYPE_LABEL } from "../../../lib/postTypes";
 import { timeAgo } from "../../../lib/format";
 import backIcon from "../../svg/Back.svg";
-import bellIcon from "../../svg/bell.svg";
+import searchIcon from "../../svg/Buscar.svg";
+import locationIcon from "../../svg/Location icon.svg";
+import SearchBar from "../shared/SearchBar.jsx";
 import "./CommunityPage.css";
 
 // Filtro de la franja -> tipo de post en la base de datos
@@ -36,7 +38,7 @@ const DRAFT_TYPES = [
   { id: "story", label: "Historia" },
 ];
 
-function CommunityPage({ avatarUrl, openPostId, onBack, onNotifications }) {
+function CommunityPage({ avatarUrl, openPostId, onBack, onViewOnMap }) {
   const [filter, setFilter] = useState("Todo");
   const [error, setError] = useState("");
 
@@ -50,10 +52,24 @@ function CommunityPage({ avatarUrl, openPostId, onBack, onNotifications }) {
     [openPostId]
   );
 
+  // Búsqueda (lupa del header): filtra por texto, autor o tipo; mientras se busca se cargan más publicaciones
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const searching = query.trim().length > 0;
+
   const { feed, loading, error: feedError, version, refresh, toggleLike } = useLiveFeed({
     type: TYPE_BY_FILTER[filter],
+    limit: searching ? 100 : 30,
     extra: withOpenPost,
   });
+
+  const normalize = (s) => (s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  const q = normalize(query.trim());
+  const visible = searching
+    ? feed.filter((p) =>
+        [p.content, p.author_name, POST_TYPE_LABEL[p.type]].some((field) => normalize(field).includes(q))
+      )
+    : feed;
 
   const [composing, setComposing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -122,9 +138,26 @@ function CommunityPage({ avatarUrl, openPostId, onBack, onNotifications }) {
 
   return (
     <>
-      <AppHeader title="Comunidad" leftIcon={backIcon} onLeft={onBack} rightIcon={bellIcon} onRight={onNotifications} />
+      {/* En Comunidad el botón de la derecha es la lupa (en vez de las notificaciones) */}
+      <AppHeader
+        title="Comunidad"
+        leftIcon={backIcon}
+        onLeft={onBack}
+        rightIcon={searchIcon}
+        rightLabel="Buscar publicaciones"
+        onRight={() => {
+          setSearchOpen((open) => !open);
+          setQuery("");
+        }}
+      />
 
       <div className="community">
+        {searchOpen && (
+          <div className="community__search">
+            <SearchBar value={query} onChange={setQuery} placeholder="Buscar por texto, autor o tipo" autoFocus />
+          </div>
+        )}
+
         <ShareBar avatarUrl={avatarUrl} onClick={() => setComposing((v) => !v)} />
 
         {composing && (
@@ -161,9 +194,13 @@ function CommunityPage({ avatarUrl, openPostId, onBack, onNotifications }) {
 
         <div className="community__list">
           {loading && <p className="community__empty">Cargando…</p>}
-          {!loading && feed.length === 0 && <p className="community__empty">Aún no hay publicaciones aquí.</p>}
+          {!loading && visible.length === 0 && (
+            <p className="community__empty">
+              {searching ? `No encontramos publicaciones con «${query.trim()}».` : "Aún no hay publicaciones aquí."}
+            </p>
+          )}
 
-          {feed.map((post) => (
+          {visible.map((post) => (
             <div key={post.id} className="community__item">
               <ForumPost
                 userName={post.author_name}
@@ -181,6 +218,13 @@ function CommunityPage({ avatarUrl, openPostId, onBack, onNotifications }) {
 
               {openPost === post.id && (
                 <div className="community__thread">
+                  {/* Alertas de mascota perdida/encontrada: ir al reporte en el mapa */}
+                  {post.report_id && (
+                    <button type="button" className="community__map-btn" onClick={() => onViewOnMap?.(post.report_id)}>
+                      <img src={locationIcon} alt="" />
+                      Ver en el mapa
+                    </button>
+                  )}
                   {comments.length === 0 && <p className="community__empty">Sé el primero en responder.</p>}
                   {comments.map((c) => (
                     <div key={c.id} className="community__comment-row">

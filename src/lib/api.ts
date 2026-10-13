@@ -706,20 +706,6 @@ export async function requestPasswordReset(email: string): Promise<string | null
   return error ? translateAuthError(error) : null;
 }
 
-/**
- * Alternativa al enlace (sirve también en el APK): el correo de recuperación trae un código
- * de 6 dígitos ({{ .Token }} en la plantilla "Reset Password" de Supabase). Al verificarlo,
- * Supabase crea la sesión y emite PASSWORD_RECOVERY, y la app pide la contraseña nueva.
- */
-export async function verifyRecoveryCode(email: string, code: string): Promise<string | null> {
-  const { error } = await supabase.auth.verifyOtp({ email, token: code.trim(), type: "recovery" });
-  if (!error) return null;
-  const msg = (error.message ?? "").toLowerCase();
-  if (msg.includes("expired") || msg.includes("invalid"))
-    return "El código no es válido o ya expiró. Revisa el correo más reciente o pide uno nuevo.";
-  return translateAuthError(error);
-}
-
 /** Guarda la contraseña nueva usando la sesión que crea el enlace de recuperación. */
 export async function setNewPassword(newPassword: string): Promise<string | null> {
   const { data, error } = await supabase.auth.updateUser({ password: newPassword });

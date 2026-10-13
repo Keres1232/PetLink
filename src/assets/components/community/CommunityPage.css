@@ -193,3 +193,48 @@
   padding-top: 4px;
   overflow-wrap: anywhere;
 }
+
+/* Barra de búsqueda que abre la lupa del header */
+.community__search {
+  width: 100%;
+  max-width: 331px;
+  margin: 0 auto 4px;
+}
+
+.community__search .search-bar {
+  height: 44px;
+  border-radius: 20px;
+}
+
+/* "Ver en el mapa" en publicaciones de alertas */
+.community__map-btn {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 7px 14px;
+
+  align-items: center;
+  gap: 6px;
+
+  border: 1px solid #7519ff;
+  border-radius: 20px;
+  background: #f3edff;
+
+  color: #7519ff;
+  font-family: "Kodchasan", sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.community__map-btn:active {
+  transform: scale(0.96);
+}
+
+.community__map-btn img {
+  width: 16px;
+  height: 16px;
+  /* ícono gris del proyecto pintado de morado */
+  filter: invert(17%) sepia(97%) saturate(6223%) hue-rotate(266deg) brightness(97%) contrast(109%);
+}

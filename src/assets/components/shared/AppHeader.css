@@ -1,4 +1,9 @@
 /* Reserva el espacio del header fijo */
+.app-header__spacer--compact {
+  height: 60px !important;
+  margin-bottom: 4px !important;
+}
+
 .app-header__spacer {
   height: 66px;
   margin-bottom: 14px;

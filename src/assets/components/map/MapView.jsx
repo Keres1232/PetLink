@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { MapContainer, TileLayer, Marker, Popup, CircleMarker, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { dayLabel, distanceLabel } from "../../../lib/format";
 import "./MapView.css";
 
 // Íconos de color (evita el problema de los íconos rotos de Leaflet con Vite)
@@ -54,12 +55,33 @@ function FocusPlace({ focus, markers }) {
   return null;
 }
 
-function MapView({ center, places = [], reports = [], onSelect, fitTo = [], focus = null }) {
+// Contenido del globo de un marcador (foto, nombre, distancia · día, etiqueta y acción)
+function PopupCard({ photo, title, meta, badge, badgeClass, action, onAction }) {
+  return (
+    <div className="map-popup__card">
+      {photo && <img className="map-popup__photo" src={photo} alt="" />}
+      <div className="map-popup__info">
+        <strong className="map-popup__title">{title}</strong>
+        {meta && <span className="map-popup__meta">{meta}</span>}
+        {action && (
+          <button type="button" className="map-popup__action" onClick={onAction}>
+            {action}
+          </button>
+        )}
+      </div>
+      <span className={`map-popup__badge ${badgeClass}`}>{badge}</span>
+    </div>
+  );
+}
+
+function MapView({ center, places = [], reports = [], onSelect, onLocate, fitTo = [], focus = null }) {
   const markers = useRef({});
+  const mapRef = useRef(null);
   return (
     <div className="map-view">
       <div className="map-view__canvas">
         <MapContainer
+          ref={mapRef}
           center={[center.lat, center.lon]}
           zoom={14}
           scrollWheelZoom
@@ -73,6 +95,12 @@ function MapView({ center, places = [], reports = [], onSelect, fitTo = [], focu
           <FitPoints points={fitTo} />
           <FocusPlace focus={focus} markers={markers} />
 
+          {/* Tú: halo azul + punto */}
+          <CircleMarker
+            center={[center.lat, center.lon]}
+            radius={16}
+            pathOptions={{ stroke: false, fillColor: "#2f6bff", fillOpacity: 0.18 }}
+          />
           <CircleMarker
             center={[center.lat, center.lon]}
             radius={8}
@@ -81,19 +109,55 @@ function MapView({ center, places = [], reports = [], onSelect, fitTo = [], focu
 
           {places.map((p) => (
             <Marker key={`p-${p.id}`} position={[p.latitude, p.longitude]} icon={ICONS[p.kind] ?? ICONS.clinic}
-              ref={(m) => { markers.current[p.id] = m; }}
-              eventHandlers={{ click: () => onSelect?.({ type: "place", data: p }) }}>
-              <Popup><b>{p.name}</b><br />{p.address}</Popup>
+              ref={(m) => { markers.current[`p-${p.id}`] = m; }}>
+              <Popup className="map-popup" closeButton>
+                <PopupCard
+                  photo={null}
+                  title={p.name}
+                  meta={[distanceLabel(p.distance_m), p.address].filter(Boolean).join(" · ")}
+                  badge={p.kind === "shelter" ? "Refugio" : "Veterinaria"}
+                  badgeClass={p.kind === "shelter" ? "is-shelter" : "is-clinic"}
+                  action={p.phone ? "Llamar ›" : null}
+                  onAction={() => onSelect?.({ type: "place", data: p })}
+                />
+              </Popup>
             </Marker>
           ))}
 
           {reports.map((r) => (
             <Marker key={`r-${r.id}`} position={[r.latitude, r.longitude]} icon={ICONS[r.type]}
-              eventHandlers={{ click: () => onSelect?.({ type: "report", data: r }) }}>
-              <Popup><b>{r.pet_name ?? (r.type === "lost" ? "Mascota perdida" : "Mascota encontrada")}</b><br />{r.description}</Popup>
+              ref={(m) => { markers.current[`r-${r.id}`] = m; }}>
+              <Popup className="map-popup" closeButton>
+                <PopupCard
+                  photo={r.photos?.[0] ?? r.pet_photo_url}
+                  title={r.pet_name ?? (r.type === "lost" ? "Mascota perdida" : "Mascota encontrada")}
+                  meta={`${distanceLabel(r.distance_m)} · ${dayLabel(r.created_at).toLowerCase()}`}
+                  badge={r.type === "lost" ? "Perdido" : "Encontrado"}
+                  badgeClass={r.type === "lost" ? "is-lost" : "is-found"}
+                  action="Ver detalles ›"
+                  onAction={() => onSelect?.({ type: "report", data: r })}
+                />
+              </Popup>
             </Marker>
           ))}
         </MapContainer>
+
+        {/* Centrar en mi ubicación */}
+        <button
+          type="button"
+          className="map-view__locate"
+          aria-label="Centrar en mi ubicación"
+          onClick={() => {
+            mapRef.current?.setView([center.lat, center.lon], 15);
+            onLocate?.();
+          }}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="3" fill="#ae77ff" />
+            <circle cx="12" cy="12" r="8" stroke="#ae77ff" strokeWidth="2" fill="none" />
+            <path d="M12 1V4M12 20V23M1 12H4M20 12H23" stroke="#ae77ff" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        </button>
       </div>
     </div>
   );

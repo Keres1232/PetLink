@@ -1,18 +1,19 @@
-/* Franja de filtros: llega a los bordes, contenido alineado con el header */
+/* Franja de filtros: llega a los bordes, contenido alineado con el header (compacta) */
 .map-page__filters {
   margin: 0 calc(var(--app-pad-x) * -1);
-  padding: 5px 0 4px 0;
+  padding: 0;
 }
 
 .map-page__filters .map-filters {
   max-width: 720px;
   margin: 0 auto;
-  padding: 10px var(--app-pad-x);
+  padding: 4px var(--app-pad-x) 12px;
 }
 
-/* Mapa de borde a borde */
+/* Mapa en tarjeta redondeada (ya no de borde a borde) */
 .app .map-view {
-  margin: 0 calc(var(--app-pad-x) * -1);
+  max-width: 720px;
+  margin: 0 auto;
   padding: 0;
 }
 
@@ -21,9 +22,10 @@
   max-width: none;
 
   aspect-ratio: auto;
-  height: 277px;
+  height: 340px;
 
-  border-radius: 0;
+  border-radius: 22px;
+  box-shadow: 0 4px 14px rgba(60, 30, 110, 0.18);
 }
 
 .map-page__nearby {

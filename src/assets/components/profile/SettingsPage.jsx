@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import CircleIconButton from "../shared/CircleIconButton.jsx";
 import LegalModal from "../shared/LegalModal.jsx";
 import { useUserLocation } from "../../../hooks/useUserLocation";
@@ -87,12 +87,21 @@ function SettingsPage({
   onCityClick,
   onDeactivate,
   onDelete,
+  focusSection = null, // "privacy": abre Ajustes ya en la sección Privacidad (desde el perfil)
 }) {
   const { radius, consent, saveRadius, requestConsent } = useUserLocation();
   const { unread } = useNotifications();
   const [petAlerts, setPetAlerts] = useState(false);
   const [notifMsg, setNotifMsg] = useState("");
   const [legal, setLegal] = useState(null);
+
+  // Desde "Privacidad" del perfil: bajar directo a esa sección (debajo del header fijo)
+  const privacyRef = useRef(null);
+  useEffect(() => {
+    if (focusSection !== "privacy" || !privacyRef.current) return;
+    const top = privacyRef.current.getBoundingClientRect().top + window.scrollY - 90;
+    window.scrollTo({ top, behavior: "smooth" });
+  }, [focusSection]);
   const [postReplies, setPostReplies] = useState(true);
   const [reportUpdates, setReportUpdates] = useState(true);
   const [exactLocation, setExactLocation] = useState(true);
@@ -192,7 +201,7 @@ function SettingsPage({
       </section>
 
       {/* ===== Privacidad ===== */}
-      <section className="settings-section">
+      <section className="settings-section" ref={privacyRef}>
         <h2 className="settings-section__title">Privacidad</h2>
         <div className="settings-card">
           <SettingsRow

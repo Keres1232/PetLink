@@ -44,7 +44,7 @@ function ResetPasswordScreen({ hasSession, onDone, onRequestNew }) {
         {!hasSession && !done ? (
           <>
             <p className="auth-error" role="alert">
-              El enlace expiró o ya se usó. Pide un correo nuevo o usa el código de 6 dígitos.
+              El enlace expiró o ya se usó. Pide un correo nuevo para restablecer tu contraseña.
             </p>
             <button type="button" className="auth-submit" onClick={onRequestNew}>
               Recuperar contraseña

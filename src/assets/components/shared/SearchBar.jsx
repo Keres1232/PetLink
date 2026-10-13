@@ -1,6 +1,6 @@
 import "./SearchBar.css";
 
-function SearchBar({ value, onChange, placeholder = "Busca..." }) {
+function SearchBar({ value, onChange, placeholder = "Busca...", autoFocus = false }) {
   return (
     <label className="search-bar">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -10,6 +10,7 @@ function SearchBar({ value, onChange, placeholder = "Busca..." }) {
 
       <input
         className="search-bar__input"
+        autoFocus={autoFocus}
         type="search"
         value={value}
         placeholder={placeholder}
