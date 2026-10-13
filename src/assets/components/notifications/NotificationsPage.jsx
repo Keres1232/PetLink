@@ -31,6 +31,8 @@ const TYPE_ICON = {
   post_reply: commentIcon,
   post_like: likeIcon,
   pet_reminder: clockIcon,
+  adoption_interest: pawIcon,
+  adoption_response: pawIcon,
 };
 
 // El SVG se usa como máscara pintada de morado: todos quedan del mismo color sin editar los archivos

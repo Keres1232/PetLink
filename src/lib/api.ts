@@ -558,6 +558,20 @@ export async function listAdoptionInterests(petId: string): Promise<AdoptionInte
   return (data ?? []) as unknown as AdoptionInterest[];
 }
 
+/**
+ * Mascota de una notificación de adopción (adoption_interest / adoption_response). Según el
+ * trigger, reference_id puede ser la mascota o la solicitud de adopción: se prueban las dos.
+ */
+export async function getPetForNotification(referenceId: string): Promise<Pet | null> {
+  const byId = await supabase.from("pets").select("*, species:species(id, name)").eq("id", referenceId).maybeSingle();
+  if (byId.data) return byId.data as unknown as Pet;
+  const interest = await supabase.from("adoption_interests").select("pet_id").eq("id", referenceId).maybeSingle();
+  const petId = (interest.data as { pet_id: string } | null)?.pet_id;
+  if (!petId) return null;
+  const pet = await supabase.from("pets").select("*, species:species(id, name)").eq("id", petId).maybeSingle();
+  return (pet.data as unknown as Pet) ?? null;
+}
+
 /** El dueño aprueba o rechaza; al aprobar la mascota pasa a "adopted" (lo hace la RPC). */
 export async function respondAdoptionInterest(interestId: string, status: "approved" | "rejected"): Promise<void> {
   const { error } = await supabase.rpc("respond_adoption_interest", { p_interest_id: interestId, p_status: status });
@@ -716,6 +730,27 @@ export async function publisherKinds(userIds: string[]): Promise<Record<string, 
     if (!kinds[p.id] && p.role === "foundation") kinds[p.id] = "shelter";
   }
   return kinds;
+}
+
+/**
+ * Rol especial de varias cuentas, para la etiqueta junto al nombre en Comunidad:
+ * "clinic" / "shelter" (lugar verificado o rol foundation, igual que publisherKinds),
+ * "vet" (médico veterinario, persona) y "admin". Las cuentas normales no aparecen.
+ */
+export async function roleBadges(userIds: string[]): Promise<Record<string, "clinic" | "shelter" | "vet" | "admin">> {
+  const ids = [...new Set(userIds.filter(Boolean))];
+  if (!ids.length) return {};
+  const [kinds, roles] = await Promise.all([
+    publisherKinds(ids).catch(() => ({} as Record<string, "clinic" | "shelter">)),
+    supabase.from("profiles").select("id, role").in("id", ids),
+  ]);
+  const out: Record<string, "clinic" | "shelter" | "vet" | "admin"> = { ...kinds };
+  for (const p of (roles.data ?? []) as { id: string; role: string }[]) {
+    if (out[p.id]) continue;
+    if (p.role === "admin") out[p.id] = "admin";
+    else if (p.role === "vet") out[p.id] = "vet";
+  }
+  return out;
 }
 
 /**

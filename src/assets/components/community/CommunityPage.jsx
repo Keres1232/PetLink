@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import AppHeader from "../shared/AppHeader.jsx";
 import ShareBar from "./ShareBar.jsx";
 import MapFilterTabs from "../map/MapFilterTabs.jsx";
 import ChipGroup from "../shared/ChipGroup.jsx";
 import ForumPost from "./ForumPost.jsx";
 import AvatarPlaceholder from "../pets/AvatarPlaceholder.jsx";
+import RoleBadge from "../shared/RoleBadge.jsx";
 import {
   addComment,
   alertSummaries,
+  roleBadges,
   createPost,
   getPostById,
   listComments,
@@ -57,7 +59,7 @@ const DRAFT_TYPES = [
   { id: "story", label: "Historia" },
 ];
 
-function CommunityPage({ avatarUrl, openPostId, onBack, onViewOnMap, onContactOwner, onOpenReport, myUserId }) {
+function CommunityPage({ avatarUrl, openPostId, openCommentId, onBack, onViewOnMap, onContactOwner, onOpenReport, myUserId }) {
   const [filter, setFilter] = useState("Todo");
   const [error, setError] = useState("");
 
@@ -110,6 +112,9 @@ function CommunityPage({ avatarUrl, openPostId, onBack, onViewOnMap, onContactOw
     };
   }, [missingIds]);
 
+  // Etiqueta de rol especial de los autores (publicaciones y comentarios); se pide una vez por cuenta
+  const [badges, setBadges] = useState({});
+
   const [composing, setComposing] = useState(false);
   const [draft, setDraft] = useState("");
   const [draftType, setDraftType] = useState("question");
@@ -128,6 +133,44 @@ function CommunityPage({ avatarUrl, openPostId, onBack, onViewOnMap, onContactOw
       .then(setComments)
       .catch(() => setComments([]));
   }, [openPost, version]);
+
+  // Llegó desde una notificación: bajar hasta la publicación (y luego hasta el comentario), una sola vez
+  const postRefs = useRef({});
+  const scrolledToPost = useRef(false);
+  const scrolledToComment = useRef(false);
+  const targetLoaded = Boolean(openPostId) && feed.some((p) => p.id === openPostId);
+  useEffect(() => {
+    if (!targetLoaded || scrolledToPost.current) return;
+    scrolledToPost.current = true;
+    postRefs.current[openPostId]?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [targetLoaded, openPostId]);
+  const commentLoaded = Boolean(openCommentId) && comments.some((c) => c.id === openCommentId);
+  useEffect(() => {
+    if (!commentLoaded || scrolledToComment.current) return;
+    scrolledToComment.current = true;
+    // Después de llegar a la publicación
+    const t = setTimeout(
+      () => document.getElementById(`comment-${openCommentId}`)?.scrollIntoView({ behavior: "smooth", block: "center" }),
+      450
+    );
+    return () => clearTimeout(t);
+  }, [commentLoaded, openCommentId]);
+
+  const missingAuthors = [...feed.map((p) => p.user_id), ...comments.map((c) => c.user_id)]
+    .filter((id) => id && !(id in badges))
+    .filter((id, i, all) => all.indexOf(id) === i)
+    .join(",");
+  useEffect(() => {
+    if (!missingAuthors) return;
+    let alive = true;
+    const ids = missingAuthors.split(",");
+    roleBadges(ids)
+      .then((rows) => alive && setBadges((cur) => ({ ...cur, ...Object.fromEntries(ids.map((id) => [id, rows[id] ?? null])) })))
+      .catch((e) => console.error("No se pudieron cargar los roles de los autores", e));
+    return () => {
+      alive = false;
+    };
+  }, [missingAuthors]);
 
   const publish = async () => {
     if (draft.trim().length < 3 || publishing) return;
@@ -240,9 +283,16 @@ function CommunityPage({ avatarUrl, openPostId, onBack, onViewOnMap, onContactOw
           )}
 
           {visible.map((post) => (
-            <div key={post.id} className="community__item">
+            <div
+              key={post.id}
+              className="community__item"
+              ref={(el) => {
+                if (el) postRefs.current[post.id] = el;
+              }}
+            >
               <ForumPost
                 userName={post.author_name}
+                roleBadge={badges[post.user_id]}
                 avatarUrl={post.avatar_url}
                 imageUrl={post.image_url}
                 timeAgo={timeAgo(post.created_at)}
@@ -287,13 +337,17 @@ function CommunityPage({ avatarUrl, openPostId, onBack, onViewOnMap, onContactOw
                   {post.report_id && post.user_id === myUserId && <MatchesPanel reportId={post.report_id} />}
                   {comments.length === 0 && <p className="community__empty">Sé el primero en responder.</p>}
                   {comments.map((c) => (
-                    <div key={c.id} className="community__comment-row">
+                    <div
+                      key={c.id}
+                      id={`comment-${c.id}`}
+                      className={`community__comment-row ${c.id === openCommentId ? "is-highlight" : ""}`}
+                    >
                       {/* Foto de perfil del autor del comentario (o el dibujo gris si no tiene) */}
                       <span className="community__comment-avatar">
                         {c.avatar_url ? <img src={c.avatar_url} alt="" /> : <AvatarPlaceholder />}
                       </span>
                       <p className="community__comment">
-                        <strong>{c.author?.name ?? "Usuario"}</strong> {c.text}{" "}
+                        <strong>{c.author?.name ?? "Usuario"}</strong> <RoleBadge kind={badges[c.user_id]} /> {c.text}{" "}
                         {reported.includes(c.id) ? (
                           <span className="community__reported">Denunciado</span>
                         ) : (

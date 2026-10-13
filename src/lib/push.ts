@@ -15,7 +15,10 @@ const enabled = Capacitor.isNativePlatform() && import.meta.env.VITE_PUSH_ENABLE
 let currentToken: string | null = null;
 let listenersReady = false;
 
-export async function registerPush(userId: string, onOpen?: () => void): Promise<void> {
+export async function registerPush(
+  userId: string,
+  onOpen?: (target: { notification_id?: string; type?: string; reference_id?: string }) => void
+): Promise<void> {
   if (!enabled) return;
 
   const perm = await PushNotifications.requestPermissions();
@@ -37,8 +40,10 @@ export async function registerPush(userId: string, onOpen?: () => void): Promise
       if (error) console.error("[push] no se pudo guardar el token (¿corriste el SQL de push_tokens?)", error);
     });
     await PushNotifications.addListener("registrationError", (e) => console.error("[push] registro falló", e));
-    // Tocar la notificación abre la bandeja de la app
-    await PushNotifications.addListener("pushNotificationActionPerformed", () => onOpen?.());
+    // Tocar la notificación abre la publicación de donde salió (send-push manda type y reference_id)
+    await PushNotifications.addListener("pushNotificationActionPerformed", ({ notification }) =>
+      onOpen?.(notification.data ?? {})
+    );
   }
 
   await PushNotifications.register();

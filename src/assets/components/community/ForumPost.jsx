@@ -1,4 +1,5 @@
 import AvatarPlaceholder from "../pets/AvatarPlaceholder.jsx";
+import RoleBadge from "../shared/RoleBadge.jsx";
 import likesIcon from "../../svg/Likes.svg";
 import commentsIcon from "../../svg/uil_comments.svg";
 import "./ForumPost.css";
@@ -29,6 +30,7 @@ function ForumPost({
   onLike,
   onClick,
   alert, // alerta de mascota: { lost, title, details, onOpen } (contexto + botón a la ficha)
+  roleBadge, // rol especial del autor: "clinic" | "shelter" | "vet" | "admin"
 }) {
   return (
     <article className="forum-post" onClick={onClick}>
@@ -38,7 +40,9 @@ function ForumPost({
         </div>
 
         <div className="forum-post__name-time">
-          <p className="forum-post__name">{userName}</p>
+          <p className="forum-post__name">
+            {userName} <RoleBadge kind={roleBadge} />
+          </p>
           <p className="forum-post__time">{timeAgo}</p>
         </div>
       </div>

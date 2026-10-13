@@ -38,6 +38,8 @@ import {
   listAdoptionPets,
   getCommentById,
   getPostByReportId,
+  getPetForNotification,
+  markNotificationRead,
   getReportDetails,
   publisherKinds,
   getReportById,
@@ -251,8 +253,8 @@ function App() {
   }, [isProfessional, activeTab]);
   const [showNotifications, setShowNotifications] = useState(false);
 
-  // Tocar una notificación push (app cerrada o en segundo plano) abre la bandeja
-  const { inboxRequests } = useNotifications();
+  // Tocar una notificación push / del sistema: sin destino abre la bandeja; con destino, ver openNotification
+  const { inboxRequests, pendingOpen, clearPendingOpen, refreshUnread } = useNotifications();
   useEffect(() => {
     if (inboxRequests > 0) setShowNotifications(true);
   }, [inboxRequests]);
@@ -318,6 +320,9 @@ function App() {
   const [pets, setPets] = useState([]);
   const [species, setSpecies] = useState([]);
   const [contactPostId, setContactPostId] = useState(null);
+  // Desde una notificación: comentario a resaltar y un contador para volver a abrir la misma publicación
+  const [contactCommentId, setContactCommentId] = useState(null);
+  const [contactNonce, setContactNonce] = useState(0);
   const [mapFocusReportId, setMapFocusReportId] = useState(null); // "Ver en el mapa" desde Comunidad
   const [matchTarget, setMatchTarget] = useState(null); // alerta a la que se le envía un aviso privado
   const [editingPet, setEditingPet] = useState(null);
@@ -626,26 +631,88 @@ function App() {
   };
 
   // Al tocar una notificación: lleva a la publicación, al mapa o al perfil según su tipo
+  // Cierra todo lo que esté encima (ventanas y pantallas) para que se vea el destino de la notificación
+  const closeScreens = () => {
+    [
+      setSelectedPet, setConfirmAction, setMatchTarget, setReviewing, setModerationTab, setRequestsTab,
+      setListPage, setEditingPet,
+    ].forEach((set) => set(null));
+    [
+      setShowReportModal, setProfilePhotoOpen, setCityPickerOpen, setShowNotifications, setShowMyReports,
+      setShowMyClinic, setShowEditProfile, setShowHelp, setShowReportLost, setShowReportFound,
+      setShowReportAdoption, setShowVerification, setShowChangePassword, setShowChangeEmail, setShowSettings,
+      setShowAddPet,
+    ].forEach((set) => set(false));
+  };
+
+  /**
+   * Deep link de una notificación: lleva a la publicación (o ficha) de donde salió.
+   * - post_like → la publicación · post_reply → la publicación con el comentario resaltado
+   * - geo_alert / report_match → la publicación de la alerta (si no tiene, el mapa centrado en ella)
+   * - adoption_interest / adoption_response → la ficha de la mascota (con los interesados si es tuya)
+   * - pet_reminder → Perfil
+   */
   const openNotification = async (n) => {
-    const goPost = (postId) => {
+    const ref = n.reference_id || null;
+    const goPost = (postId, commentId = null) => {
+      closeScreens();
       setContactPostId(postId);
+      setContactCommentId(commentId);
+      setContactNonce((x) => x + 1); // la misma notificación otra vez vuelve a abrirla y bajar hasta ella
       setActiveTab("community");
     };
+    const goTabOnly = (tab) => {
+      closeScreens();
+      setContactPostId(null);
+      setActiveTab(tab);
+    };
     try {
-      if (n.type === "post_like" && n.reference_id) return goPost(n.reference_id);
-      if (n.type === "post_reply" && n.reference_id) {
-        const comment = await getCommentById(n.reference_id).catch(() => null);
-        return comment ? goPost(comment.post_id) : setActiveTab("community");
+      switch (n.type) {
+        case "post_like":
+          return ref ? goPost(ref) : goTabOnly("community");
+        case "post_reply": {
+          const comment = ref ? await getCommentById(ref).catch(() => null) : null;
+          return comment ? goPost(comment.post_id, comment.id) : goTabOnly("community");
+        }
+        case "geo_alert":
+        case "report_match": {
+          const post = ref ? await getPostByReportId(ref).catch(() => null) : null;
+          if (post) return goPost(post.id);
+          goTabOnly("map");
+          if (ref) setMapFocusReportId(ref); // sin publicación: el mapa centrado en la alerta
+          return;
+        }
+        case "adoption_interest":
+        case "adoption_response": {
+          const row = ref ? await getPetForNotification(ref).catch(() => null) : null;
+          if (!row) return goTabOnly(n.type === "adoption_interest" ? "profile" : "home");
+          goTabOnly(n.type === "adoption_interest" ? "profile" : "home");
+          return setSelectedPet(petToCard(row, user?.id)); // la ficha, con el panel de adopción
+        }
+        case "pet_reminder":
+          return goTabOnly("profile");
+        default:
+          return setShowNotifications(false);
       }
-      if (n.type === "geo_alert" || n.type === "report_match") {
-        const post = n.reference_id ? await getPostByReportId(n.reference_id).catch(() => null) : null;
-        return post ? goPost(post.id) : setActiveTab("map");
-      }
-      if (n.type === "pet_reminder") setActiveTab("profile");
-    } finally {
+    } catch (e) {
+      console.error("No se pudo abrir la notificación", e);
       setShowNotifications(false);
     }
   };
+
+  // Notificación tocada en la barra del celular (push o del sistema): se marca leída y se abre su destino
+  const openNotificationRef = useRef(openNotification);
+  useEffect(() => {
+    openNotificationRef.current = openNotification;
+  });
+  useEffect(() => {
+    if (!pendingOpen || !user) return;
+    clearPendingOpen();
+    if (pendingOpen.notification_id) {
+      markNotificationRead(pendingOpen.notification_id).then(refreshUnread).catch(() => {});
+    }
+    void openNotificationRef.current({ type: pendingOpen.type, reference_id: pendingOpen.reference_id });
+  }, [pendingOpen, user, clearPendingOpen, refreshUnread]);
 
   const removePet = async (id) => {
     await deletePet(id);
@@ -1431,9 +1498,10 @@ function App() {
 
         {activeTab === "community" && (
           <CommunityPage
-            key={contactPostId ?? "feed"}
+            key={contactPostId ? `${contactPostId}-${contactNonce}` : "feed"}
             avatarUrl={profilePhoto}
             openPostId={contactPostId}
+            openCommentId={contactCommentId}
             onBack={goHome}
             myUserId={user?.id}
             onContactOwner={(post) =>

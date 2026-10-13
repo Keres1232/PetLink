@@ -1,6 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { requestNotificationPermission, showNotification } from "../lib/notify";
+import {
+  ensureNotificationPermission,
+  onNotificationTap,
+  requestNotificationPermission,
+  showNotification,
+} from "../lib/notify";
 import { registerPush, unregisterPush } from "../lib/push";
 import { useAuth } from "./AuthContext";
 
@@ -10,6 +15,8 @@ const NotificationsContext = createContext({
   enabled: true,
   setEnabled: () => {},
   inboxRequests: 0,
+  pendingOpen: null,
+  clearPendingOpen: () => {},
 });
 
 // Interruptor general (Perfil → Notificaciones). Se guarda en este dispositivo.
@@ -46,6 +53,12 @@ export function NotificationsProvider({ children }) {
     if (on) await requestNotificationPermission().catch(() => false);
   }, []);
 
+  // Antes el permiso del celular solo se pedía al tocar el interruptor de Ajustes, y sin él Android
+  // descarta las notificaciones en silencio. Ahora se pide al entrar (una vez; si lo niega no se insiste).
+  useEffect(() => {
+    if (user && enabled) void ensureNotificationPermission().catch(() => false);
+  }, [user, enabled]);
+
   const refreshUnread = useCallback(async () => {
     if (!user) return setUnread(0);
     const { count, error } = await supabase
@@ -68,7 +81,8 @@ export function NotificationsProvider({ children }) {
         ({ new: n }) => {
           setUnread((c) => c + 1);
           // También como notificación del celular, salvo que el usuario las haya desactivado
-          if (enabledRef.current) void showNotification(n.title, n.body);
+          if (enabledRef.current)
+            void showNotification(n.title, n.body, { notification_id: n.id, type: n.type, reference_id: n.reference_id });
         }
       )
       .on(
@@ -91,20 +105,29 @@ export function NotificationsProvider({ children }) {
   }, [user, refreshUnread]);
 
   // Notificaciones con la app cerrada (push): el celular se registra mientras estén activadas
-  const [inboxRequests, setInboxRequests] = useState(0); // sube al tocar una notificación push
+  const [inboxRequests, setInboxRequests] = useState(0); // sube al tocar una notificación sin destino
+  // Notificación tocada (push o del sistema) cuyo destino hay que abrir: App la lleva a su publicación
+  const [pendingOpen, setPendingOpen] = useState(null);
+  const handleTap = useCallback((target) => {
+    if (target?.type) setPendingOpen({ ...target, at: Date.now() });
+    else setInboxRequests((n) => n + 1); // sin datos: se abre la bandeja
+  }, []);
+  const clearPendingOpen = useCallback(() => setPendingOpen(null), []);
+  useEffect(() => onNotificationTap(handleTap), [handleTap]);
+
   useEffect(() => {
     if (!user) return;
     if (enabled) {
-      registerPush(user.id, () => setInboxRequests((n) => n + 1)).catch((e) => console.error("[push]", e));
+      registerPush(user.id, handleTap).catch((e) => console.error("[push]", e));
     } else {
       void unregisterPush();
     }
-  }, [user, enabled]);
+  }, [user, enabled, handleTap]);
 
   // Desactivadas: no hay globito en la campana (las notificaciones se siguen guardando y se ven en la bandeja)
   const value = useMemo(
-    () => ({ unread: enabled ? unread : 0, refreshUnread, enabled, setEnabled, inboxRequests }),
-    [unread, refreshUnread, enabled, setEnabled, inboxRequests]
+    () => ({ unread: enabled ? unread : 0, refreshUnread, enabled, setEnabled, inboxRequests, pendingOpen, clearPendingOpen }),
+    [unread, refreshUnread, enabled, setEnabled, inboxRequests, pendingOpen, clearPendingOpen]
   );
   return <NotificationsContext.Provider value={value}>{children}</NotificationsContext.Provider>;
 }

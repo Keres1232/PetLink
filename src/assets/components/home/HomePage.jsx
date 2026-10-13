@@ -13,6 +13,8 @@ import useLiveFeed from "../../../hooks/useLiveFeed.js";
 import { useNotifications } from "../../../context/NotificationsContext.jsx";
 import { timeAgo } from "../../../lib/format";
 import { POST_TYPE_LABEL } from "../../../lib/postTypes";
+import { roleBadges } from "../../../lib/api";
+import { useEffect, useState } from "react";
 
 function SectionHeader({ title, icon, onSeeAll, seeAllLabel = "Ver todo" }) {
   return (
@@ -65,6 +67,20 @@ function HomePage({
   const { unread } = useNotifications();
   const latest = feed[0];
 
+  // Etiqueta de rol especial del autor de la publicación más reciente
+  const [latestBadge, setLatestBadge] = useState({ userId: null, kind: null });
+  useEffect(() => {
+    const userId = latest?.user_id;
+    if (!userId) return;
+    let alive = true;
+    roleBadges([userId])
+      .then((rows) => alive && setLatestBadge({ userId, kind: rows[userId] ?? null }))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [latest?.user_id]);
+
   return (
     <>
       <header className="home-header">
@@ -99,6 +115,7 @@ function HomePage({
         {latest ? (
           <ForumPost
             userName={latest.author_name}
+            roleBadge={latestBadge.userId === latest.user_id ? latestBadge.kind : null}
             avatarUrl={latest.avatar_url}
             imageUrl={latest.image_url}
             timeAgo={timeAgo(latest.created_at)}

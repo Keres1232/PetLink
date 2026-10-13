@@ -102,7 +102,14 @@ export interface CommentRow {
 export interface NotificationRow {
   id: string;
   user_id: string;
-  type: "geo_alert" | "post_reply" | "pet_reminder" | "post_like" | "report_match";
+  type:
+    | "geo_alert"
+    | "post_reply"
+    | "pet_reminder"
+    | "post_like"
+    | "report_match"
+    | "adoption_interest"
+    | "adoption_response";
   title: string;
   body: string | null;
   reference_id: string | null;

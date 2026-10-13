@@ -264,3 +264,25 @@
 .community__match-btn:active {
   transform: scale(0.96);
 }
+
+/* Al llegar desde una notificación: que el header fijo no tape la publicación */
+.community__item {
+  scroll-margin-top: 90px;
+}
+
+/* Comentario de donde salió la notificación ("respondió tu publicación") */
+.community__comment-row.is-highlight {
+  margin: -4px -6px;
+  padding: 4px 6px;
+
+  border-radius: 12px;
+  background: #ede3ff;
+  box-shadow: 0 0 0 2px var(--activado, #ae77ff);
+
+  animation: community-comment-flash 1.6s ease-out 1;
+}
+
+@keyframes community-comment-flash {
+  0% { background: #d8c2ff; }
+  100% { background: #ede3ff; }
+}

@@ -224,7 +224,7 @@
   border-radius: 9px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 
-  color: #ffffff;
+  color: #14101c;
   font-family: "Kodchasan", sans-serif;
   font-size: 10px;
   font-weight: 700;
@@ -232,11 +232,11 @@
 }
 
 .pet-card__publisher--clinic {
-  background: #2f80ed;
+  background: #c3c5ff;
 }
 
 .pet-card__publisher--shelter {
-  background: #7519ff;
+  background: #ffe1c0;
 }
 
 /* Dentro de "Publicado por" va junto al nombre, no sobre una foto */
@@ -245,10 +245,10 @@
   box-shadow: none;
 }
 
-/* Texto blanco siempre: ".pet-card__photo span" (gris) es más específico y lo pisaba */
+/* Texto oscuro (colores del diseño): ".pet-card__photo span" (gris) es más específico y lo pisaba */
 .pet-card__photo .pet-card__publisher,
 .pet-card__publisher {
-  color: #ffffff;
+  color: #14101c;
   font-family: "Kodchasan", sans-serif;
   font-size: 10px;
   font-weight: 700;

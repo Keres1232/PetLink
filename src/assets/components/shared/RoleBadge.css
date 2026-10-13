@@ -1,0 +1,24 @@
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+
+  height: 18px;
+  padding: 0 8px;
+
+  border-radius: 9px;
+
+  color: #ffffff;
+  font-family: "Kodchasan", sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+/* Colores de las etiquetas (diseño): fondo claro + texto oscuro. Médico vet. ≠ Veterinaria */
+.role-badge--vet { background: #c9f8e6; color: #0d6b50; }       /* Médico vet. (persona) */
+.role-badge--clinic { background: #c3c5ff; color: #14101c; }    /* Veterinaria (establecimiento) */
+.role-badge--shelter { background: #ffe1c0; color: #14101c; }   /* Refugio */
+.role-badge--admin { background: #3b2a5c; color: #ffffff; }
