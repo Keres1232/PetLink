@@ -22,3 +22,36 @@
   font-weight: 600;
   text-align: center;
 }
+.pet-list__empty p {
+  margin: 0 0 14px;
+}
+
+.pet-list__count {
+  margin: 14px 0 10px;
+
+  color: var(--desctivado, #66557e);
+
+  font-family: "Kodchasan", sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.pet-list__map-btn {
+  height: 40px;
+  padding: 0 22px;
+
+  border: none;
+  border-radius: 12px;
+  background: var(--titulos, #7519ff);
+
+  color: #ffffff;
+  font-family: "Kodchasan", sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.pet-list__map-btn:active {
+  transform: scale(0.97);
+}

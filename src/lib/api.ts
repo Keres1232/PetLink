@@ -103,7 +103,12 @@ export async function createAlert(input: {
     p_photos: input.photos ?? [],
     p_lost_at: input.lostAt ?? null,
   });
-  if (error) throw error;
+  if (error) {
+    // Trigger prevent_duplicate_lost_alert: una sola alerta activa por mascota
+    if (/alerta activa/i.test(error.message ?? ""))
+      throw new Error("Ya tienes una alerta activa para esta mascota. Revísala en el mapa o márcala como resuelta para crear otra.");
+    throw error;
+  }
   return data as string;
 }
 
@@ -197,6 +202,50 @@ export async function myPets(): Promise<Pet[]> {
   return data as unknown as Pet[];
 }
 
+/** Nombre comparable: sin mayúsculas, tildes ni espacios de más ("Firulais " = "firuláis"). */
+function petNameKey(name: string): string {
+  return name.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+/**
+ * Impide tener dos veces la misma mascota: mismo dueño + mismo nombre + misma especie, entre las
+ * que no están eliminadas. Las de "Mis mascotas" y las publicadas en adopción se comparan por separado,
+ * y las ya adoptadas no cuentan. (El trigger prevent_duplicate_pet de la BD solo mira los últimos 90 s.)
+ */
+async function assertNotDuplicatePet(
+  userId: string,
+  name: string,
+  speciesId: string,
+  status: string | null,
+  excludeId?: string
+): Promise<void> {
+  const { data, error } = await supabase
+    .from("pets")
+    .select("id, name, status")
+    .eq("user_id", userId)
+    .eq("species_id", speciesId)
+    .is("deleted_at", null);
+  if (error) throw error;
+  const rows = (data ?? []) as { id: string; name: string; status: string | null }[];
+  const ownStatus = excludeId ? rows.find((r) => r.id === excludeId)?.status ?? status : status;
+  const adoption = ownStatus === "for_adoption";
+  const key = petNameKey(name);
+  const twin = rows.find(
+    (r) =>
+      r.id !== excludeId &&
+      r.status !== "adopted" &&
+      (r.status === "for_adoption") === adoption &&
+      petNameKey(r.name) === key
+  );
+  if (twin) {
+    throw new Error(
+      adoption
+        ? `Ya publicaste en adopción una mascota llamada «${twin.name}» de la misma especie.`
+        : `Ya tienes una mascota llamada «${twin.name}» de la misma especie. Revisa tu perfil.`
+    );
+  }
+}
+
 export async function updatePet(
   id: string,
   input: {
@@ -213,6 +262,7 @@ export async function updatePet(
 ): Promise<void> {
   const userId = (await supabase.auth.getUser()).data.user?.id;
   if (!userId) throw new Error("No hay sesión activa.");
+  await assertNotDuplicatePet(userId, input.name, input.speciesId, null, id);
   const { error } = await supabase
     .from("pets")
     .update({
@@ -270,6 +320,7 @@ export async function createPet(input: {
   }
   const userId = (await supabase.auth.getUser()).data.user?.id;
   if (!userId) throw new Error("No hay sesión activa.");
+  await assertNotDuplicatePet(userId, input.name, input.speciesId, input.status ?? "active");
   const { error } = await supabase.from("pets").insert({
     user_id: userId,
     name: input.name,
@@ -283,7 +334,12 @@ export async function createPet(input: {
     size: input.size ?? null,
     status: input.status ?? "active",
   });
-  if (error) throw error;
+  if (error) {
+    // Trigger prevent_duplicate_pet: mismo nombre y especie en los últimos 90 s (doble envío)
+    if (/ya registraste/i.test(error.message ?? ""))
+      throw new Error("Esta mascota ya fue registrada hace un momento. Revisa tu perfil.");
+    throw error;
+  }
 }
 
 export async function getPrivateProfile(): Promise<PrivateProfile | null> {

@@ -62,6 +62,7 @@ import CommunityPage from "./assets/components/community/CommunityPage.jsx";
 import NotificationsPage from "./assets/components/notifications/NotificationsPage.jsx";
 import HelpPage from "./assets/components/help/HelpPage.jsx";
 import PetListPage from "./assets/components/pets/PetListPage.jsx";
+import FoundPetsPage from "./assets/components/pets/FoundPetsPage.jsx";
 import PetDetailModal from "./assets/components/pets/PetDetailModal.jsx";
 import AddPetPage from "./assets/components/pets/AddPetPage.jsx";
 import MyPetsSection from "./assets/components/profile/MyPetsSection.jsx";
@@ -89,6 +90,8 @@ import backIcon from "./assets/svg/Back.svg";
 import "./App.css";
 
 const HIDDEN_SPECIES = ["ferret", "rabbit"];
+// "Mascotas encontradas" en Inicio busca al menos en 20 km, igual que el mapa
+const FOUND_MIN_RADIUS_M = 20000;
 
 const SettingsIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -318,14 +321,23 @@ function App() {
   // Sin permiso o sin GPS (p. ej. el emulador) se busca alrededor del centro de Bogotá
   const usingDefaultLocation = !locLoading && userPoint === DEFAULT_CENTER;
   const [nearReports, setNearReports] = useState([]);
+  // Mascotas encontradas: búsqueda propia (hasta 20 km, como el mapa) para que las perdidas
+  // no las dejen fuera de los 20 reportes de "Cerca de ti"
+  const [foundPets, setFoundPets] = useState([]);
+  const foundRadiusM = Math.max(radius, FOUND_MIN_RADIUS_M);
 
   const loadNear = useCallback(async () => {
     try {
-      setNearReports(newestFirst(await reportsNear(userPoint, radius, 20)).map(reportToPet));
+      const [near, wide] = await Promise.all([
+        reportsNear(userPoint, radius, 20),
+        reportsNear(userPoint, foundRadiusM, 60),
+      ]);
+      setNearReports(newestFirst(near).map(reportToPet));
+      setFoundPets(newestFirst(wide.filter((r) => r.type === "found")).map(reportToPet));
     } catch (e) {
       console.error("No se pudieron cargar los reportes cercanos", e);
     }
-  }, [userPoint, radius]);
+  }, [userPoint, radius, foundRadiusM]);
 
   useEffect(() => {
     if (user && !locLoading) void loadNear();
@@ -361,7 +373,6 @@ function App() {
   }, [activeTab, user, locLoading, loadNear]);
 
   const nearLost = nearReports.filter((p) => p.status === "Perdido");
-  const nearFound = nearReports.filter((p) => p.status === "Encontrado");
 
   const loadPets = useCallback(async () => {
     try {
@@ -973,7 +984,34 @@ function App() {
     );
   }
 
-  /* EN ADOPCIÓN / ENCONTRADOS */
+  /* MASCOTAS ENCONTRADAS ("Ver más" de Inicio) */
+  if (listPage === "found") {
+    return (
+      <div className="phone-frame">
+        <main className="app">
+          <PawBackground />
+          <FoundPetsPage
+            pets={foundPets}
+            radiusKm={Math.round(foundRadiusM / 1000)}
+            onBack={() => setListPage(null)}
+            onNotifications={() => {
+              setListPage(null);
+              setShowNotifications(true);
+            }}
+            onPetClick={showPet}
+            onViewMap={() => {
+              setListPage(null);
+              setActiveTab("map");
+            }}
+          />
+          <NavBar active={activeTab} onNavigate={goTab(() => setListPage(null))} />
+          {sharedModals}
+        </main>
+      </div>
+    );
+  }
+
+  /* EN ADOPCIÓN */
   if (listPage) {
     const isAdoption = listPage === "adoption";
     return (
@@ -982,7 +1020,7 @@ function App() {
           <PawBackground />
           <PetListPage
             title={isAdoption ? "En adopción" : "Encontrados"}
-            pets={isAdoption ? adoptionPets : nearFound}
+            pets={isAdoption ? adoptionPets : foundPets}
             onBack={() => setListPage(null)}
             onNotifications={() => {
               setListPage(null);
@@ -1325,7 +1363,7 @@ function App() {
             onEnableLocation={() => void enableDeviceLocation()}
             nearPets={nearLost}
             adoptionPets={adoptionPets}
-            foundPets={nearFound}
+            foundPets={foundPets.slice(0, 10)}
             onNotifications={openNotifications}
             onLost={() => setShowReportLost(true)}
             onFound={() => setShowReportFound(true)}

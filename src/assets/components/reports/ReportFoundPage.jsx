@@ -105,9 +105,13 @@ function ReportFoundPage({ species = [], onBack, onNotifications, onSubmit }) {
     );
   };
 
+  // Candado síncrono: un segundo toque rápido no vuelve a enviar (useState tarda un render)
+  const busyRef = useRef(false);
+
   const submit = async (e) => {
     e.preventDefault();
-    if (!canSubmit) return;
+    if (!canSubmit || busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
     setError("");
     try {
@@ -124,6 +128,7 @@ function ReportFoundPage({ species = [], onBack, onNotifications, onSubmit }) {
       });
     } catch (err) {
       console.error(err);
+      busyRef.current = false; // solo se libera si falló
       setError(err?.message || "No se pudo publicar la alerta. Intenta de nuevo.");
     } finally {
       setBusy(false);

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import AppHeader from "../shared/AppHeader.jsx";
 import InfoNotice from "../shared/InfoNotice.jsx";
 import IconInputField from "../shared/IconInputField.jsx";
@@ -85,15 +85,20 @@ function ReportLostPage({ pets = [], onBack, onNotifications, onNotListed, onSub
     e.target.value = "";
   };
 
+  // Candado síncrono: un segundo toque rápido no vuelve a enviar (useState tarda un render)
+  const busyRef = useRef(false);
+
   const submit = async (e) => {
     e.preventDefault();
-    if (!canSubmit) return;
+    if (!canSubmit || busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
     setError("");
     try {
       await onSubmit?.({ petId, date, time, place, point: coords, traits, photoFiles });
     } catch (err) {
       console.error(err);
+      busyRef.current = false; // solo se libera si falló
       setError(err?.message || "No se pudo publicar la alerta. Intenta de nuevo.");
     } finally {
       setBusy(false);

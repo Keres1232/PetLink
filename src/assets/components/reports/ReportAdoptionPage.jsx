@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import AppHeader from "../shared/AppHeader.jsx";
 import InfoNotice from "../shared/InfoNotice.jsx";
 import ChipGroup from "../shared/ChipGroup.jsx";
@@ -77,9 +77,13 @@ function ReportAdoptionPage({ species = [], onBack, onNotifications, onSubmit })
     );
   };
 
+  // Candado síncrono: un segundo toque rápido no vuelve a enviar (useState tarda un render)
+  const busyRef = useRef(false);
+
   const submit = async (e) => {
     e.preventDefault();
-    if (!canSubmit) return;
+    if (!canSubmit || busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
     setError("");
     try {
@@ -87,6 +91,7 @@ function ReportAdoptionPage({ species = [], onBack, onNotifications, onSubmit })
     } catch (err) {
       console.error(err);
       setError(err?.message || "No se pudo publicar. Intenta de nuevo.");
+      busyRef.current = false;
       setBusy(false);
     }
   };

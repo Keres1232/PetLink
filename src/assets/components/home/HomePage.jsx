@@ -8,16 +8,17 @@ import bellIcon from "../../svg/bell.svg";
 import mapIcon from "../../svg/Ver_todo.svg";
 import commentIcon from "../../svg/Report/coment.svg";
 import heartIcon from "../../svg/Report/corazon.svg";
+import pawIcon from "../../svg/Report/huella.svg";
 import useLiveFeed from "../../../hooks/useLiveFeed.js";
 import { useNotifications } from "../../../context/NotificationsContext.jsx";
 import { timeAgo } from "../../../lib/format";
 import { POST_TYPE_LABEL } from "../../../lib/postTypes";
 
-function SectionHeader({ title, icon, onSeeAll }) {
+function SectionHeader({ title, icon, onSeeAll, seeAllLabel = "Ver todo" }) {
   return (
     <div className="home-section__header">
       <h2 className="home-section__title">{title}</h2>
-      <PillButton icon={icon} label="Ver todo" onClick={onSeeAll} />
+      <PillButton icon={icon} label={seeAllLabel} onClick={onSeeAll} />
     </div>
   );
 }
@@ -116,9 +117,14 @@ function HomePage({
         <PetCarousel pets={adoptionPets} statusKey="species" onPetClick={onPetClick} />
       </section>
 
+      {/* Alertas de mascotas encontradas cerca: si es la tuya, desde su ficha contactas a quien la encontró */}
       <section className="home-section">
-        <SectionHeader title="Encontrados" icon={heartIcon} onSeeAll={onSeeAllFound} />
-        <PetCarousel pets={foundPets} statusKey="species" onPetClick={onPetClick} />
+        <SectionHeader title="Mascotas encontradas" icon={pawIcon} seeAllLabel="Ver más" onSeeAll={onSeeAllFound} />
+        {foundPets.length > 0 ? (
+          <PetCarousel pets={foundPets} statusKey="status" onPetClick={onPetClick} />
+        ) : (
+          <p className="home-section__empty">No hay mascotas encontradas cerca por ahora.</p>
+        )}
       </section>
     </>
   );

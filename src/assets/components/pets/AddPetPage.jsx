@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 import AppHeader from "../shared/AppHeader.jsx";
 import ChipGroup from "../shared/ChipGroup.jsx";
 import TextInputField from "../shared/TextInputField.jsx";
@@ -77,9 +77,13 @@ function AddPetPage({ species = [], pet = null, onBack, onNotifications, onSave,
   const update = (key) => (value) => setForm((f) => ({ ...f, [key]: value }));
   const canSave = form.name.trim().length >= 2 && Boolean(speciesId) && !saving;
 
+  // Candado síncrono: un segundo toque rápido no vuelve a enviar (useState tarda un render)
+  const savingRef = useRef(false);
+
   const submit = async (e) => {
     e.preventDefault();
-    if (!canSave) return;
+    if (!canSave || savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     setError("");
     try {
@@ -92,6 +96,7 @@ function AddPetPage({ species = [], pet = null, onBack, onNotifications, onSave,
         photoFile,
       });
     } catch (err) {
+      savingRef.current = false; // solo se libera si falló; si se guardó, la pantalla se cierra
       setError(err?.message || "No pudimos guardar a tu mascota. Intenta de nuevo.");
     } finally {
       setSaving(false);
