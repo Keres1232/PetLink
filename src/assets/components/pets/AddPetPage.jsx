@@ -3,6 +3,7 @@ import AppHeader from "../shared/AppHeader.jsx";
 import ChipGroup from "../shared/ChipGroup.jsx";
 import TextInputField from "../shared/TextInputField.jsx";
 import PhotoPickerModal from "../shared/PhotoPickerModal.jsx";
+import PhotoCropModal from "../shared/PhotoCropModal.jsx";
 import AvatarPlaceholder from "./AvatarPlaceholder.jsx";
 import backIcon from "../../svg/Back.svg";
 import bellIcon from "../../svg/bell.svg";
@@ -30,6 +31,7 @@ function AddPetPage({ species = [], pet = null, onBack, onNotifications, onSave,
   const [photo, setPhoto] = useState(pet?.photoUrl ?? null);
   const [photoFile, setPhotoFile] = useState(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [cropFile, setCropFile] = useState(null); // foto elegida, esperando que el usuario la ajuste
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState("");
@@ -190,7 +192,15 @@ function AddPetPage({ species = [], pet = null, onBack, onNotifications, onSave,
       <PhotoPickerModal
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
-        onFile={(file) => {
+        onFile={setCropFile}
+      />
+
+      {/* Elegir qué parte de la foto se ve en la tarjeta y en la ficha expandida */}
+      <PhotoCropModal
+        file={cropFile}
+        onCancel={() => setCropFile(null)}
+        onDone={(file) => {
+          setCropFile(null);
           setPhotoFile(file);
           setPhoto(URL.createObjectURL(file));
         }}

@@ -8,6 +8,7 @@ import backIcon from "../../svg/Back.svg";
 import bellIcon from "../../svg/bell.svg";
 import SpeciesPicker from "../shared/SpeciesPicker.jsx";
 import PetPicker from "../pets/PetPicker.jsx";
+import PhotoCropModal from "../shared/PhotoCropModal.jsx";
 import { defaultSpeciesId } from "../../../lib/species";
 import { reverseGeocode } from "../../../lib/geocode";
 import "./ReportLostPage.css";
@@ -71,11 +72,18 @@ function ReportAdoptionPage({ species = [], myPets = [], initialPetId = null, on
     if (pet && !description.trim()) setDescription(pet.marks ?? "");
   };
 
+  const [cropFile, setCropFile] = useState(null); // primera foto, esperando que el usuario la ajuste
+
+  const pushPhoto = (file) => {
+    setPhotos((p) => [...p, URL.createObjectURL(file)]);
+    setPhotoFiles((f) => [...f, file]);
+  };
+
   const addPhoto = (e) => {
     const file = e.target.files?.[0];
     if (file && photos.length < MAX_PHOTOS) {
-      setPhotos((p) => [...p, URL.createObjectURL(file)]);
-      setPhotoFiles((f) => [...f, file]);
+      if (photos.length === 0) setCropFile(file); // la que se verá en la tarjeta y en la ficha
+      else pushPhoto(file);
     }
     e.target.value = "";
   };
@@ -236,6 +244,15 @@ function ReportAdoptionPage({ species = [], myPets = [], initialPetId = null, on
           Cancelar
         </button>
       </form>
+
+      <PhotoCropModal
+        file={cropFile}
+        onCancel={() => setCropFile(null)}
+        onDone={(file) => {
+          setCropFile(null);
+          pushPhoto(file);
+        }}
+      />
     </>
   );
 }

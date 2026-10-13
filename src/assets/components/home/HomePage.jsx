@@ -45,6 +45,7 @@ function HomePage({
   userName = "usuario",
   nearPets = [],
   adoptionPets = [],
+  lostPets = [],
   foundPets = [],
   onNotifications,
   onLost,
@@ -54,6 +55,7 @@ function HomePage({
   onSeeAllCommunity,
   onSeeAllAdoption,
   onSeeAllFound,
+  onSeeAllLost,
   onOpenPost,
   usingDefaultLocation = false,
   onEnableLocation,
@@ -116,6 +118,16 @@ function HomePage({
       <section className="home-section">
         <SectionHeader title="En adopción" icon={heartIcon} onSeeAll={onSeeAllAdoption} />
         <PetCarousel pets={adoptionPets} statusKey="species" onPetClick={onPetClick} />
+      </section>
+
+      {/* Alertas de mascotas perdidas cerca: si la ves, desde su ficha le escribes al dueño */}
+      <section className="home-section">
+        <SectionHeader title="Mascotas perdidas" icon={pawIcon} seeAllLabel="Ver más" onSeeAll={onSeeAllLost} />
+        {lostPets.length > 0 ? (
+          <PetCarousel pets={lostPets} statusKey="status" onPetClick={onPetClick} />
+        ) : (
+          <p className="home-section__empty">No hay mascotas perdidas cerca por ahora.</p>
+        )}
       </section>
 
       {/* Alertas de mascotas encontradas cerca: si es la tuya, desde su ficha contactas a quien la encontró */}

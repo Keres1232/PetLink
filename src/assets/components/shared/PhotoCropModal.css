@@ -1,0 +1,142 @@
+.photo-crop__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 340; /* por encima de la hoja "Agregar foto" */
+
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+
+  background: rgba(0, 0, 0, 0.5);
+
+  overscroll-behavior: contain;
+  touch-action: none;
+}
+
+.photo-crop__sheet {
+  position: relative;
+
+  display: flex;
+  width: 100%;
+  max-width: 420px;
+  padding: 18px 18px calc(22px + env(safe-area-inset-bottom, 0px));
+
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+
+  border-radius: 30px 30px 0 0;
+  background: #ede8ff;
+  box-sizing: border-box;
+  overflow: hidden;
+
+  animation: photo-crop-up 0.25s ease-out;
+}
+
+/* El contenido va por encima de las huellas */
+.photo-crop__sheet > *:not(.paw-bg) {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes photo-crop-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.photo-crop__title {
+  margin: 0;
+  color: #000000;
+  font-family: "Kodchasan", sans-serif;
+  font-size: 18px;
+}
+
+.photo-crop__subtitle {
+  margin: -6px 0 2px;
+  text-align: center;
+  color: var(--desctivado, #66557e);
+  font-family: "Nata Sans", sans-serif;
+  font-size: 13px;
+}
+
+/* Marco con la forma de la foto de la ficha */
+.photo-crop__frame {
+  position: relative;
+  overflow: hidden;
+
+  border-radius: 14px;
+  background: #d9cdf5;
+  box-shadow: 0 0 0 3px var(--activado, #ae77ff), 0 6px 16px rgba(0, 0, 0, 0.2);
+
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.photo-crop__frame:active {
+  cursor: grabbing;
+}
+
+.photo-crop__img {
+  position: absolute;
+  top: 0;
+  left: 0;
+
+  max-width: none;
+  pointer-events: none;
+  user-select: none;
+}
+
+.photo-crop__zoom {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  width: 100%;
+  max-width: 320px;
+
+  color: var(--titulos, #7519ff);
+  font-family: "Kodchasan", sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.photo-crop__zoom input {
+  flex: 1;
+  accent-color: var(--titulos, #7519ff);
+}
+
+.photo-crop__done {
+  width: 100%;
+  max-width: 320px;
+  height: 44px;
+
+  border: none;
+  border-radius: 12px;
+  background: var(--titulos, #7519ff);
+
+  color: #ffffff;
+  font-family: "Kodchasan", sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.photo-crop__done:disabled {
+  opacity: 0.5;
+}
+
+.photo-crop__done:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.photo-crop__cancel {
+  border: none;
+  background: transparent;
+
+  color: var(--desctivado, #66557e);
+  font-family: "Kodchasan", sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}

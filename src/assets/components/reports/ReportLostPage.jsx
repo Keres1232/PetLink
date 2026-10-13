@@ -6,6 +6,7 @@ import PetPicker from "../pets/PetPicker.jsx";
 import backIcon from "../../svg/Back.svg";
 import bellIcon from "../../svg/bell.svg";
 import { setGeoConsent } from "../../../lib/geo";
+import PhotoCropModal from "../shared/PhotoCropModal.jsx";
 import "./ReportLostPage.css";
 
 const stroke = { stroke: "#66557E", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round", fill: "none" };
@@ -76,11 +77,19 @@ function ReportLostPage({ pets = [], onBack, onNotifications, onNotListed, onSub
     setCoords(null);
   };
 
+  const [cropFile, setCropFile] = useState(null); // primera foto, esperando que el usuario la ajuste
+
+  const pushPhoto = (file) => {
+    setPhotos((p) => [...p, URL.createObjectURL(file)]);
+    setPhotoFiles((f) => [...f, file]);
+  };
+
+  // La primera foto es la que se ve en la tarjeta de la alerta y en su ficha: se ajusta
   const addPhoto = (e) => {
     const file = e.target.files?.[0];
     if (file && photos.length < MAX_EXTRA_PHOTOS) {
-      setPhotos((p) => [...p, URL.createObjectURL(file)]);
-      setPhotoFiles((f) => [...f, file]);
+      if (photos.length === 0) setCropFile(file);
+      else pushPhoto(file);
     }
     e.target.value = "";
   };
@@ -181,6 +190,15 @@ function ReportLostPage({ pets = [], onBack, onNotifications, onNotListed, onSub
           Cancelar
         </button>
       </form>
+
+      <PhotoCropModal
+        file={cropFile}
+        onCancel={() => setCropFile(null)}
+        onDone={(file) => {
+          setCropFile(null);
+          pushPhoto(file);
+        }}
+      />
     </>
   );
 }

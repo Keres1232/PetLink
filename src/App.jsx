@@ -65,7 +65,7 @@ import CommunityPage from "./assets/components/community/CommunityPage.jsx";
 import NotificationsPage from "./assets/components/notifications/NotificationsPage.jsx";
 import HelpPage from "./assets/components/help/HelpPage.jsx";
 import PetListPage from "./assets/components/pets/PetListPage.jsx";
-import FoundPetsPage from "./assets/components/pets/FoundPetsPage.jsx";
+import ReportPetsPage from "./assets/components/pets/ReportPetsPage.jsx";
 import PetDetailModal from "./assets/components/pets/PetDetailModal.jsx";
 import AddPetPage from "./assets/components/pets/AddPetPage.jsx";
 import MyPetsSection from "./assets/components/profile/MyPetsSection.jsx";
@@ -326,8 +326,9 @@ function App() {
   // Sin permiso o sin GPS (p. ej. el emulador) se busca alrededor del centro de Bogotá
   const usingDefaultLocation = !locLoading && userPoint === DEFAULT_CENTER;
   const [nearReports, setNearReports] = useState([]);
-  // Mascotas encontradas: búsqueda propia (hasta 20 km, como el mapa) para que las perdidas
-  // no las dejen fuera de los 20 reportes de "Cerca de ti"
+  // Mascotas perdidas / encontradas: búsqueda propia (hasta 20 km, como el mapa) para que un tipo
+  // no deje fuera al otro en los 20 reportes de "Cerca de ti"
+  const [lostPets, setLostPets] = useState([]);
   const [foundPets, setFoundPets] = useState([]);
   const foundRadiusM = Math.max(radius, FOUND_MIN_RADIUS_M);
 
@@ -335,9 +336,10 @@ function App() {
     try {
       const [near, wide] = await Promise.all([
         reportsNear(userPoint, radius, 20),
-        reportsNear(userPoint, foundRadiusM, 60),
+        reportsNear(userPoint, foundRadiusM, 100),
       ]);
       setNearReports(newestFirst(near).map(reportToPet));
+      setLostPets(newestFirst(wide.filter((r) => r.type === "lost")).map(reportToPet));
       setFoundPets(newestFirst(wide.filter((r) => r.type === "found")).map(reportToPet));
     } catch (e) {
       console.error("No se pudieron cargar los reportes cercanos", e);
@@ -1013,14 +1015,16 @@ function App() {
     );
   }
 
-  /* MASCOTAS ENCONTRADAS ("Ver más" de Inicio) */
-  if (listPage === "found") {
+  /* MASCOTAS PERDIDAS / ENCONTRADAS ("Ver más" de Inicio) */
+  if (listPage === "found" || listPage === "lost") {
     return (
       <div className="phone-frame">
         <main className="app">
           <PawBackground />
-          <FoundPetsPage
-            pets={foundPets}
+          <ReportPetsPage
+            key={listPage}
+            kind={listPage}
+            pets={listPage === "lost" ? lostPets : foundPets}
             radiusKm={Math.round(foundRadiusM / 1000)}
             onBack={() => setListPage(null)}
             onNotifications={() => {
@@ -1395,6 +1399,7 @@ function App() {
             onEnableLocation={() => void enableDeviceLocation()}
             nearPets={nearLost}
             adoptionPets={adoptionPets}
+            lostPets={lostPets.slice(0, 10)}
             foundPets={foundPets.slice(0, 10)}
             onNotifications={openNotifications}
             onLost={() => setShowReportLost(true)}
@@ -1404,6 +1409,7 @@ function App() {
             onSeeAllCommunity={() => setActiveTab("community")}
             onSeeAllAdoption={() => setListPage("adoption")}
             onSeeAllFound={() => setListPage("found")}
+            onSeeAllLost={() => setListPage("lost")}
             onOpenPost={(postId) => {
               setContactPostId(postId);
               setActiveTab("community");

@@ -4,6 +4,7 @@ import ChipGroup from "../shared/ChipGroup.jsx";
 import IconInputField from "../shared/IconInputField.jsx";
 import TextInputField from "../shared/TextInputField.jsx";
 import PhotoPickerModal from "../shared/PhotoPickerModal.jsx";
+import PhotoCropModal from "../shared/PhotoCropModal.jsx";
 import AvatarPlaceholder from "../pets/AvatarPlaceholder.jsx";
 import backIcon from "../../svg/Back.svg";
 import bellIcon from "../../svg/bell.svg";
@@ -69,6 +70,7 @@ function ReportFoundPage({ species = [], onBack, onNotifications, onSubmit }) {
   const [mainPhoto, setMainPhoto] = useState(null);
   const [mainFile, setMainFile] = useState(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [cropFile, setCropFile] = useState(null); // foto elegida, esperando que el usuario la ajuste
   const [speciesId, setSpeciesId] = useState("");
   const [place, setPlace] = useState("");
   const [coords, setCoords] = useState(null);
@@ -282,7 +284,15 @@ function ReportFoundPage({ species = [], onBack, onNotifications, onSubmit }) {
       <PhotoPickerModal
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
-        onFile={(file) => {
+        onFile={setCropFile}
+      />
+
+      {/* Elegir qué parte de la foto se ve en la tarjeta y en la ficha expandida */}
+      <PhotoCropModal
+        file={cropFile}
+        onCancel={() => setCropFile(null)}
+        onDone={(file) => {
+          setCropFile(null);
           setMainFile(file);
           setMainPhoto(URL.createObjectURL(file));
         }}
