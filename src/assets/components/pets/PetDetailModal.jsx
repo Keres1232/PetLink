@@ -68,7 +68,7 @@ function PetDetailModal({ pet, myUserId, onClose, onContact, onAdoptionChanged, 
             <h3 className="pet-detail__section">Señas particulares</h3>
             <p className="pet-detail__marks">{pet.marks || "Sin señas registradas."}</p>
 
-            <PublishedBy key={pet.id} pet={pet} myUserId={myUserId} />
+            <PublishedBy key={`publisher-${pet.id}`} pet={pet} myUserId={myUserId} />
 
             {/* Tu mascota registrada: darla en adopción, o quitarla si ya está publicada */}
             {pet.isMine && !pet.isReport && !pet.isAdopted && (
@@ -76,7 +76,7 @@ function PetDetailModal({ pet, myUserId, onClose, onContact, onAdoptionChanged, 
             )}
 
             {/* Mascota en adopción: pedir adoptarla, o (si es tuya) ver y responder a los interesados */}
-            {pet.isAdoption && <AdoptionPanel key={pet.id} pet={pet} isOwner={pet.isMine} onChanged={onAdoptionChanged} />}
+            {pet.isAdoption && <AdoptionPanel key={`adoption-${pet.id}`} pet={pet} isOwner={pet.isMine} onChanged={onAdoptionChanged} />}
 
             {/* Contactar al dueño de una mascota en adopción: mensaje privado (le llega como interesado) */}
             {pet.isAdoption && !pet.isMine && onContact && (
