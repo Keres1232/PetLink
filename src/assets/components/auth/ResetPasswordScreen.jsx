@@ -2,7 +2,7 @@ import { useState } from "react";
 import AuthField from "./AuthField.jsx";
 import AuthLogo from "./AuthLogo.jsx";
 import { setNewPassword } from "../../../lib/api";
-import { PASSWORD_POLICY_HINT } from "../../../lib/authErrors";
+import { PASSWORD_POLICY_HINT, meetsPasswordPolicy } from "../../../lib/authErrors";
 import "./AuthPages.css";
 
 const LockIcon = () => (
@@ -23,7 +23,7 @@ function ResetPasswordScreen({ hasSession, onDone, onRequestNew }) {
   const submit = async (e) => {
     e.preventDefault();
     if (busy) return;
-    if (password.length < 8) return setError(PASSWORD_POLICY_HINT);
+    if (!meetsPasswordPolicy(password)) return setError(PASSWORD_POLICY_HINT);
     if (password !== confirm) return setError("La nueva contraseña y su confirmación no coinciden.");
     setBusy(true);
     setError("");

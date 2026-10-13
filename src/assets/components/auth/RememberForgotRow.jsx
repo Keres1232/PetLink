@@ -7,7 +7,7 @@ function RememberForgotRow({ remember, onToggleRemember, onForgotPassword }) {
         <input type="checkbox" checked={remember} onChange={onToggleRemember} />
         <span>Recordarme</span>
       </label>
-      <button className="remember-forgot__link" onClick={onForgotPassword}>
+      <button type="button" className="remember-forgot__link" onClick={onForgotPassword}>
         ¿Olvidaste tu contraseña?
       </button>
     </div>

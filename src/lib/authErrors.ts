@@ -4,6 +4,17 @@ export const PASSWORD_POLICY_HINT =
 export const WEAK_PASSWORD_SIGNIN_HINT =
   "Tu contraseña no cumple la política de seguridad actual (mínimo 8 caracteres, con mayúscula, minúscula, número y símbolo). Usa «¿Olvidaste tu contraseña?» para restablecerla y poder ingresar.";
 
+/** Misma regla que pide el mensaje: 8+ caracteres con mayúscula, minúscula, número y símbolo. */
+export function meetsPasswordPolicy(password: string): boolean {
+  return (
+    password.length >= 8 &&
+    /[A-ZÁÉÍÓÚÑ]/.test(password) &&
+    /[a-záéíóúñ]/.test(password) &&
+    /d/.test(password) &&
+    /[^A-Za-z0-9ÁÉÍÓÚÑáéíóúñ]/.test(password)
+  );
+}
+
 type AuthErrorLike = { message?: string; code?: string } | string | null | undefined;
 
 function getMessage(error: AuthErrorLike): string {

@@ -1,6 +1,7 @@
 import { Capacitor } from "@capacitor/core";
 import { supabase } from "./supabase";
 import { translateAuthError } from "./authErrors";
+import { APP_RESET_URL } from "./authLinks";
 import type {
   CommentReport,
   CommentRow,
@@ -747,8 +748,9 @@ async function verifyPasswordSaved(email: string, password: string): Promise<str
  * si no está, la "Site URL" configurada en Supabase.
  */
 export async function requestPasswordReset(email: string): Promise<string | null> {
+  // APK: el enlace abre la app (deep link). Web: vuelve a esta misma página.
   const site = import.meta.env.VITE_PUBLIC_SITE_URL as string | undefined;
-  const redirectTo = site || (Capacitor.isNativePlatform() ? undefined : window.location.origin);
+  const redirectTo = Capacitor.isNativePlatform() ? APP_RESET_URL : site || window.location.origin;
   const { error } = await supabase.auth.resetPasswordForEmail(email, redirectTo ? { redirectTo } : undefined);
   return error ? translateAuthError(error) : null;
 }

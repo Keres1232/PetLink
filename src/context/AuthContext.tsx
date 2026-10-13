@@ -12,6 +12,7 @@ import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 import type { Profile } from "../lib/types";
 import { translateAuthError } from "../lib/authErrors";
+import { authLinkErrorMessage, listenAuthLinks } from "../lib/authLinks";
 
 interface AuthContextValue {
   session: Session | null;
@@ -34,13 +35,9 @@ interface AuthContextValue {
 function readAuthLinkError(): string | null {
   const params = new URLSearchParams(window.location.hash.slice(1));
   new URLSearchParams(window.location.search).forEach((v, k) => params.set(k, v));
-  const code = params.get("error_code");
-  const description = params.get("error_description");
-  if (!code && !description) return null;
-  window.history.replaceState(null, "", window.location.pathname);
-  if (code === "otp_expired")
-    return "El enlace del correo expiró o ya se usó. Solicita uno nuevo.";
-  return `No pudimos usar el enlace del correo (${description ?? code}). Solicita uno nuevo.`;
+  const message = authLinkErrorMessage(params.get("error_code"), params.get("error_description"));
+  if (message) window.history.replaceState(null, "", window.location.pathname);
+  return message;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -107,6 +104,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       sub.subscription.unsubscribe();
     };
   }, [loadProfile]);
+
+  // APK: el enlace del correo (com.petlink.app://restablecer#...) abre la app y aquí se crea
+  // la sesión de recuperación; luego se muestra "Nueva contraseña"
+  useEffect(
+    () =>
+      listenAuthLinks((result) => {
+        if (result.kind === "recovery") {
+          setAuthLinkError(null);
+          setRecovering(true);
+        } else if (result.kind === "error") {
+          setRecovering(false);
+          setAuthLinkError(result.message);
+        }
+      }),
+    []
+  );
 
   const loading = sessionLoading || profileLoading;
 
