@@ -93,6 +93,7 @@ import ModerationPage from "./assets/components/requests/ModerationPage.jsx";
 import MatchSheet from "./assets/components/reports/MatchSheet.jsx";
 import MyReportsPage from "./assets/components/reports/MyReportsPage.jsx";
 import MyClinicPage from "./assets/components/profile/MyClinicPage.jsx";
+import { PRO_TEXT, professionalKind } from "./lib/professional";
 import EditProfilePage from "./assets/components/profile/EditProfilePage.jsx";
 import backIcon from "./assets/svg/Back.svg";
 import "./App.css";
@@ -248,10 +249,12 @@ function App() {
   // Lugar en el mapa de la cuenta (si el admin la aprobó como veterinaria o refugio): define la etiqueta
   const [myPlaceKind, setMyPlaceKind] = useState(null);
   const isProfessional = profile?.role === "vet" || profile?.role === "foundation";
+  // Veterinaria (lugar verificado), refugio o médico veterinario: decide los textos de "Mi clínica"
+  const proKind = professionalKind(profile?.role, myPlaceKind);
   useEffect(() => {
     if (!isProfessional || activeTab !== "profile") return;
     myClinic()
-      .then((c) => setMyPlaceKind(c?.kind ?? null))
+      .then((c) => setMyPlaceKind(c?.verified ? c.kind : null)) // solo un lugar verificado define el tipo
       .catch(() => setMyPlaceKind(null));
   }, [isProfessional, activeTab]);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -324,6 +327,8 @@ function App() {
   const [pets, setPets] = useState([]);
   const [species, setSpecies] = useState([]);
   const [contactPostId, setContactPostId] = useState(null);
+  // Lugar recién aprobado (veterinaria / refugio): el mapa se centra en él aunque esté lejos del usuario
+  const [mapFocusPlace, setMapFocusPlace] = useState(null);
   // Desde una notificación: comentario a resaltar y un contador para volver a abrir la misma publicación
   const [contactCommentId, setContactCommentId] = useState(null);
   const [contactNonce, setContactNonce] = useState(0);
@@ -804,6 +809,14 @@ function App() {
    * mapa ANTES de aprobar, para no dejar una cuenta aprobada sin su lugar.
    * Los errores se lanzan para que ReviewRequestPage los muestre.
    */
+  // Después de aprobar una veterinaria o un refugio: abre el mapa centrado en su lugar
+  const showApprovedPlace = (point, kind) => {
+    closeScreens();
+    setContactPostId(null);
+    setMapFocusPlace({ ...point, kind, at: Date.now() });
+    setActiveTab("map");
+  };
+
   const decide = async (request, status, place) => {
     let point = null;
     if (status === "approved" && place) {
@@ -824,6 +837,8 @@ function App() {
     }
     await loadRequests();
     setReviewing(null);
+    // Para comprobarlo en el momento: el mapa, centrado en el lugar recién aprobado
+    if (point) showApprovedPlace(point, place.kind);
   };
 
   // Solicitud ya aprobada que quedó sin lugar en el mapa: el admin la ubica ahora
@@ -840,6 +855,7 @@ function App() {
     await applyKindToAccount(request, place.kind);
     await loadRequests();
     setReviewing(null);
+    showApprovedPlace(point, place.kind);
   };
 
   // El rol de la cuenta y la solicitud siguen a la etiqueta elegida (Veterinaria → vet, Refugio → foundation)
@@ -1228,6 +1244,12 @@ function App() {
           <PawBackground />
           <MyClinicPage
             role={profile?.role}
+            kind={proKind ?? "clinic"}
+            onGiveForAdoption={() => {
+              closeMyClinic();
+              setAdoptionPetId(null);
+              setShowReportAdoption(true);
+            }}
             onBack={closeMyClinic}
             onNotifications={() => {
               closeMyClinic();
@@ -1545,6 +1567,8 @@ function App() {
             onReportClick={showPet}
             focusReportId={mapFocusReportId}
             onFocusDone={() => setMapFocusReportId(null)}
+            focusPlace={mapFocusPlace}
+            onFocusPlaceDone={() => setMapFocusPlace(null)}
           />
         )}
 
@@ -1661,6 +1685,7 @@ function App() {
 
             <AccountSection
               professional={isProfessional}
+              clinicText={PRO_TEXT[proKind]}
               onOptionClick={(id) => {
                 if (id === "logout") setConfirmAction("logout");
                 else if (id === "help") setShowHelp(true);

@@ -17,7 +17,7 @@ const MAP_MIN_RADIUS_M = 20000;
 // Título de la lista según el filtro (los de reportes van de la más nueva a la más vieja)
 const LIST_TITLE = { Veterinarias: "Veterinarias", Refugios: "Refugios" };
 
-function MapPage({ onBack, onNotifications, onCall, onReportClick, focusReportId, onFocusDone }) {
+function MapPage({ onBack, onNotifications, onCall, onReportClick, focusReportId, onFocusDone, focusPlace, onFocusPlaceDone }) {
   // Punto: GPS del dispositivo si dio permiso (si no, centro de Bogotá). Radio: el guardado en private_profiles
   const { point, radius, loading, enableDeviceLocation } = useUserLocation();
   const [filter, setFilter] = useState("Todo");
@@ -65,6 +65,12 @@ function MapPage({ onBack, onNotifications, onCall, onReportClick, focusReportId
   // Lugar tocado en la lista (el mapa va hasta él)
   const [focus, setFocus] = useState(null);
 
+  // "Ver en el mapa" de una tarjeta de la lista: sube y centra el mapa en esa publicación o lugar
+  function locate(prefix, item, at) {
+    setFocus({ id: `${prefix}-${item.id}`, lat: item.latitude, lon: item.longitude, at });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   // "Ver en el mapa" desde una alerta de Comunidad: centrar en ese reporte y abrir su globo.
   // Si está fuera del área cargada, se trae aparte con report_by_id.
   const focusDone = useRef(null);
@@ -82,6 +88,25 @@ function MapPage({ onBack, onNotifications, onCall, onReportClick, focusReportId
       onFocusDone?.();
     })();
   }, [focusReportId, loaded, reports, onFocusDone]);
+
+  // Lugar recién aprobado por el admin: se trae aunque esté fuera de los 20 km del usuario y se centra en él
+  const placeDone = useRef(null);
+  useEffect(() => {
+    if (!focusPlace || !loaded || placeDone.current === focusPlace.at) return;
+    placeDone.current = focusPlace.at;
+    (async () => {
+      const near = await placesNear({ lat: focusPlace.lat, lon: focusPlace.lon }, 300, focusPlace.kind).catch(() => []);
+      const found = near[0];
+      if (found) {
+        setPlaces((prev) => (prev.some((x) => x.id === found.id) ? prev : [...prev, found]));
+        setFocus({ id: `p-${found.id}`, lat: found.latitude, lon: found.longitude, at: focusPlace.at });
+      } else {
+        setFocus({ id: null, lat: focusPlace.lat, lon: focusPlace.lon, at: focusPlace.at });
+        setError("El lugar se aprobó pero no aparece en el mapa: revisa en Moderación → Clínicas si quedó sin verificar.");
+      }
+      onFocusPlaceDone?.();
+    })();
+  }, [focusPlace, loaded, onFocusPlaceDone]);
 
   // Con Veterinarias o Refugios, el mapa se aleja lo necesario para mostrar todos los lugares y al usuario
   const fitTo = useMemo(
@@ -131,6 +156,7 @@ function MapPage({ onBack, onNotifications, onCall, onReportClick, focusReportId
               badge={dayLabel(r.created_at)}
               photoUrl={r.photos?.[0] ?? r.pet_photo_url ?? undefined}
               onClick={() => onReportClick?.(reportToPet(r))}
+              onLocate={() => locate("r", r, Date.now())}
             />
           ))}
           {shown.places.map((p) => (
@@ -139,11 +165,8 @@ function MapPage({ onBack, onNotifications, onCall, onReportClick, focusReportId
               name={p.name}
               info={`${p.address ?? ""} · ${distanceLabel(p.distance_m)}`}
               onCall={p.phone ? () => onCall?.(p.phone) : undefined}
-              onClick={() => {
-                // Llevar el mapa hasta este lugar (y subir a verlo)
-                setFocus({ id: `p-${p.id}`, lat: p.latitude, lon: p.longitude, at: Date.now() });
-                window.scrollTo({ top: 0, behavior: "smooth" });
-              }}
+              onClick={() => locate("p", p, Date.now())}
+              onLocate={() => locate("p", p, Date.now())}
             />
           ))}
           {!error && shown.reports.length + shown.places.length === 0 && (

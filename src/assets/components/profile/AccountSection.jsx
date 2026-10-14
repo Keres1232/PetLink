@@ -44,9 +44,11 @@ const CLINIC_OPTION = {
   sublabel: "Tu lugar en el mapa",
 };
 
-function AccountSection({ onOptionClick, professional = false }) {
+function AccountSection({ onOptionClick, professional = false, clinicText }) {
   const { enabled: notifEnabled, setEnabled: setNotifEnabled } = useNotifications();
-  const options = professional ? [OPTIONS[0], CLINIC_OPTION, ...OPTIONS.slice(1)] : OPTIONS;
+  // "Mi veterinaria" / "Mi refugio" / "Mi consultorio" según el tipo de cuenta
+  const clinicOption = clinicText ? { ...CLINIC_OPTION, label: clinicText.menu, sublabel: clinicText.menuSub } : CLINIC_OPTION;
+  const options = professional ? [OPTIONS[0], clinicOption, ...OPTIONS.slice(1)] : OPTIONS;
 
   return (
     <section className="account">

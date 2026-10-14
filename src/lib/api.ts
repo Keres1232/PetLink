@@ -1207,7 +1207,7 @@ export async function createVerifiedPlace(input: {
   address: string;
   point: GeoPoint;
   kind: "clinic" | "shelter";
-}): Promise<void> {
+}): Promise<string> {
   const adminId = (await supabase.auth.getUser()).data.user?.id ?? null;
   const { data: created, error } = await supabase
     .from("vet_clinics")
@@ -1225,8 +1225,10 @@ export async function createVerifiedPlace(input: {
     .single();
   if (!error) {
     // Una regla de la BD puede forzar verified=false al crear: se sella con verify_clinic para que salga en el mapa
-    await verifyClinic((created as { id: string }).id, true);
-    return;
+    const id = (created as { id: string }).id;
+    await verifyClinic(id, true);
+    await assertPlaceVerified(id);
+    return id;
   }
 
   console.warn("[mapa] inserción directa en vet_clinics rechazada, se usa create_clinic:", error);
@@ -1240,6 +1242,19 @@ export async function createVerifiedPlace(input: {
   });
   if (rpcError) throw rpcError;
   await verifyClinic(clinicId as string, true);
+  await assertPlaceVerified(clinicId as string);
+  return clinicId as string;
+}
+
+/** El mapa solo muestra lugares verificados: si quedó sin verificar, se avisa en vez de "aprobar" en silencio. */
+async function assertPlaceVerified(id: string): Promise<void> {
+  const { data, error } = await supabase.from("vet_clinics").select("verified").eq("id", id).maybeSingle();
+  if (error || !data) return; // sin permiso para leerlo: no se puede comprobar
+  if (!(data as { verified: boolean }).verified) {
+    throw new Error(
+      "El lugar se creó pero quedó sin verificar, por eso no sale en el mapa. Verifícalo en Moderación → Clínicas."
+    );
+  }
 }
 
 export async function listCommentReports(): Promise<CommentReport[]> {

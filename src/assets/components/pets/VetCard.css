@@ -199,3 +199,44 @@
 
   white-space: nowrap;
 }
+/* Columna derecha: fecha (o llamar) arriba y "Ver en el mapa" abajo */
+.vet-card__side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  align-self: stretch;
+  justify-content: space-between;
+  gap: 8px;
+
+  flex-shrink: 0;
+}
+
+.vet-card__locate {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+
+  height: 24px;
+  padding: 0 10px;
+
+  border: 1.5px solid var(--activado, #ae77ff);
+  border-radius: 12px;
+  background: #ffffff;
+
+  color: var(--titulos, #7519ff);
+  font-family: "Kodchasan", sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+
+  cursor: pointer;
+}
+
+.vet-card__locate:active {
+  transform: scale(0.95);
+  background: #f3ecff;
+}
+
+.vet-card__locate:focus {
+  outline: none;
+}

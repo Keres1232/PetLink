@@ -50,3 +50,34 @@
   font-weight: 700;
   text-align: center;
 }
+
+/* Refugio: atajo "Dar una mascota en adopción" */
+.my-clinic__adopt {
+  align-self: stretch;
+  height: 42px;
+
+  border: 2px solid var(--activado, #ae77ff);
+  border-radius: 12px;
+  background: #ffffff;
+
+  color: var(--titulos, #7519ff);
+  font-family: "Kodchasan", sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.my-clinic__adopt:active {
+  transform: scale(0.98);
+  background: #f6f2ff;
+}
+
+/* Dirección ⇄ mapa: qué se completó solo */
+.my-clinic__sync {
+  margin: -4px 0 0;
+
+  color: var(--desctivado, #66557e);
+  font-family: "Nata Sans", sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+}

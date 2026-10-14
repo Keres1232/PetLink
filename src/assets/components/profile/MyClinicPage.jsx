@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import AppHeader from "../shared/AppHeader.jsx";
 import InfoNotice from "../shared/InfoNotice.jsx";
 import IconInputField from "../shared/IconInputField.jsx";
@@ -14,8 +14,7 @@ import locationIcon from "../../svg/Location icon.svg";
 import "../reports/ReportLostPage.css";
 import "./MyClinicPage.css";
 import PawLoader from "../shared/PawLoader.jsx";
-
-const KIND_LABEL = { clinic: "Veterinaria", shelter: "Refugio" };
+import { PRO_TEXT } from "../../../lib/professional";
 
 const TargetIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
@@ -31,7 +30,9 @@ const TargetIcon = () => (
  * - Si no tiene, el profesional lo crea marcando el punto en el mapa (create_clinic): queda pendiente
  *   y un admin decide si es Refugio o Veterinaria al verificarlo.
  */
-function MyClinicPage({ role, onBack, onNotifications, onGoMap }) {
+function MyClinicPage({ role, kind = "clinic", onBack, onNotifications, onGoMap, onGiveForAdoption }) {
+  // Textos según el tipo de cuenta: veterinaria, refugio o médico veterinario (consultorio)
+  const t = PRO_TEXT[kind] ?? PRO_TEXT.clinic;
   const [clinic, setClinic] = useState(null);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
@@ -43,6 +44,11 @@ function MyClinicPage({ role, onBack, onNotifications, onGoMap }) {
   const [error, setError] = useState("");
   const [saved, setSaved] = useState("");
   const [moving, setMoving] = useState(false);
+  // Dirección ⇄ mapa: cada uno completa al otro
+  const [syncing, setSyncing] = useState(""); // "map" (buscando el punto) | "address" (buscando la dirección) | ""
+  const [syncNote, setSyncNote] = useState("");
+  const addressFromMap = useRef(null); // texto que puso el mapa: no se vuelve a buscar
+  const typedAddress = useRef(false); // el usuario escribió la dirección (no viene de cargar el lugar)
 
   const load = useCallback(async () => {
     try {
@@ -66,14 +72,49 @@ function MyClinicPage({ role, onBack, onNotifications, onGoMap }) {
     void getUserPoint().then(setCenter);
   }, [load]);
 
-  // Al marcar en el mapa se propone la dirección (si no la escribió)
+  // Tocar el mapa (o "usar mi ubicación"): se marca el punto y se escribe su dirección
   const pick = async (p) => {
     setPoint(p);
-    if (!address.trim()) {
-      const text = await reverseGeocode(p);
-      if (text) setAddress(text);
+    setSyncing("address");
+    setSyncNote("");
+    const text = await reverseGeocode(p).catch(() => null);
+    setSyncing("");
+    if (text) {
+      addressFromMap.current = text;
+      typedAddress.current = false;
+      setAddress(text);
+      setSyncNote("Escribimos la dirección del punto que marcaste. Puedes corregirla.");
+    } else {
+      setSyncNote("Marcamos el punto. No encontramos su dirección: escríbela tú.");
     }
   };
+
+  // Escribir la dirección: al dejar de escribir (0,9 s) se ubica sola en el mapa
+  const changeAddress = (value) => {
+    typedAddress.current = true;
+    setAddress(value);
+  };
+  useEffect(() => {
+    const text = address.trim();
+    if (!typedAddress.current || text.length < 6 || text === addressFromMap.current) return undefined;
+    let alive = true;
+    const timer = setTimeout(async () => {
+      setSyncing("map");
+      const p = await searchPlace(text).catch(() => null);
+      if (!alive) return;
+      setSyncing("");
+      if (p) {
+        setPoint(p);
+        setSyncNote("Ubicamos la dirección en el mapa. Si no es exacto, toca el punto correcto.");
+      } else {
+        setSyncNote("No encontramos esa dirección en el mapa: escríbela más completa o toca el mapa.");
+      }
+    }, 900);
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [address]);
 
   const locateMe = async () => {
     const p = await getUserPoint();
@@ -85,15 +126,8 @@ function MyClinicPage({ role, onBack, onNotifications, onGoMap }) {
     await pick(p);
   };
 
-  const findAddress = async () => {
-    setError("");
-    const p = await searchPlace(address);
-    if (p) setPoint(p);
-    else setError("No encontramos esa dirección. Escríbela más completa o marca el punto en el mapa.");
-  };
-
   const create = async () => {
-    if (name.trim().length < 3) return setError("Escribe el nombre de tu veterinaria o refugio.");
+    if (name.trim().length < 3) return setError(t.nameError);
     if (!point) return setError("Marca en el mapa dónde está (o usa tu ubicación actual).");
     setBusy(true);
     setError("");
@@ -104,9 +138,9 @@ function MyClinicPage({ role, onBack, onNotifications, onGoMap }) {
         phone: phone.trim() || null,
         point,
         // Provisional según el rol; el admin decide la etiqueta definitiva al verificar
-        kind: role === "foundation" ? "shelter" : "clinic",
+        kind: kind === "shelter" || role === "foundation" ? "shelter" : "clinic",
       });
-      setSaved("¡Listo! Tu lugar quedó pendiente de verificación.");
+      setSaved(t.created);
       await load();
     } catch (e) {
       console.error("create_clinic falló:", e);
@@ -165,7 +199,7 @@ function MyClinicPage({ role, onBack, onNotifications, onGoMap }) {
 
   return (
     <>
-      <AppHeader title="Mi clínica" leftIcon={backIcon} onLeft={onBack} rightIcon={bellIcon} onRight={onNotifications} />
+      <AppHeader title={t.title} leftIcon={backIcon} onLeft={onBack} rightIcon={bellIcon} onRight={onNotifications} />
 
       <div className="report-lost my-clinic">
         {loading && <PawLoader />}
@@ -173,26 +207,26 @@ function MyClinicPage({ role, onBack, onNotifications, onGoMap }) {
         {!loading && clinic && (
           <div className={`my-clinic__status ${clinic.verified ? "is-verified" : ""}`}>
             <strong>
-              {clinic.verified ? `${KIND_LABEL[clinic.kind] ?? "Lugar"} verificado y visible en el mapa` : "Pendiente de verificación"}
+              {clinic.verified ? t.verified : "Pendiente de verificación"}
             </strong>
-            <span>
-              {clinic.verified
-                ? "Los usuarios ya pueden encontrarte en el mapa."
-                : "Un administrador revisará tu lugar y decidirá si es un refugio o una veterinaria."}
-            </span>
+            <span>{clinic.verified ? t.verifiedSub : t.pending}</span>
           </div>
         )}
 
         {!loading && !clinic && (
-          <InfoNotice>
-            Marca en el mapa dónde está tu veterinaria o refugio. Aparecerá en el mapa público cuando un administrador lo
-            verifique.
-          </InfoNotice>
+          <InfoNotice>{t.intro}</InfoNotice>
+        )}
+
+        {/* Refugio: atajo para publicar en adopción (llevan la etiqueta «Refugio») */}
+        {!loading && t.adoptionCta && onGiveForAdoption && (
+          <button type="button" className="my-clinic__adopt" onClick={onGiveForAdoption}>
+            {t.adoptionCta} ›
+          </button>
         )}
 
         {!loading && (
           <>
-            <TextInputField label="Nombre" placeholder="Ej: Veterinaria San Francisco" value={name} onChange={setName} />
+            <TextInputField label="Nombre" placeholder={t.namePlaceholder} value={name} onChange={setName} />
             <TextInputField label="Teléfono" optional type="tel" placeholder="Ej: 300 123 4567" value={phone} onChange={setPhone} />
 
             <div className="report-lost__place">
@@ -201,16 +235,13 @@ function MyClinicPage({ role, onBack, onNotifications, onGoMap }) {
                 icon={<img src={locationIcon} alt="" className="my-clinic__icon" />}
                 placeholder="Ej: Cll 1 #2-3, Usaquén, Bogotá"
                 value={address}
-                onChange={setAddress}
+                onChange={changeAddress}
               />
               {showPicker && (
                 <div className="my-clinic__row">
                   <button type="button" className="report-lost__locate" onClick={() => void locateMe()}>
                     <TargetIcon />
                     Usar mi ubicación actual
-                  </button>
-                  <button type="button" className="report-lost__locate" onClick={() => void findAddress()} disabled={!address.trim()}>
-                    Buscar dirección
                   </button>
                 </div>
               )}
@@ -225,8 +256,17 @@ function MyClinicPage({ role, onBack, onNotifications, onGoMap }) {
 
             {showPicker && (
               <>
-                <span className="report-lost__label">Toca el mapa para marcar el lugar</span>
+                <span className="report-lost__label">Escribe la dirección o toca el mapa: uno completa al otro</span>
                 <LocationPicker center={center} point={point} onPick={(p) => void pick(p)} />
+                {(syncing || syncNote) && (
+                  <p className="my-clinic__sync" role="status">
+                    {syncing === "map"
+                      ? "Buscando la dirección en el mapa…"
+                      : syncing === "address"
+                        ? "Buscando la dirección de ese punto…"
+                        : syncNote}
+                  </p>
+                )}
               </>
             )}
 
@@ -235,7 +275,7 @@ function MyClinicPage({ role, onBack, onNotifications, onGoMap }) {
 
             {!clinic && (
               <button type="button" className="report-lost__submit" disabled={busy} onClick={() => void create()}>
-                {busy ? "Guardando..." : "Crear mi lugar en el mapa"}
+                {busy ? "Guardando..." : t.create}
               </button>
             )}
             {clinic && !clinic.verified && (
