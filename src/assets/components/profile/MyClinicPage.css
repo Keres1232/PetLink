@@ -81,3 +81,123 @@
   font-size: 12px;
   font-weight: 600;
 }
+
+/* Botones morados (el estilo base de .report-lost__submit es el rojo de "mascota perdida") */
+.my-clinic .report-lost__submit {
+  background: var(--titulos, #7519ff);
+}
+
+.my-clinic .report-lost__submit:disabled {
+  opacity: 0.6;
+}
+
+/* ===== Mis veterinarias / refugios / consultorios: lista de sedes (como "Mis mascotas") ===== */
+.my-places__list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.my-places__empty {
+  text-align: center;
+}
+
+.my-places__card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  padding: 12px 14px;
+
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(102, 85, 126, 0.15);
+
+  cursor: pointer;
+}
+
+.my-places__card:active {
+  transform: scale(0.99);
+}
+
+.my-places__pin {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+
+  width: 42px;
+  height: 42px;
+
+  border-radius: 50%;
+  background: #ede8ff;
+}
+
+.my-places__pin img {
+  width: 20px;
+  height: 20px;
+}
+
+.my-places__info {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.my-places__name {
+  color: #000000;
+  font-family: "Kodchasan", sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.my-places__address {
+  overflow: hidden;
+  color: var(--desctivado, #66557e);
+  font-family: "Nata Sans", sans-serif;
+  font-size: 12px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.my-places__status {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 2px 8px;
+
+  border-radius: 8px;
+  background: #fff1d6;
+
+  color: #8a5a00;
+  font-family: "Kodchasan", sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.my-places__status.is-verified {
+  background: #e3f7e9;
+  color: #1f5c43;
+}
+
+.my-places__map {
+  flex-shrink: 0;
+}
+
+/* Eliminar una sede */
+.my-clinic__delete {
+  align-self: center;
+  border: none;
+  background: transparent;
+
+  color: #d32f2f;
+  font-family: "Kodchasan", sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.my-clinic__delete:disabled {
+  opacity: 0.5;
+}

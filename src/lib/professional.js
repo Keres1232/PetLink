@@ -4,17 +4,28 @@
  * - shelter: refugio (lugar verificado o rol foundation)
  * - doctor:  médico veterinario (persona, rol vet sin lugar verificado): el consultorio es opcional
  */
-export function professionalKind(role, verifiedPlaceKind) {
+export function professionalKind(role, verifiedPlaceKind, establishment = false) {
   if (verifiedPlaceKind === "clinic" || verifiedPlaceKind === "shelter") return verifiedPlaceKind;
   if (role === "foundation") return "shelter";
-  if (role === "vet") return "doctor";
+  // Rol vet: si su solicitud fue de establecimiento es una veterinaria (aún sin lugar); si no, un médico
+  if (role === "vet") return establishment ? "clinic" : "doctor";
   return null;
 }
 
+// Etiqueta del perfil
+export const PRO_LABEL = { clinic: "Veterinaria", shelter: "Refugio", doctor: "Médico veterinario" };
+
 export const PRO_TEXT = {
   clinic: {
-    menu: "Mi veterinaria",
-    menuSub: "Tu veterinaria en el mapa",
+    menu: "Mis veterinarias",
+    menuSub: "Tus sedes en el mapa",
+    listTitle: "Mis veterinarias",
+    listIntro: "Agrega cada sede de tu veterinaria. Cada una aparece en el mapa cuando un administrador la verifica.",
+    addLabel: "Agregar otra sede",
+    addFirst: "Agregar mi veterinaria",
+    empty: "Todavía no has agregado tu veterinaria al mapa.",
+    newTitle: "Nueva sede",
+    deleteLabel: "Eliminar esta sede",
     title: "Mi veterinaria",
     namePlaceholder: "Ej: Veterinaria San Francisco",
     intro:
@@ -27,8 +38,15 @@ export const PRO_TEXT = {
     nameError: "Escribe el nombre de tu veterinaria.",
   },
   shelter: {
-    menu: "Mi refugio",
-    menuSub: "Tu refugio en el mapa",
+    menu: "Mis refugios",
+    menuSub: "Tus sedes en el mapa",
+    listTitle: "Mis refugios",
+    listIntro: "Agrega cada sede o punto de tu refugio. Cada una aparece en el mapa cuando un administrador la verifica.",
+    addLabel: "Agregar otra sede",
+    addFirst: "Agregar mi refugio",
+    empty: "Todavía no has agregado tu refugio al mapa.",
+    newTitle: "Nueva sede",
+    deleteLabel: "Eliminar esta sede",
     title: "Mi refugio",
     namePlaceholder: "Ej: Refugio Huellitas",
     intro:
@@ -43,8 +61,15 @@ export const PRO_TEXT = {
     adoptionCta: "Dar una mascota en adopción",
   },
   doctor: {
-    menu: "Mi consultorio",
+    menu: "Mis consultorios",
     menuSub: "Dónde atiendes (opcional)",
+    listTitle: "Mis consultorios",
+    listIntro: "Si atiendes en uno o varios consultorios, agrégalos (es opcional). Cada uno aparece en el mapa cuando un administrador lo verifica.",
+    addLabel: "Agregar otro consultorio",
+    addFirst: "Agregar mi consultorio",
+    empty: "No has agregado consultorios. Es opcional.",
+    newTitle: "Nuevo consultorio",
+    deleteLabel: "Eliminar este consultorio",
     title: "Mi consultorio",
     namePlaceholder: "Ej: Consultorio Dra. Pérez",
     intro:

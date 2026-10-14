@@ -3,6 +3,7 @@ import { listReportMatches, resolveReportMatch } from "../../../lib/api";
 import { timeAgo } from "../../../lib/format";
 import "./MatchesPanel.css";
 import PawLoader from "../shared/PawLoader.jsx";
+import { mapsUrl, splitMessagePlace } from "../../../lib/matchPlace";
 
 const STATUS_LABEL = { confirmed: "Confirmado", dismissed: "Descartado" };
 
@@ -10,6 +11,26 @@ const STATUS_LABEL = { confirmed: "Confirmado", dismissed: "Descartado" };
  * Avisos privados ("¡La encontré!") que recibió una alerta. Solo se muestra al dueño de la
  * publicación (y la RLS de report_matches solo se los devuelve a él).
  */
+// Mensaje del aviso; si trae el lugar donde la vieron, se muestra aparte con "Ver en el mapa"
+function MatchMessage({ message }) {
+  const { text, place } = splitMessagePlace(message);
+  return (
+    <>
+      {text && <p className="matches-panel__message">{text}</p>}
+      {place && (
+        <p className="matches-panel__place">
+          <span>📍 La vio en: {place.label}</span>
+          {place.point && (
+            <a className="matches-panel__map" href={mapsUrl(place.point)} target="_blank" rel="noreferrer">
+              Ver en el mapa ›
+            </a>
+          )}
+        </p>
+      )}
+    </>
+  );
+}
+
 function MatchesPanel({ reportId }) {
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -68,7 +89,7 @@ function MatchesPanel({ reportId }) {
               <span className={`matches-panel__badge is-${m.status}`}>{STATUS_LABEL[m.status]}</span>
             )}
           </div>
-          {m.message && <p className="matches-panel__message">{m.message}</p>}
+          {m.message && <MatchMessage message={m.message} />}
           {m.contact && (
             <p className="matches-panel__contact">
               Contacto: <strong>{m.contact}</strong>

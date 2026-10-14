@@ -4,7 +4,7 @@ import InfoNotice from "../shared/InfoNotice.jsx";
 import IconInputField from "../shared/IconInputField.jsx";
 import TextInputField from "../shared/TextInputField.jsx";
 import LocationPicker from "../map/LocationPicker.jsx";
-import { createMyClinic, myClinic, updateMyClinic, updateMyVerifiedClinic } from "../../../lib/api";
+import { createMyClinic, deleteMyClinic, getMyClinic, updateMyClinic, updateMyVerifiedClinic } from "../../../lib/api";
 import { getUserPoint } from "../../../lib/geo";
 import { reverseGeocode, searchPlace } from "../../../lib/geocode";
 import { DEFAULT_CENTER } from "../../../lib/types";
@@ -30,7 +30,11 @@ const TargetIcon = () => (
  * - Si no tiene, el profesional lo crea marcando el punto en el mapa (create_clinic): queda pendiente
  *   y un admin decide si es Refugio o Veterinaria al verificarlo.
  */
-function MyClinicPage({ role, kind = "clinic", onBack, onNotifications, onGoMap, onGiveForAdoption }) {
+/**
+ * Una sede (veterinaria / refugio / consultorio): `clinicId` = la abre para verla, editarla o
+ * eliminarla; sin `clinicId` = crear una nueva. La lista de sedes está en MyPlacesPage.
+ */
+function MyClinicPage({ role, clinicId = null, city = "Bogotá", kind = "clinic", onBack, onNotifications, onGoMap, onSaved }) {
   // Textos según el tipo de cuenta: veterinaria, refugio o médico veterinario (consultorio)
   const t = PRO_TEXT[kind] ?? PRO_TEXT.clinic;
   const [clinic, setClinic] = useState(null);
@@ -50,26 +54,35 @@ function MyClinicPage({ role, kind = "clinic", onBack, onNotifications, onGoMap,
   const addressFromMap = useRef(null); // texto que puso el mapa: no se vuelve a buscar
   const typedAddress = useRef(false); // el usuario escribió la dirección (no viene de cargar el lugar)
 
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
   const load = useCallback(async () => {
+    if (!clinicId) return setLoading(false); // sede nueva
     try {
-      const mine = await myClinic();
+      const mine = await getMyClinic(clinicId);
       setClinic(mine);
       if (mine) {
+        // Ubicación guardada hoy: se muestra en el mini mapa
+        if (mine.point) {
+          setPoint(mine.point);
+          setCenter(mine.point);
+        }
         setName(mine.name);
         setPhone(mine.phone ?? "");
         setAddress(mine.address ?? "");
       }
     } catch (e) {
       console.error(e);
-      setError("No pudimos cargar tu lugar.");
+      setError("No pudimos cargar esta sede.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [clinicId]);
 
   useEffect(() => {
     void load();
-    void getUserPoint().then(setCenter);
+    // Centro del mini mapa: el GPS solo si todavía no hay un lugar guardado
+    void getUserPoint().then((p) => setCenter((c) => (c === DEFAULT_CENTER ? p : c)));
   }, [load]);
 
   // Tocar el mapa (o "usar mi ubicación"): se marca el punto y se escribe su dirección
@@ -100,7 +113,7 @@ function MyClinicPage({ role, kind = "clinic", onBack, onNotifications, onGoMap,
     let alive = true;
     const timer = setTimeout(async () => {
       setSyncing("map");
-      const p = await searchPlace(text).catch(() => null);
+      const p = await searchPlace(text, city).catch(() => null);
       if (!alive) return;
       setSyncing("");
       if (p) {
@@ -114,7 +127,7 @@ function MyClinicPage({ role, kind = "clinic", onBack, onNotifications, onGoMap,
       alive = false;
       clearTimeout(timer);
     };
-  }, [address]);
+  }, [address, city]);
 
   const locateMe = async () => {
     const p = await getUserPoint();
@@ -140,11 +153,11 @@ function MyClinicPage({ role, kind = "clinic", onBack, onNotifications, onGoMap,
         // Provisional según el rol; el admin decide la etiqueta definitiva al verificar
         kind: kind === "shelter" || role === "foundation" ? "shelter" : "clinic",
       });
-      setSaved(t.created);
-      await load();
+      // Vuelve a la lista de sedes, donde ya aparece (pendiente de verificación)
+      onSaved?.(t.created);
     } catch (e) {
       console.error("create_clinic falló:", e);
-      setError("No pudimos crear tu lugar. Intenta de nuevo.");
+      setError(e?.message || "No pudimos crear esta sede. Intenta de nuevo.");
     } finally {
       setBusy(false);
     }
@@ -173,6 +186,7 @@ function MyClinicPage({ role, kind = "clinic", onBack, onNotifications, onGoMap,
     try {
       const changedReviewable = name.trim() !== clinic.name || address.trim() !== (clinic.address ?? "");
       const backToReview = await updateMyVerifiedClinic({
+        id: clinic.id,
         name: name.trim(),
         address: address.trim(),
         phone: phone.trim() || null,
@@ -194,12 +208,28 @@ function MyClinicPage({ role, kind = "clinic", onBack, onNotifications, onGoMap,
     }
   };
 
+  // Eliminar esta sede (dos toques, como "Quitar de adopción")
+  const remove = async () => {
+    if (!confirmDelete) return setConfirmDelete(true);
+    setBusy(true);
+    setError("");
+    try {
+      await deleteMyClinic(clinic.id);
+      onSaved?.("Sede eliminada.");
+    } catch (e) {
+      console.error(e);
+      setError(e?.message || "No pudimos eliminar esta sede.");
+      setConfirmDelete(false);
+      setBusy(false);
+    }
+  };
+
   // Se muestra el mapa para marcar al crear el lugar, o si el dueño quiere moverlo
   const showPicker = !clinic || moving;
 
   return (
     <>
-      <AppHeader title={t.title} leftIcon={backIcon} onLeft={onBack} rightIcon={bellIcon} onRight={onNotifications} />
+      <AppHeader title={clinicId ? clinic?.name || t.title : t.newTitle} leftIcon={backIcon} onLeft={onBack} rightIcon={bellIcon} onRight={onNotifications} />
 
       <div className="report-lost my-clinic">
         {loading && <PawLoader />}
@@ -215,13 +245,6 @@ function MyClinicPage({ role, kind = "clinic", onBack, onNotifications, onGoMap,
 
         {!loading && !clinic && (
           <InfoNotice>{t.intro}</InfoNotice>
-        )}
-
-        {/* Refugio: atajo para publicar en adopción (llevan la etiqueta «Refugio») */}
-        {!loading && t.adoptionCta && onGiveForAdoption && (
-          <button type="button" className="my-clinic__adopt" onClick={onGiveForAdoption}>
-            {t.adoptionCta} ›
-          </button>
         )}
 
         {!loading && (
@@ -252,6 +275,18 @@ function MyClinicPage({ role, kind = "clinic", onBack, onNotifications, onGoMap,
                 <TargetIcon />
                 Cambiar la ubicación en el mapa
               </button>
+            )}
+
+            {/* Lugar ya creado: dónde está guardado hoy (solo para ver) */}
+            {!showPicker && (
+              <>
+                <span className="report-lost__label">Ubicación guardada en el mapa</span>
+                {clinic?.point ? (
+                  <LocationPicker center={clinic.point} point={clinic.point} />
+                ) : (
+                  <p className="my-clinic__sync">No pudimos leer la ubicación guardada.</p>
+                )}
+              </>
             )}
 
             {showPicker && (
@@ -297,8 +332,20 @@ function MyClinicPage({ role, kind = "clinic", onBack, onNotifications, onGoMap,
                 >
                   {busy ? "Guardando..." : "Guardar cambios"}
                 </button>
-                <button type="button" className="report-lost__cancel" onClick={onGoMap}>
+                <button type="button" className="report-lost__cancel" onClick={() => onGoMap?.(clinic)}>
                   Ver en el mapa
+                </button>
+              </>
+            )}
+
+            {/* Eliminar esta sede */}
+            {clinic && (
+              <>
+                {confirmDelete && !busy && (
+                  <p className="my-clinic__muted">Dejará de aparecer en el mapa. Toca otra vez para confirmar.</p>
+                )}
+                <button type="button" className="my-clinic__delete" disabled={busy} onClick={() => void remove()}>
+                  {confirmDelete ? `Sí, ${t.deleteLabel.toLowerCase()}` : t.deleteLabel}
                 </button>
               </>
             )}

@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import AppHeader from "../shared/AppHeader.jsx";
 import ChipGroup from "../shared/ChipGroup.jsx";
-import IconInputField from "../shared/IconInputField.jsx";
 import TextInputField from "../shared/TextInputField.jsx";
 import PhotoPickerModal from "../shared/PhotoPickerModal.jsx";
 import PhotoCropModal from "../shared/PhotoCropModal.jsx";
@@ -11,7 +10,7 @@ import bellIcon from "../../svg/bell.svg";
 import editIcon from "../../svg/edit_icono.svg";
 import SpeciesPicker from "../shared/SpeciesPicker.jsx";
 import { defaultSpeciesId } from "../../../lib/species";
-import { setGeoConsent } from "../../../lib/geo";
+import PlaceField from "../shared/PlaceField.jsx";
 import { myReports, newestFirst, reportsNear } from "../../../lib/api";
 import { reportToPet } from "../../../lib/reportPet";
 import { useUserLocation } from "../../../hooks/useUserLocation";
@@ -22,21 +21,7 @@ import "./ReportLostPage.css";
 import "./ReportFoundPage.css";
 import PawLoader from "../shared/PawLoader.jsx";
 
-const stroke = { stroke: "#66557E", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round", fill: "none" };
 
-const PinIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24">
-    <path d="M12 21C12 21 19 14.5 19 8.5C19 4.91 15.87 2 12 2C8.13 2 5 4.91 5 8.5C5 14.5 12 21 12 21Z" {...stroke} />
-    <circle cx="12" cy="8.5" r="2.5" {...stroke} />
-  </svg>
-);
-const TargetIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24">
-    <circle cx="12" cy="12" r="3" fill="#7519FF" />
-    <circle cx="12" cy="12" r="8" stroke="#7519FF" strokeWidth="2" fill="none" />
-    <path d="M12 1V4M12 20V23M1 12H4M20 12H23" stroke="#7519FF" strokeWidth="2" strokeLinecap="round" />
-  </svg>
-);
 const PlusIcon = () => (
   <svg width="30" height="30" viewBox="0 0 24 24">
     <circle cx="12" cy="12" r="11" fill="#ffffff" />
@@ -48,7 +33,7 @@ const SEX = ["Macho", "Hembra", "No sé"];
 const SIZES = ["Pequeño", "Mediano", "Grande"];
 const MAX_PHOTOS = 3;
 
-function ReportFoundPage({ species = [], onBack, onNotifications, onSubmit }) {
+function ReportFoundPage({ city = "Bogotá", species = [], onBack, onNotifications, onSubmit }) {
   // Mascotas perdidas cerca (hasta 20 km, igual que el mapa) para el paso previo
   const { point: userPoint, radius, loading: locLoading } = useUserLocation();
   const [step, setStep] = useState("select");
@@ -101,18 +86,6 @@ function ReportFoundPage({ species = [], onBack, onNotifications, onSubmit }) {
     e.target.value = "";
   };
 
-  const useMyLocation = () => {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      ({ coords: c }) => {
-        setGeoConsent(true);
-        setCoords({ lat: c.latitude, lon: c.longitude });
-        setPlace(`Mi ubicación actual (${c.latitude.toFixed(4)}, ${c.longitude.toFixed(4)})`);
-      },
-      () => setError("No se pudo obtener tu ubicación. Escribe el lugar a mano.")
-    );
-  };
-
   // Candado síncrono: un segundo toque rápido no vuelve a enviar (useState tarda un render)
   const busyRef = useRef(false);
 
@@ -146,6 +119,11 @@ function ReportFoundPage({ species = [], onBack, onNotifications, onSubmit }) {
   // Paso previo: ¿es alguna de las mascotas perdidas cerca? (como web-development).
   // Si la reconoce, le avisa al dueño en privado sin crear una alerta nueva.
   const showSelect = step === "select" && (lostNearby === null || lostNearby.length > 0);
+
+  // Al pasar de la lista de perdidas al formulario (el botón está al final de la lista), empezar arriba
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [showSelect]);
 
   if (showSelect) {
     return (
@@ -184,6 +162,7 @@ function ReportFoundPage({ species = [], onBack, onNotifications, onSubmit }) {
         </div>
 
         <MatchSheet
+          city={city}
           key={matchTarget?.id ?? "none"}
           report={matchTarget}
           onSent={() => (matchSent.current = true)}
@@ -222,22 +201,16 @@ function ReportFoundPage({ species = [], onBack, onNotifications, onSubmit }) {
           )}
         </div>
 
-        <div className="report-lost__place">
-          <IconInputField
-            label="Lugar dónde lo encontraste"
-            icon={<PinIcon />}
-            placeholder="Ej: Parque de Usaquén"
-            value={place}
-            onChange={(v) => {
-              setPlace(v);
-              setCoords(null);
-            }}
-          />
-          <button type="button" className="report-lost__locate" onClick={useMyLocation}>
-            <TargetIcon />
-            Usar mi ubicación actual
-          </button>
-        </div>
+        {/* Dirección ⇄ mini mapa (con botón para centrar en donde estás) */}
+        <PlaceField
+          label="Lugar dónde lo encontraste"
+          placeholder="Ej: Parque de Usaquén"
+          value={place}
+          onChange={setPlace}
+          point={coords}
+          onPointChange={setCoords}
+          city={city}
+        />
 
         <TextInputField label="Raza" value={breed} onChange={setBreed} />
 

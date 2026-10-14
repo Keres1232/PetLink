@@ -23,13 +23,32 @@ async function throttle(): Promise<void> {
   lastCallAt = Date.now();
 }
 
-/** Busca un lugar por texto (ej. "Parque de Usaquén") y devuelve su punto. */
-export async function searchPlace(query: string): Promise<GeoPoint | null> {
-  if (!query.trim()) return null;
+const normalize = (s: string) =>
+  s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+/**
+ * Busca un lugar por texto (ej. "Parque de Usaquén") y devuelve su punto.
+ *
+ * `city`: ciudad del usuario (por defecto Bogotá). Una dirección sin ciudad es ambigua: "Avenida
+ * Carrera 30 #19" caía en Soacha (Ciudad Verde) en vez de Bogotá. Si el texto no nombra la ciudad,
+ * primero se busca "<texto>, <ciudad>"; si así no aparece, se busca el texto tal cual.
+ */
+export async function searchPlace(query: string, city: string | null = "Bogotá"): Promise<GeoPoint | null> {
+  const text = query.trim();
+  if (!text) return null;
+  const place = city?.trim();
+  if (place && !normalize(text).includes(normalize(place))) {
+    const inCity = await searchOnce(`${text}, ${place}`);
+    if (inCity) return inCity;
+  }
+  return searchOnce(text);
+}
+
+async function searchOnce(query: string): Promise<GeoPoint | null> {
   await throttle();
   const params = new URLSearchParams({
     format: "jsonv2",
-    q: query.trim(),
+    q: query,
     limit: "1",
     countrycodes: "co",
     "accept-language": "es",

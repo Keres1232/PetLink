@@ -5,7 +5,7 @@ import IconInputField from "../shared/IconInputField.jsx";
 import PetPicker from "../pets/PetPicker.jsx";
 import backIcon from "../../svg/Back.svg";
 import bellIcon from "../../svg/bell.svg";
-import { setGeoConsent } from "../../../lib/geo";
+import PlaceField from "../shared/PlaceField.jsx";
 import PhotoCropModal from "../shared/PhotoCropModal.jsx";
 import "./ReportLostPage.css";
 
@@ -23,19 +23,6 @@ const ClockIcon = () => (
     <path d="M12 7V12L15 14" {...stroke} />
   </svg>
 );
-const PinIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24">
-    <path d="M12 21C12 21 19 14.5 19 8.5C19 4.91 15.87 2 12 2C8.13 2 5 4.91 5 8.5C5 14.5 12 21 12 21Z" {...stroke} />
-    <circle cx="12" cy="8.5" r="2.5" {...stroke} />
-  </svg>
-);
-const TargetIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24">
-    <circle cx="12" cy="12" r="3" fill="#7519FF" />
-    <circle cx="12" cy="12" r="8" stroke="#7519FF" strokeWidth="2" fill="none" />
-    <path d="M12 1V4M12 20V23M1 12H4M20 12H23" stroke="#7519FF" strokeWidth="2" strokeLinecap="round" />
-  </svg>
-);
 const PlusIcon = () => (
   <svg width="30" height="30" viewBox="0 0 24 24">
     <circle cx="12" cy="12" r="11" fill="#ffffff" />
@@ -45,7 +32,7 @@ const PlusIcon = () => (
 
 const MAX_EXTRA_PHOTOS = 3;
 
-function ReportLostPage({ pets = [], onBack, onNotifications, onNotListed, onSubmit }) {
+function ReportLostPage({ city = "Bogotá", pets = [], onBack, onNotifications, onNotListed, onSubmit }) {
   const [petId, setPetId] = useState(pets[0]?.id ?? null);
   const [date, setDate] = useState(() => new Date().toLocaleDateString("en-CA"));
   const [time, setTime] = useState(() => new Date().toTimeString().slice(0, 5));
@@ -59,23 +46,6 @@ function ReportLostPage({ pets = [], onBack, onNotifications, onNotListed, onSub
 
   const selectedPet = pets.find((p) => p.id === petId);
   const canSubmit = petId !== null && place.trim() !== "" && !busy;
-
-  const useMyLocation = () => {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      ({ coords: c }) => {
-        setGeoConsent(true); // para que el mapa se centre en tu ubicación real
-        setCoords({ lat: c.latitude, lon: c.longitude });
-        setPlace(`Mi ubicación actual (${c.latitude.toFixed(4)}, ${c.longitude.toFixed(4)})`);
-      },
-      () => setError("No se pudo obtener tu ubicación. Escribe el lugar a mano.")
-    );
-  };
-
-  const onPlaceChange = (v) => {
-    setPlace(v);
-    setCoords(null);
-  };
 
   const [cropFile, setCropFile] = useState(null); // primera foto, esperando que el usuario la ajuste
 
@@ -129,19 +99,16 @@ function ReportLostPage({ pets = [], onBack, onNotifications, onNotListed, onSub
           <IconInputField label="Hora aprox" icon={<ClockIcon />} type="time" value={time} onChange={setTime} />
         </div>
 
-        <div className="report-lost__place">
-          <IconInputField
-            label="Lugar dónde se perdió"
-            icon={<PinIcon />}
-            placeholder="Ej: Parque de Usaquén"
-            value={place}
-            onChange={onPlaceChange}
-          />
-          <button type="button" className="report-lost__locate" onClick={useMyLocation}>
-            <TargetIcon />
-            Usar mi ubicación actual
-          </button>
-        </div>
+        {/* Dirección ⇄ mini mapa (con botón para centrar en donde estás) */}
+        <PlaceField
+          label="Lugar dónde se perdió"
+          placeholder="Ej: Parque de Usaquén"
+          value={place}
+          onChange={setPlace}
+          point={coords}
+          onPointChange={setCoords}
+          city={city}
+        />
 
         <label className="report-lost__field">
           <span className="report-lost__label">Características al momento de perderse</span>

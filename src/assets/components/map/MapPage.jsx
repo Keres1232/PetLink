@@ -102,7 +102,7 @@ function MapPage({ onBack, onNotifications, onCall, onReportClick, focusReportId
         setFocus({ id: `p-${found.id}`, lat: found.latitude, lon: found.longitude, at: focusPlace.at });
       } else {
         setFocus({ id: null, lat: focusPlace.lat, lon: focusPlace.lon, at: focusPlace.at });
-        setError("El lugar se aprobó pero no aparece en el mapa: revisa en Moderación → Clínicas si quedó sin verificar.");
+        setError("Este lugar no aparece en el mapa público: puede que aún esté pendiente de verificación.");
       }
       onFocusPlaceDone?.();
     })();

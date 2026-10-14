@@ -132,3 +132,24 @@
 .matches-panel__confirm:disabled {
   opacity: 0.5;
 }
+
+/* Dónde la vio quien la encontró (va dentro del mensaje) */
+.matches-panel__place {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 4px 0 0;
+
+  color: #14101c;
+  font-family: "Nata Sans", sans-serif;
+  font-size: 13px;
+}
+
+.matches-panel__map {
+  color: var(--titulos, #7519ff);
+  font-family: "Kodchasan", sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}

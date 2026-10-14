@@ -1092,7 +1092,7 @@ export async function moderatePost(
 export async function listPendingVetApplications(): Promise<VetApplication[]> {
   const { data, error } = await supabase
     .from("vet_applications")
-    .select("*, applicant:profiles!vet_applications_user_id_fkey(name)")
+    .select("*, applicant:profiles!vet_applications_user_id_fkey(name, role)")
     .eq("status", "pending")
     .order("created_at", { ascending: true });
   if (error) throw error;
@@ -1354,18 +1354,92 @@ export async function submitVetApplication(
   if (error) throw error;
 }
 
-export async function myClinic(): Promise<MyClinic | null> {
+/**
+ * Punto guardado en una columna geography de PostGIS. PostgREST la devuelve como EWKB en hex
+ * ("0101000020E6100000…") o, según la configuración, como GeoJSON: se aceptan los dos.
+ */
+export function parseGeoPoint(value: unknown): GeoPoint | null {
+  if (!value) return null;
+  if (typeof value === "object") {
+    const coords = (value as { coordinates?: number[] }).coordinates;
+    return coords?.length === 2 ? { lon: coords[0], lat: coords[1] } : null;
+  }
+  if (typeof value !== "string" || !/^[0-9a-fA-F]+$/.test(value) || value.length < 42) return null;
+  const bytes = new Uint8Array(value.match(/../g)!.map((h) => parseInt(h, 16)));
+  const view = new DataView(bytes.buffer);
+  const little = bytes[0] === 1;
+  const type = view.getUint32(1, little);
+  let offset = 5;
+  if (type & 0x20000000) offset += 4; // trae SRID
+  if ((type & 0xff) !== 1) return null; // solo puntos
+  const lon = view.getFloat64(offset, little);
+  const lat = view.getFloat64(offset + 8, little);
+  return Number.isFinite(lat) && Number.isFinite(lon) ? { lat, lon } : null;
+}
+
+export async function myClinic(): Promise<(MyClinic & { point: GeoPoint | null }) | null> {
   const userId = (await supabase.auth.getUser()).data.user?.id;
   if (!userId) return null;
   const { data, error } = await supabase
     .from("vet_clinics")
-    .select("id, name, address, phone, kind, verified, created_at")
+    .select("id, name, address, phone, kind, verified, created_at, location")
     .eq("created_by", userId)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
   if (error) throw error;
-  return (data as MyClinic | null) ?? null;
+  if (!data) return null;
+  // Dónde está guardado hoy (para mostrarlo en "Mi veterinaria / Mi refugio" y en el mapa)
+  const { location, ...rest } = data as MyClinic & { location?: unknown };
+  return { ...(rest as MyClinic), point: parseGeoPoint(location) };
+}
+
+type MyPlace = MyClinic & { point: GeoPoint | null };
+const PLACE_COLUMNS = "id, name, address, phone, kind, verified, created_at, location";
+const withPoint = (row: unknown): MyPlace => {
+  const { location, ...rest } = row as MyClinic & { location?: unknown };
+  return { ...(rest as MyClinic), point: parseGeoPoint(location) };
+};
+
+/** Todas las sedes (veterinarias / refugios / consultorios) de la cuenta, la más reciente primero. */
+export async function myClinics(): Promise<MyPlace[]> {
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+  if (!userId) return [];
+  const { data, error } = await supabase
+    .from("vet_clinics")
+    .select(PLACE_COLUMNS)
+    .eq("created_by", userId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map(withPoint);
+}
+
+/** Una sede propia por id. */
+export async function getMyClinic(id: string): Promise<MyPlace | null> {
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+  if (!userId) return null;
+  const { data, error } = await supabase
+    .from("vet_clinics")
+    .select(PLACE_COLUMNS)
+    .eq("id", id)
+    .eq("created_by", userId)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? withPoint(data) : null;
+}
+
+/** Eliminar una sede propia (RPC delete_my_place; sin el SQL solo se pueden borrar las pendientes). */
+export async function deleteMyClinic(id: string): Promise<void> {
+  const { error } = await supabase.rpc("delete_my_place", { p_id: id });
+  if (!error) return;
+  if (error.code !== "PGRST202") throw error;
+  // Sin la función: borrado directo (la RLS puede impedirlo si ya está verificada)
+  const direct = await supabase.from("vet_clinics").delete().eq("id", id).select("id");
+  if (direct.error || !direct.data?.length) {
+    throw new Error(`Para eliminar una sede ya verificada falta ejecutar en Supabase el archivo supabase/sql/2026-10-13_mis_lugares.sql.`, {
+      cause: direct.error ?? error,
+    });
+  }
 }
 
 export async function createMyClinic(input: {
@@ -1403,23 +1477,30 @@ export async function updateMyClinic(
  * Devuelve true si quedó pendiente de verificar de nuevo.
  */
 export async function updateMyVerifiedClinic(input: {
+  id?: string;
   name: string;
   address: string;
   phone: string | null;
   point?: GeoPoint | null;
   changedReviewable: boolean;
 }): Promise<boolean> {
-  const { error } = await supabase.rpc("update_my_clinic", {
+  const args = {
     p_name: input.name,
     p_address: input.address,
     p_phone: input.phone,
     p_lat: input.point?.lat ?? null,
     p_lon: input.point?.lon ?? null,
-  });
+  };
+  // update_my_place edita la sede indicada (varias sedes por cuenta)
+  const { data, error } = input.id
+    ? await supabase.rpc("update_my_place", { p_id: input.id, ...args })
+    : await supabase.rpc("update_my_clinic", args);
   if (error) {
     if (error.code === "PGRST202")
-      throw new Error("Falta ejecutar en Supabase el archivo supabase/sql/2026-10-12_completar_app.sql.", { cause: error });
+      throw new Error(`Para editar una sede ya verificada falta ejecutar en Supabase el archivo supabase/sql/2026-10-13_mis_lugares.sql.`, {
+        cause: error,
+      });
     throw error;
   }
-  return input.changedReviewable || Boolean(input.point);
+  return typeof data === "boolean" ? data : input.changedReviewable || Boolean(input.point);
 }

@@ -4,6 +4,8 @@ import PawBackground from "../shared/PawBackground.jsx";
 import useLockBodyScroll from "../../../hooks/useLockBodyScroll.js";
 import useSwipeToClose from "../../../hooks/useSwipeToClose.js";
 import { createReportMatch, expressAdoptionInterest } from "../../../lib/api";
+import { messageWithPlace } from "../../../lib/matchPlace";
+import PlaceField from "../shared/PlaceField.jsx";
 import "./MatchSheet.css";
 
 /**
@@ -13,12 +15,15 @@ import "./MatchSheet.css";
  *
  * `report`: { id, name, photoUrl, lost, adoption } — id es el del reporte o el de la mascota en adopción.
  */
-function MatchSheet({ report, onClose, onSent }) {
+function MatchSheet({ report, city = "Bogotá", onClose, onSent }) {
   const open = Boolean(report);
   useLockBodyScroll(open);
   const swipe = useSwipeToClose(onClose);
   const [message, setMessage] = useState("");
   const [contact, setContact] = useState("");
+  // ¿Dónde la viste? (opcional): dirección ⇄ mini mapa, va dentro del mensaje
+  const [place, setPlace] = useState("");
+  const [placePoint, setPlacePoint] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
@@ -46,7 +51,9 @@ function MatchSheet({ report, onClose, onSent }) {
         const text = [message.trim(), contact.trim() && `Contacto: ${contact.trim()}`].filter(Boolean).join("\n");
         await expressAdoptionInterest(report.id, text);
       } else {
-        await createReportMatch({ reportId: report.id, message, contact });
+        // El lugar donde la vio va en la última línea del mensaje (el dueño lo abre en el mapa)
+        const text = lost ? messageWithPlace(message, place, placePoint) : message;
+        await createReportMatch({ reportId: report.id, message: text, contact });
       }
       setSent(true);
       onSent?.();
@@ -114,6 +121,19 @@ function MatchSheet({ report, onClose, onSent }) {
                 />
               </label>
 
+              {/* Quien la encontró: dónde la vio, en el mapa (con botón para centrar en donde está) */}
+              {lost && (
+                <PlaceField
+                  label="¿Dónde la viste? (opcional)"
+                  placeholder="Ej: Parque de Usaquén"
+                  value={place}
+                  onChange={setPlace}
+                  point={placePoint}
+                  onPointChange={setPlacePoint}
+                  city={city}
+                />
+              )}
+
               <label className="match-sheet__field">
                 <span>Tu contacto (opcional)</span>
                 <input placeholder="Teléfono o correo" value={contact} onChange={(e) => setContact(e.target.value)} />
@@ -124,7 +144,7 @@ function MatchSheet({ report, onClose, onSent }) {
               <button
                 type="button"
                 className="match-sheet__send"
-                disabled={busy || (adoption ? message.trim().length < 5 : !message.trim() && !contact.trim())}
+                disabled={busy || (adoption ? message.trim().length < 5 : !message.trim() && !contact.trim() && !place.trim())}
                 onClick={() => void send()}
               >
                 {busy ? "Enviando..." : lost ? "Avisar al dueño" : "Enviar mensaje"}

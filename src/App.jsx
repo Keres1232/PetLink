@@ -20,13 +20,11 @@ import {
   reportsNear,
   newestFirst,
   myReports,
-  createVerifiedPlace,
   placeKindsOfUsers,
-  setApplicationRole,
   setUserRole,
   roleForKind,
   updatePlaceKind,
-  myClinic,
+  myClinics,
   updatePet,
   deletePet,
   changePassword,
@@ -93,7 +91,8 @@ import ModerationPage from "./assets/components/requests/ModerationPage.jsx";
 import MatchSheet from "./assets/components/reports/MatchSheet.jsx";
 import MyReportsPage from "./assets/components/reports/MyReportsPage.jsx";
 import MyClinicPage from "./assets/components/profile/MyClinicPage.jsx";
-import { PRO_TEXT, professionalKind } from "./lib/professional";
+import MyPlacesPage from "./assets/components/profile/MyPlacesPage.jsx";
+import { PRO_LABEL, PRO_TEXT, professionalKind } from "./lib/professional";
 import EditProfilePage from "./assets/components/profile/EditProfilePage.jsx";
 import backIcon from "./assets/svg/Back.svg";
 import "./App.css";
@@ -152,7 +151,20 @@ const petToCard = (p, myId) => {
 const toRequest = (a, placeKind) => {
   const foundation = a.target_role === "foundation";
   const establishment = foundation || Boolean(placeKind);
-  const type = placeKind === "clinic" ? "vet" : placeKind === "shelter" ? "refuge" : foundation ? "establishment" : "doctor";
+  // Establecimiento aprobado que aún no crea su lugar: el rol de la cuenta dice qué eligió el admin
+  const approvedAs = a.status === "approved" ? a.applicant?.role : null;
+  const type =
+    placeKind === "clinic"
+      ? "vet"
+      : placeKind === "shelter"
+        ? "refuge"
+        : foundation
+          ? approvedAs === "vet"
+            ? "vet"
+            : approvedAs === "foundation"
+              ? "refuge"
+              : "establishment"
+          : "doctor";
   // Las solicitudes viejas de esta rama guardaban dos rutas separadas por coma en support_document_url
   const [supportPath, legacyIdPath] = (a.support_document_url ?? "").split(",");
   // Supabase puede guardar el mismo archivo en support_document_url y license_document_url: se muestra una vez
@@ -219,7 +231,6 @@ const ROLE_LABEL = {
   foundation: "Refugio",
 };
 // Establecimiento: la etiqueta es la que eligió el admin (una u otra, nunca las dos)
-const PLACE_LABEL = { clinic: "Veterinaria", shelter: "Refugio" };
 
 // Las especies vienen en inglés desde la base de datos
 const SPECIES_ES = { dog: "Perro", cat: "Gato", bird: "Ave", rabbit: "Conejo", ferret: "Hurón", other: "Otro" };
@@ -250,12 +261,17 @@ function App() {
   const [myPlaceKind, setMyPlaceKind] = useState(null);
   const isProfessional = profile?.role === "vet" || profile?.role === "foundation";
   // Veterinaria (lugar verificado), refugio o médico veterinario: decide los textos de "Mi clínica"
-  const proKind = professionalKind(profile?.role, myPlaceKind);
+  // ¿Su solicitud fue de establecimiento? (rol vet = veterinaria, no médico, aunque aún no tenga lugar)
+  const [isEstablishment, setIsEstablishment] = useState(false);
+  const proKind = professionalKind(profile?.role, myPlaceKind, isEstablishment);
   useEffect(() => {
     if (!isProfessional || activeTab !== "profile") return;
-    myClinic()
-      .then((c) => setMyPlaceKind(c?.verified ? c.kind : null)) // solo un lugar verificado define el tipo
+    myClinics()
+      .then((rows) => setMyPlaceKind(rows.find((c) => c.verified)?.kind ?? null)) // solo una sede verificada define el tipo
       .catch(() => setMyPlaceKind(null));
+    myVetApplication()
+      .then((a) => setIsEstablishment(a?.target_role === "foundation"))
+      .catch(() => setIsEstablishment(false));
   }, [isProfessional, activeTab]);
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -298,6 +314,8 @@ function App() {
   const [showHelp, setShowHelp] = useState(false);
   const [showMyReports, setShowMyReports] = useState(false);
   const [showMyClinic, setShowMyClinic] = useState(false);
+  // Sede abierta dentro de "Mis veterinarias / refugios": undefined = la lista, null = nueva, id = esa sede
+  const [editingPlaceId, setEditingPlaceId] = useState(undefined);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [settingsFocus, setSettingsFocus] = useState(null); // "privacy" al abrir Ajustes desde el perfil
   const [activeReports, setActiveReports] = useState(0);
@@ -520,6 +538,7 @@ function App() {
     if (requestsTab) return done(() => setRequestsTab(null));
     if (listPage) return done(() => setListPage(null));
     if (showMyReports) return done(() => setShowMyReports(false), () => void loadActiveReports());
+    if (showMyClinic && editingPlaceId !== undefined) return done(() => setEditingPlaceId(undefined));
     if (showMyClinic) return done(() => setShowMyClinic(false));
     if (showEditProfile) return done(() => setShowEditProfile(false));
     if (showHelp) return done(() => setShowHelp(false));
@@ -538,6 +557,35 @@ function App() {
   };
 
   // El listener se registra una vez; siempre llama a la versión más reciente de goBack
+  // Cada pantalla nueva empieza arriba. Antes se conservaba el desplazamiento de la anterior (y al
+  // cerrar la ventana de "Reportar" la página volvía a esa altura), así que los formularios se abrían
+  // a media página. Las ventanas emergentes no cuentan: no cambian la pantalla.
+  const screenKey = [
+    activeTab,
+    showNotifications,
+    showSettings,
+    showAddPet,
+    editingPet?.id,
+    showChangeEmail,
+    showChangePassword,
+    showReportLost,
+    showReportFound,
+    showReportAdoption,
+    showVerification,
+    showHelp,
+    showMyReports,
+    showMyClinic,
+    editingPlaceId,
+    showEditProfile,
+    listPage,
+    requestsTab,
+    moderationTab,
+    reviewing?.id,
+  ].join("|");
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [screenKey]);
+
   const goBackRef = useRef(goBack);
   useEffect(() => {
     goBackRef.current = goBack;
@@ -745,12 +793,13 @@ function App() {
       throw new Error("Describe cómo es la mascota que encontraste.");
     }
     // El lugar escrito se guarda en la descripción (la base de datos solo guarda coordenadas)
-    const placeText = r.point ? "" : r.place.trim();
+    // La dirección escrita (o la que puso el mapa) también se guarda; no los textos genéricos del GPS
+    const placeText = /^(Mi ubicación actual|Punto marcado en el mapa)/.test(r.place.trim()) ? "" : r.place.trim();
     const description =
       [placeText, details].filter(Boolean).join(" · ") ||
       (type === "lost" ? "Mascota perdida" : "Mascota encontrada");
 
-    const point = r.point ?? (await searchPlace(r.place));
+    const point = r.point ?? (await searchPlace(r.place, city ?? "Bogotá"));
     if (!point) {
       throw new Error("No encontramos ese lugar. Escríbelo más específico o usa tu ubicación actual.");
     }
@@ -804,65 +853,31 @@ function App() {
   const openNotifications = () => setShowNotifications(true);
 
   /**
-   * Aprobar o rechazar. Si es un refugio / veterinaria aprobado, el admin eligió la etiqueta
-   * (place.kind: "shelter" = Refugio, "clinic" = Veterinaria) y la dirección: se ubica en el
-   * mapa ANTES de aprobar, para no dejar una cuenta aprobada sin su lugar.
+   * Aprobar o rechazar una solicitud (mismo flujo que web-development):
+   * - Aprobar solo verifica la cuenta (review_vet_application). NO crea el lugar en el mapa.
+   * - Establecimiento: el admin elige si es Veterinaria o Refugio, y eso define el ROL de la cuenta
+   *   (Veterinaria → vet, Refugio → foundation). La solicitud se queda como "Establecimiento"
+   *   (target_role foundation) para que la app la siga distinguiendo de un médico veterinario.
+   * - Después, el establecimiento marca su lugar en "Mi veterinaria / Mi refugio" (create_clinic,
+   *   pendiente) y un admin lo verifica en Moderación → Clínicas. Solo entonces sale en el mapa.
    * Los errores se lanzan para que ReviewRequestPage los muestre.
    */
-  // Después de aprobar una veterinaria o un refugio: abre el mapa centrado en su lugar
-  const showApprovedPlace = (point, kind) => {
-    closeScreens();
-    setContactPostId(null);
-    setMapFocusPlace({ ...point, kind, at: Date.now() });
-    setActiveTab("map");
-  };
-
   const decide = async (request, status, place) => {
-    let point = null;
-    if (status === "approved" && place) {
-      point = await searchPlace(place.address);
-      if (!point) throw new Error("No encontramos esa dirección en el mapa. Escríbela más completa (calle, número, ciudad).");
-      // La decisión del admin define el rol: Veterinaria → vet, Refugio → foundation (review_vet_application lo asigna)
-      await setApplicationRole(request.id, roleForKind(place.kind));
-    }
     await reviewVetApplication(request.id, status === "approved");
-    if (point) {
-      await createVerifiedPlace({
-        ownerId: request.userId,
-        name: request.name,
-        address: place.address.trim(),
-        point,
-        kind: place.kind,
-      });
+    // review_vet_application deja el rol de la solicitud (foundation); si es Veterinaria se ajusta
+    if (status === "approved" && place?.kind === "clinic") {
+      await setUserRole(request.userId, "vet");
     }
     await loadRequests();
     setReviewing(null);
-    // Para comprobarlo en el momento: el mapa, centrado en el lugar recién aprobado
-    if (point) showApprovedPlace(point, place.kind);
   };
 
-  // Solicitud ya aprobada que quedó sin lugar en el mapa: el admin la ubica ahora
-  const placeApproved = async (request, place) => {
-    const point = await searchPlace(place.address);
-    if (!point) throw new Error("No encontramos esa dirección en el mapa. Escríbela más completa (calle, número, ciudad).");
-    await createVerifiedPlace({
-      ownerId: request.userId,
-      name: request.name,
-      address: place.address.trim(),
-      point,
-      kind: place.kind,
-    });
-    await applyKindToAccount(request, place.kind);
-    await loadRequests();
-    setReviewing(null);
-    showApprovedPlace(point, place.kind);
-  };
-
-  // El rol de la cuenta y la solicitud siguen a la etiqueta elegida (Veterinaria → vet, Refugio → foundation)
+  // El rol de la cuenta sigue a la etiqueta elegida (Veterinaria → vet, Refugio → foundation).
+  // La solicitud NO se toca: si era de establecimiento sigue siéndolo.
   const applyKindToAccount = async (request, kind) => {
-    const role = roleForKind(kind);
-    await setApplicationRole(request.id, role).catch((e) => console.warn("[etiqueta] no se pudo actualizar la solicitud", e));
-    await setUserRole(request.userId, role).catch((e) => console.warn("[etiqueta] no se pudo cambiar el rol de la cuenta", e));
+    await setUserRole(request.userId, roleForKind(kind)).catch((e) =>
+      console.warn("[etiqueta] no se pudo cambiar el rol de la cuenta", e)
+    );
   };
 
   // Cambiar Refugio ↔ Veterinaria en un establecimiento ya aprobado
@@ -950,7 +965,7 @@ function App() {
           );
         }}
       />
-      <MatchSheet key={matchTarget?.id ?? "none"} report={matchTarget} onClose={() => setMatchTarget(null)} />
+      <MatchSheet key={matchTarget?.id ?? "none"} report={matchTarget} city={city ?? "Bogotá"} onClose={() => setMatchTarget(null)} />
       <PhotoPickerModal
         open={profilePhotoOpen}
         onClose={() => setProfilePhotoOpen(false)}
@@ -1099,7 +1114,6 @@ function App() {
             onBack={() => setReviewing(null)}
             onAccept={(r, place) => decide(r, "approved", place)}
             onReject={(r) => decide(r, "rejected")}
-            onPlace={placeApproved}
             onChangeKind={changePlaceKind}
             onOpenDocument={(d) => void openDocument(d)}
           />
@@ -1234,32 +1248,54 @@ function App() {
 
   /* MI CLÍNICA (veterinaria / refugio verificado) */
   if (showMyClinic) {
+    // "Ver en el mapa" de una sede: el mapa va directo a ella aunque esté a más de 20 km
+    const goToMyPlace = (place) => {
+      closeMyClinic();
+      if (place?.point) setMapFocusPlace({ ...place.point, kind: place.kind, at: Date.now() });
+      setActiveTab("map");
+    };
     const closeMyClinic = () => {
       setShowMyClinic(false);
+      setEditingPlaceId(undefined);
       setMyPlaceKind(null); // se vuelve a leer al abrir Perfil
     };
     return (
       <div className="phone-frame">
         <main className="app">
           <PawBackground />
-          <MyClinicPage
-            role={profile?.role}
-            kind={proKind ?? "clinic"}
-            onGiveForAdoption={() => {
-              closeMyClinic();
-              setAdoptionPetId(null);
-              setShowReportAdoption(true);
-            }}
-            onBack={closeMyClinic}
-            onNotifications={() => {
-              closeMyClinic();
-              setShowNotifications(true);
-            }}
-            onGoMap={() => {
-              closeMyClinic();
-              setActiveTab("map");
-            }}
-          />
+          {editingPlaceId === undefined ? (
+            <MyPlacesPage
+              kind={proKind ?? "clinic"}
+              onBack={closeMyClinic}
+              onNotifications={() => {
+                closeMyClinic();
+                setShowNotifications(true);
+              }}
+              onOpen={(id) => setEditingPlaceId(id)}
+              onAdd={() => setEditingPlaceId(null)}
+              onGoMap={goToMyPlace}
+              onGiveForAdoption={() => {
+                closeMyClinic();
+                setAdoptionPetId(null);
+                setShowReportAdoption(true);
+              }}
+            />
+          ) : (
+            <MyClinicPage
+              key={editingPlaceId ?? "nueva"}
+              clinicId={editingPlaceId}
+              role={profile?.role}
+              city={city ?? "Bogotá"}
+              kind={proKind ?? "clinic"}
+              onBack={() => setEditingPlaceId(undefined)}
+              onSaved={() => setEditingPlaceId(undefined)}
+              onNotifications={() => {
+                closeMyClinic();
+                setShowNotifications(true);
+              }}
+              onGoMap={goToMyPlace}
+            />
+          )}
           <NavBar active={activeTab} onNavigate={goTab(closeMyClinic)} />
         </main>
       </div>
@@ -1310,6 +1346,7 @@ function App() {
         <main className="app">
           <PawBackground />
           <ReportLostPage
+            city={city ?? "Bogotá"}
             pets={pets}
             onBack={() => setShowReportLost(false)}
             onNotifications={() => {
@@ -1336,6 +1373,7 @@ function App() {
         <main className="app">
           <PawBackground />
           <ReportFoundPage
+            city={city ?? "Bogotá"}
             species={species}
             onBack={() => setShowReportFound(false)}
             onNotifications={() => {
@@ -1357,6 +1395,7 @@ function App() {
         <main className="app">
           <PawBackground />
           <ReportAdoptionPage
+            city={city ?? "Bogotá"}
             key={adoptionPetId ?? "nueva"}
             species={species}
             myPets={pets.filter((p) => !p.isAdoption && !p.isAdopted)}
@@ -1632,7 +1671,7 @@ function App() {
                 name={userName}
                 location={city ?? "Agrega tu ciudad en «Editar información personal»"}
                 memberLabel={
-                  (isProfessional && PLACE_LABEL[myPlaceKind]) || ROLE_LABEL[profile?.role] || "Miembro"
+                  (isProfessional && PRO_LABEL[proKind]) || ROLE_LABEL[profile?.role] || "Miembro"
                 }
                 verified={profile?.role === "vet" || profile?.role === "foundation"}
                 photoUrl={profilePhoto}
@@ -1692,7 +1731,10 @@ function App() {
                 else if (id === "edit") setShowEditProfile(true);
                 else if (id === "verification") setShowVerification(true);
                 else if (id === "reports") setShowMyReports(true);
-                else if (id === "clinic") setShowMyClinic(true);
+                else if (id === "clinic") {
+                  setEditingPlaceId(undefined); // siempre empieza en la lista de sedes
+                  setShowMyClinic(true);
+                }
                 else if (id === "privacy") {
                   setSettingsFocus("privacy");
                   setShowSettings(true);

@@ -3,7 +3,6 @@ import { placeOfUser } from "../../../lib/api";
 import AppHeader from "../shared/AppHeader.jsx";
 import InfoNotice from "../shared/InfoNotice.jsx";
 import ChipGroup from "../shared/ChipGroup.jsx";
-import IconInputField from "../shared/IconInputField.jsx";
 import backIcon from "../../svg/Back.svg";
 import vetIcon from "../../svg/Adopcion/Vet.svg";
 import refugeIcon from "../../svg/Adopcion/Ref.svg";
@@ -45,10 +44,9 @@ const PLACE_KINDS = [
   { id: "clinic", label: "Veterinaria", icon: vetIcon },
 ];
 
-function ReviewRequestPage({ request, onBack, onAccept, onReject, onPlace, onChangeKind, onOpenDocument }) {
+function ReviewRequestPage({ request, onBack, onAccept, onReject, onChangeKind, onOpenDocument }) {
   // El admin elige UNA etiqueta: Refugio o Veterinaria (sin preselección, para que decida a conciencia)
   const [kind, setKind] = useState(null);
-  const [address, setAddress] = useState(request?.address ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   // Lugar en el mapa de quien envió la solicitud (undefined = consultando)
@@ -182,45 +180,31 @@ function ReviewRequestPage({ request, onBack, onAccept, onReject, onPlace, onCha
           </>
         )}
 
-        {/* Pendiente: se elige al aprobar. Aprobada sin lugar (p. ej. aprobada con una versión anterior): se puede ubicar ahora */}
-        {establishment && (!decided || (approvedEstablishment && place === null)) && (
+        {/* Pendiente: el admin elige Veterinaria o Refugio (define el rol). El lugar lo crea el
+            establecimiento después, como en web-development */}
+        {establishment && !decided && (
           <>
-            <h3 className="review__title">Etiqueta y ubicación en el mapa</h3>
-            {decided && (
-              <InfoNotice>Esta solicitud ya fue aprobada pero todavía no está en el mapa.</InfoNotice>
-            )}
+            <h3 className="review__title">Etiqueta de la cuenta</h3>
             <div className="review__card review__place">
               <span className="review__small">¿Es un refugio o una veterinaria? Elige una</span>
               <ChipGroup options={PLACE_KINDS} value={kind} onChange={setKind} variant="tray solid" />
-              <IconInputField
-                label="Dirección en el mapa"
-                icon={img(locationIcon)}
-                placeholder="Ej: Cll 1 #2-3, Usaquén, Bogotá"
-                value={address}
-                onChange={setAddress}
-              />
               <p className="review__place-hint">
                 {kind
-                  ? `${decided ? "Al ubicarla" : "Al aceptar"}, la cuenta quedará como ${
+                  ? `Al aceptar, la cuenta quedará como ${kind === "clinic" ? "veterinaria" : "refugio"}. Luego marcará su lugar en «Mi ${
                       kind === "clinic" ? "veterinaria" : "refugio"
-                    } y aparecerá así en el mapa, en esta dirección.`
+                    }» y lo verificarás en Moderación → Clínicas para que salga en el mapa.`
                   : "Elige la etiqueta para poder aceptar."}
               </p>
-              {decided && (
-                <>
-                  {error && <p className="auth-error" role="alert">{error}</p>}
-                  <button
-                    type="button"
-                    className="review__accept"
-                    disabled={busy || !kind || address.trim().length < 5}
-                    onClick={() => void run(() => onPlace?.(request, { kind, address }))}
-                  >
-                    <CheckIcon /> {busy ? "Guardando..." : "Ubicar en el mapa"}
-                  </button>
-                </>
-              )}
             </div>
           </>
+        )}
+
+        {/* Aprobada pero todavía sin lugar: lo crea el propio establecimiento */}
+        {approvedEstablishment && place === null && (
+          <InfoNotice>
+            Esta cuenta ya está aprobada pero todavía no ha marcado su lugar. Lo hará desde Perfil → «Mi veterinaria» o
+            «Mi refugio», y te aparecerá en Moderación → Clínicas para verificarlo.
+          </InfoNotice>
         )}
 
         {/* Decisión */}
@@ -243,8 +227,8 @@ function ReviewRequestPage({ request, onBack, onAccept, onReject, onPlace, onCha
             <button
               type="button"
               className="review__accept"
-              disabled={decided || busy || (establishment && (!kind || address.trim().length < 5))}
-              onClick={() => void run(() => onAccept?.(request, establishment ? { kind, address } : null))}
+              disabled={decided || busy || (establishment && !kind)}
+              onClick={() => void run(() => onAccept?.(request, establishment ? { kind } : null))}
             >
               <CheckIcon /> {busy ? "Guardando..." : "Aceptar"}
             </button>

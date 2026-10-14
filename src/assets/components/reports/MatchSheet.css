@@ -176,3 +176,16 @@
 .match-sheet__field textarea {
   touch-action: pan-y; /* el texto largo sí se puede desplazar */
 }
+
+/* Con el mini mapa la hoja es más alta: el contenido se desplaza por dentro */
+.match-sheet__sheet {
+  max-height: 92vh;
+  max-height: 92dvh;
+}
+
+.match-sheet__content {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y; /* se puede desplazar aunque el fondo oscuro bloquee los gestos */
+}
