@@ -4,10 +4,8 @@ import IconInputField from "../shared/IconInputField.jsx";
 import InfoNotice from "../shared/InfoNotice.jsx";
 import backIcon from "../../svg/Back.svg";
 import lockIcon from "../../svg/Ajustes/Privacidad.svg";
-import { PASSWORD_POLICY_HINT } from "../../../lib/authErrors";
+import { PASSWORD_POLICY_HINT, meetsPasswordPolicy } from "../../../lib/authErrors";
 import "./ChangePasswordPage.css";
-
-const MIN_LENGTH = 8;
 
 function ChangePasswordPage({ onBack, onSubmit, onDone }) {
   const [current, setCurrent] = useState("");
@@ -17,10 +15,11 @@ function ChangePasswordPage({ onBack, onSubmit, onDone }) {
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
 
-  const tooShort = next !== "" && next.length < MIN_LENGTH;
+  // Misma política que el registro y la recuperación de contraseña
+  const weak = next !== "" && !meetsPasswordPolicy(next);
   const mismatch = confirm !== "" && next !== confirm;
   const canSubmit =
-    current !== "" && next.length >= MIN_LENGTH && next === confirm && !busy && !done;
+    current !== "" && meetsPasswordPolicy(next) && next === confirm && !busy && !done;
 
   const icon = <img src={lockIcon} alt="" className="change-password__icon" />;
 
@@ -66,9 +65,9 @@ function ChangePasswordPage({ onBack, onSubmit, onDone }) {
             value={next}
             onChange={setNext}
           />
-          {tooShort && (
+          {weak && (
             <p className="change-password__error">
-              Debe tener al menos {MIN_LENGTH} caracteres.
+              Debe tener al menos 8 caracteres, con mayúscula, minúscula, número y símbolo.
             </p>
           )}
         </div>

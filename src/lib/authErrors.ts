@@ -10,7 +10,7 @@ export function meetsPasswordPolicy(password: string): boolean {
     password.length >= 8 &&
     /[A-ZÁÉÍÓÚÑ]/.test(password) &&
     /[a-záéíóúñ]/.test(password) &&
-    /d/.test(password) &&
+    /\d/.test(password) &&
     /[^A-Za-z0-9ÁÉÍÓÚÑáéíóúñ]/.test(password)
   );
 }

@@ -9,6 +9,7 @@ import backIcon from "../../svg/Back.svg";
 import { useAuth } from "../../../context/AuthContext";
 import { supabase } from "../../../lib/supabase";
 import { updateSettings } from "../../../lib/api";
+import { PASSWORD_POLICY_HINT, meetsPasswordPolicy } from "../../../lib/authErrors";
 import "./AuthPages.css";
 
 const stroke = { stroke: "#66557E", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round", fill: "none" };
@@ -46,7 +47,9 @@ function RegisterScreen({ onBack, onSwitchToLogin, onRegisterSuccess }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const canSubmit = name.trim() !== "" && email.trim() !== "" && password.length >= 6 && accepted;
+  // Política de seguridad del proyecto (la misma de cambiar y recuperar la contraseña)
+  const strongPassword = meetsPasswordPolicy(password);
+  const canSubmit = name.trim() !== "" && email.trim() !== "" && strongPassword && accepted;
 
   const finish = async ({ location }) => {
     if (loading) return;
@@ -111,6 +114,7 @@ function RegisterScreen({ onBack, onSwitchToLogin, onRegisterSuccess }) {
           placeholder="nombre@correo.com" autoComplete="email" value={email} onChange={setEmail} />
         <AuthField label="Contraseña" icon={<LockIcon />} type="password"
           placeholder="Password" autoComplete="new-password" value={password} onChange={setPassword} />
+        <p className={password && !strongPassword ? "auth-error" : "auth-hint"}>{PASSWORD_POLICY_HINT}</p>
 
         <div className="auth-check">
           <input id="accept-terms" type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} />
