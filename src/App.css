@@ -53,8 +53,11 @@ body {
 }
 
 /* Contenido centrado con ancho máximo legible
-   (el mapa y sus filtros quedan a todo el ancho) */
-.app > *:not(.paw-bg):not(.navbar):not(.app-header__spacer):not(.map-page__filters):not(.map-view) {
+   (el mapa y sus filtros quedan a todo el ancho).
+   Las ventanas emergentes (capas "__overlay": ficha, aviso, ajustar foto…) y el indicador de
+   "desliza para recargar" quedan fuera: son fijas a toda la pantalla y, con este límite, su
+   fondo oscuro se recortaba a 720 px en tabletas y computadores. */
+.app > *:not(.paw-bg):not(.navbar):not(.app-header__spacer):not(.map-page__filters):not(.map-view):not([class*="__overlay"]):not(.ptr__indicator) {
   max-width: 720px;
   margin-left: auto;
   margin-right: auto;

@@ -15,7 +15,11 @@ import useLockBodyScroll from "../../../hooks/useLockBodyScroll.js";
 import useSwipeToClose from "../../../hooks/useSwipeToClose.js";
 import "./PetDetailModal.css";
 
+// Texto largo ("3 años y 11 meses", "Border collie mestizo"): letra más pequeña para que se vea completo
+const sizeClass = (text) => (text.length > 18 ? "is-longer" : text.length > 12 ? "is-long" : "");
+
 function InfoItem({ icon, label, value }) {
+  const text = value || "—";
   return (
     <div className="pet-detail__item">
       <span className="pet-detail__item-icon">
@@ -23,7 +27,7 @@ function InfoItem({ icon, label, value }) {
       </span>
       <span className="pet-detail__item-text">
         <span className="pet-detail__item-label">{label}</span>
-        <span className="pet-detail__item-value">{value || "—"}</span>
+        <span className={`pet-detail__item-value ${sizeClass(text)}`}>{text}</span>
       </span>
     </div>
   );
