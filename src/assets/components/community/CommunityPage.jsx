@@ -8,6 +8,8 @@ import AvatarPlaceholder from "../pets/AvatarPlaceholder.jsx";
 import RoleBadge from "../shared/RoleBadge.jsx";
 import {
   addComment,
+  adminDeletePost,
+  adminDeleteReport,
   alertSummaries,
   roleBadges,
   createPost,
@@ -59,7 +61,7 @@ const DRAFT_TYPES = [
   { id: "story", label: "Historia" },
 ];
 
-function CommunityPage({ avatarUrl, openPostId, openCommentId, onBack, onViewOnMap, onContactOwner, onOpenReport, myUserId }) {
+function CommunityPage({ avatarUrl, openPostId, openCommentId, onBack, onViewOnMap, onContactOwner, onOpenReport, myUserId, isAdmin = false }) {
   const [filter, setFilter] = useState("Todo");
   const [error, setError] = useState("");
 
@@ -195,6 +197,27 @@ function CommunityPage({ avatarUrl, openPostId, openCommentId, onBack, onViewOnM
 
   const [reported, setReported] = useState([]);
 
+  // Admin: borrar la publicación de otro usuario (si es una alerta, también sale del mapa). Doble toque.
+  const [adminConfirm, setAdminConfirm] = useState(null);
+  const [adminBusy, setAdminBusy] = useState(false);
+  const adminDelete = async (post) => {
+    if (adminConfirm !== post.id) return setAdminConfirm(post.id);
+    setAdminBusy(true);
+    setError("");
+    try {
+      await (post.report_id ? adminDeleteReport(post.report_id) : adminDeletePost(post.id));
+      setAdminConfirm(null);
+      setOpenPost(null);
+      setNotice(post.report_id ? "Alerta eliminada: ya no aparece en la comunidad ni en el mapa." : "Publicación eliminada.");
+      await refresh();
+    } catch (e) {
+      console.error(e);
+      setError("No pudimos eliminar la publicación.");
+    } finally {
+      setAdminBusy(false);
+    }
+  };
+
   const denounce = async (commentId) => {
     try {
       await reportComment(commentId, "Contenido inapropiado");
@@ -318,6 +341,25 @@ function CommunityPage({ avatarUrl, openPostId, openCommentId, onBack, onViewOnM
 
               {openPost === post.id && (
                 <div className="community__thread">
+                  {/* Admin: eliminar la publicación de otra persona */}
+                  {isAdmin && post.user_id !== myUserId && (
+                    <div className="community__admin">
+                      <button
+                        type="button"
+                        className="community__admin-delete"
+                        disabled={adminBusy}
+                        onClick={() => void adminDelete(post)}
+                      >
+                        {adminBusy
+                          ? "Eliminando..."
+                          : adminConfirm === post.id
+                            ? "Toca otra vez para eliminar (no se puede deshacer)"
+                            : post.report_id
+                              ? "Eliminar alerta (admin)"
+                              : "Eliminar publicación (admin)"}
+                      </button>
+                    </div>
+                  )}
                   {/* Alertas de mascota perdida/encontrada: ir al reporte en el mapa */}
                   {post.report_id && (
                     <div className="community__alert-actions">

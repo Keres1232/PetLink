@@ -340,3 +340,37 @@
 .pet-detail__item-value.is-longer {
   font-size: 11px;
 }
+
+/* Admin: eliminar la alerta de otra persona */
+.pet-detail__admin {
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px dashed #e0c9c9;
+}
+
+.pet-detail__admin-row {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.pet-detail__admin-row .pet-detail__admin-delete {
+  margin: 0;
+  border-color: #e0554f;
+  color: #a0403c;
+}
+
+.pet-detail__admin-cancel {
+  height: 44px;
+  padding: 0 18px;
+
+  border: none;
+  border-radius: 10px;
+  background: #ece8f7;
+
+  color: var(--desctivado, #66557e);
+  font-family: "Kodchasan", sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}

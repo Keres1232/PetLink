@@ -5,6 +5,7 @@ import AdoptionPanel from "./AdoptionPanel.jsx";
 import PawBackground from "../shared/PawBackground.jsx";
 import PublishedBy from "./PublishedBy.jsx";
 import AdoptionToggle from "./AdoptionToggle.jsx";
+import AdminDeleteReport from "./AdminDeleteReport.jsx";
 import pawIcon from "../../svg/ExpCard/huella_card.svg";
 import starIcon from "../../svg/ExpCard/stard_card.svg";
 import clockIcon from "../../svg/ExpCard/relog_card.svg";
@@ -33,7 +34,7 @@ function InfoItem({ icon, label, value }) {
   );
 }
 
-function PetDetailModal({ pet, myUserId, onClose, onContact, onAdoptionChanged, onGiveForAdoption, onRemoveFromAdoption }) {
+function PetDetailModal({ pet, myUserId, isAdmin = false, onClose, onContact, onAdoptionChanged, onGiveForAdoption, onRemoveFromAdoption, onAdminDeleted }) {
   useLockBodyScroll(Boolean(pet));
   const swipe = useSwipeToClose(onClose);
   // Quién publicó (lo carga "Publicado por"): con eso se sabe si la ficha es tuya
@@ -109,6 +110,17 @@ function PetDetailModal({ pet, myUserId, onClose, onContact, onAdoptionChanged, 
               <button type="button" className="pet-detail__contact" onClick={() => onContact(pet)}>
                 {pet.status === "Encontrado" ? "Contactar a quien la encontró" : "Contactar al dueño"}
               </button>
+            )}
+
+            {/* Admin: eliminar la alerta de otra persona (sale del mapa y de la comunidad) o quitar su
+                mascota en adopción (borrado lógico) */}
+            {isAdmin && publisherKnown && !isMine && (pet.isReport || pet.isAdoption) && (
+              <AdminDeleteReport
+                key={`admin-${pet.id}`}
+                kind={pet.isReport ? "report" : "pet"}
+                targetId={pet.id}
+                onDeleted={() => onAdminDeleted?.(pet)}
+              />
             )}
           </div>
         </div>

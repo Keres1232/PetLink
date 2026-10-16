@@ -43,6 +43,7 @@ const OPTIONS = [
   { id: "posts", icon: <BellIcon />, label: "Publicaciones por revisar" },
   { id: "clinics", icon: <DocIcon />, label: "Clínicas y refugios por verificar" },
   { id: "comments", icon: <BellIcon />, label: "Denuncias de comentarios" },
+  { id: "content", icon: <DocIcon />, label: "Borrar alertas y publicaciones" },
   { id: "history", icon: <DocIcon />, label: "Historial de solicitudes" },
 ];
 

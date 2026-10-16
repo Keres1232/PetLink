@@ -936,6 +936,14 @@ function App() {
       <PetDetailModal
         pet={selectedPet}
         myUserId={user?.id}
+        isAdmin={isAdmin}
+        onAdminDeleted={() => {
+          // La alerta o la mascota ya no está: se cierra la ficha y se recargan las listas, el mapa y Comunidad
+          setSelectedPet(null);
+          void loadNear();
+          void loadAdoption();
+          setRefreshKey((k) => k + 1);
+        }}
         onClose={() => setSelectedPet(null)}
         onGiveForAdoption={(pet) => {
           // Desde la ficha de tu mascota: abre "Dar en adopción" con ella ya elegida
@@ -1617,6 +1625,7 @@ function App() {
             avatarUrl={profilePhoto}
             openPostId={contactPostId}
             openCommentId={contactCommentId}
+            isAdmin={isAdmin}
             onBack={goHome}
             myUserId={user?.id}
             onContactOwner={(post) =>

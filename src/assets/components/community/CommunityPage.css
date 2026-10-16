@@ -286,3 +286,27 @@
   0% { background: #d8c2ff; }
   100% { background: #ede3ff; }
 }
+
+/* Admin: eliminar la publicación de otra persona */
+.community__admin {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.community__admin-delete {
+  padding: 6px 12px;
+
+  border: 1.5px solid #e0554f;
+  border-radius: 16px;
+  background: #ffffff;
+
+  color: #a0403c;
+  font-family: "Kodchasan", sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.community__admin-delete:disabled {
+  opacity: 0.6;
+}

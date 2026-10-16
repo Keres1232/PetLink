@@ -30,8 +30,11 @@ export function ageFromBirthDate(birthDate: string | null): string | null {
     (Date.now() - new Date(birthDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44)
   );
   if (months < 1) return "menos de 1 mes";
-  if (months < 12) return `${months} meses`;
+  // Singular y plural: "1 mes", "1 año y 1 mes" (antes decía "1 meses")
+  const m = (n: number) => `${n} ${n === 1 ? "mes" : "meses"}`;
+  const y = (n: number) => `${n} ${n === 1 ? "año" : "años"}`;
+  if (months < 12) return m(months);
   const years = Math.floor(months / 12);
   const rest = months % 12;
-  return rest === 0 ? `${years} años` : `${years} años y ${rest} meses`;
+  return rest === 0 ? y(years) : `${y(years)} y ${m(rest)}`;
 }

@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import AppHeader from "../shared/AppHeader.jsx";
 import {
+  adminDeletePost,
+  adminDeleteReport,
   getModerationQueue,
+  listRecentContent,
   listCommentReports,
   listPendingClinics,
   moderateComment,
@@ -30,7 +33,13 @@ const TABS = [
   { id: "posts", label: "Publicaciones" },
   { id: "clinics", label: "Clínicas" },
   { id: "comments", label: "Denuncias" },
+  { id: "content", label: "Contenido" },
 ];
+
+// Etiqueta de cada fila de "Contenido"
+const REPORT_LABEL = { lost: "Alerta · Perdido", found: "Alerta · Encontrado", danger: "Alerta · Riesgo" };
+const contentLabel = (item) =>
+  item.kind === "report" ? REPORT_LABEL[item.type] ?? "Alerta" : TYPE_LABEL[item.type] ?? "Publicación";
 
 const TYPE_LABEL = { question: "Pregunta", tip: "Consejo", story: "Historia", post: "Post" };
 
@@ -41,6 +50,10 @@ function ModerationPage({ initialTab = "posts", onBack }) {
   const [clinics, setClinics] = useState([]);
   const [clinicKinds, setClinicKinds] = useState({}); // id del lugar → "clinic" | "shelter" elegido por el admin
   const [reports, setReports] = useState([]);
+  // Contenido reciente (alertas y publicaciones) que el admin puede borrar
+  const [content, setContent] = useState([]);
+  const [confirmId, setConfirmId] = useState(null); // doble toque para borrar
+  const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState("");
@@ -49,10 +62,19 @@ function ModerationPage({ initialTab = "posts", onBack }) {
     setLoading(true);
     setError("");
     try {
-      const [p, c, r] = await Promise.all([getModerationQueue(), listPendingClinics(), listCommentReports()]);
+      const [p, c, r, recent] = await Promise.all([
+        getModerationQueue(),
+        listPendingClinics(),
+        listCommentReports(),
+        listRecentContent().catch((e) => {
+          console.error("No se pudo cargar el contenido reciente", e);
+          return [];
+        }),
+      ]);
       setPosts(p);
       setClinics(c);
       setReports(r);
+      setContent(recent);
     } catch (e) {
       console.error(e);
       setError("No se pudo cargar la cola de revisión.");
@@ -79,7 +101,26 @@ function ModerationPage({ initialTab = "posts", onBack }) {
     }
   };
 
-  const counts = { posts: posts.length, clinics: clinics.length, comments: reports.length };
+  const counts = { posts: posts.length, clinics: clinics.length, comments: reports.length, content: content.length };
+
+  // Borrar una alerta o publicación de otro usuario: primer toque pide confirmar, el segundo borra
+  const removeContent = (item) => {
+    const key = `${item.kind}-${item.id}`;
+    if (confirmId !== key) {
+      setConfirmId(key);
+      setNotice("");
+      return;
+    }
+    setConfirmId(null);
+    void run(key, async () => {
+      await (item.kind === "report" ? adminDeleteReport(item.id) : adminDeletePost(item.id));
+      setNotice(
+        item.kind === "report"
+          ? "Alerta eliminada: ya no aparece en la comunidad ni en el mapa."
+          : "Publicación eliminada."
+      );
+    });
+  };
 
   const actions = (id, onReject, onAccept, rejectLabel = "Rechazar", acceptLabel = "Aprobar") => (
     <div className="moderation__actions">
@@ -112,6 +153,7 @@ function ModerationPage({ initialTab = "posts", onBack }) {
         </div>
 
         {error && <p className="auth-error" role="alert">{error}</p>}
+        {notice && <p className="moderation__notice" role="status">{notice}</p>}
 
         <div className="requests__list">
           {loading && <PawLoader />}
@@ -202,6 +244,43 @@ function ModerationPage({ initialTab = "posts", onBack }) {
                 )}
               </article>
             ))}
+
+          {!loading &&
+            tab === "content" &&
+            content.map((item) => {
+              const key = `${item.kind}-${item.id}`;
+              const confirming = confirmId === key;
+              return (
+                <article key={key} className="moderation__card">
+                  <div className="moderation__head">
+                    <strong>{item.author_name}</strong>
+                    <span>{timeAgo(item.created_at)}</span>
+                  </div>
+                  <span className={`moderation__kind moderation__kind--${item.kind === "report" ? item.type : "post"}`}>
+                    {contentLabel(item)}
+                  </span>
+                  {item.text && <p className="moderation__text">{item.text}</p>}
+                  {item.image && <img className="moderation__image" src={item.image} alt="" />}
+                  {item.kind === "report" && <p className="moderation__hint">Visible en el mapa y en la comunidad.</p>}
+                  {confirming && <p className="moderation__hint">Toca otra vez para confirmar: no se puede deshacer.</p>}
+                  <div className="moderation__actions">
+                    {confirming && (
+                      <button type="button" className="moderation__accept" onClick={() => setConfirmId(null)}>
+                        Cancelar
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="moderation__reject"
+                      disabled={busyId === key}
+                      onClick={() => removeContent(item)}
+                    >
+                      {busyId === key ? "Eliminando..." : confirming ? "Confirmar borrado" : "Eliminar"}
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
         </div>
       </div>
     </>
