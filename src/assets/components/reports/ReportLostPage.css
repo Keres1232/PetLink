@@ -228,3 +228,43 @@
 .report-lost__cancel:focus {
   outline: none;
 }
+/* Sin mascota elegida: inscribirla primero */
+.report-lost__enroll {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  padding: 12px 14px;
+
+  border: 1px solid #f0c98a;
+  border-radius: 12px;
+  background: #fff6e6;
+}
+
+.report-lost__enroll p {
+  margin: 0;
+
+  color: #5c4100;
+  font-family: "Nata Sans", sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.report-lost__enroll-btn {
+  align-self: flex-start;
+  padding: 8px 16px;
+
+  border: none;
+  border-radius: 18px;
+  background: var(--titulos, #7519ff);
+
+  color: #ffffff;
+  font-family: "Kodchasan", sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.report-lost__enroll-btn:active {
+  transform: scale(0.97);
+}

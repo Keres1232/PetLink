@@ -424,7 +424,9 @@ function App() {
       .catch((e) => console.warn("[alertas] no se pudieron completar las alertas viejas", e));
   }, [user?.id]);
 
-  const [petsLoaded, setPetsLoaded] = useState(false); // ya se sabe si la cuenta tiene mascotas
+  const [petsLoaded, setPetsLoaded] = useState(false);
+  // "Se perdió mi mascota" sin mascota elegida: se inscribe primero y se vuelve al reporte con ella
+  const [enrollForReport, setEnrollForReport] = useState(false); // ya se sabe si la cuenta tiene mascotas
   const loadPets = useCallback(async () => {
     try {
       const rows = await myPets();
@@ -604,6 +606,7 @@ function App() {
     if (showChangePassword) return done(() => setShowChangePassword(false), () => setShowSettings(true));
     if (showChangeEmail) return done(() => setShowChangeEmail(false), () => setShowSettings(true));
     if (showSettings) return done(() => setShowSettings(false));
+    if (showAddPet && enrollForReport) return done(() => setShowAddPet(false), () => setEnrollForReport(false), () => setShowReportLost(true));
     if (showAddPet || editingPet) return done(() => setShowAddPet(false), () => setEditingPet(null));
 
     // 4. Otra pestaña → Inicio
@@ -711,6 +714,11 @@ function App() {
     await loadPets();
     setShowAddPet(false);
     setEditingPet(null);
+    // Venía de "Se perdió mi mascota": vuelve al reporte con la mascota nueva ya elegida (la más reciente)
+    if (enrollForReport && !pet.id) {
+      setEnrollForReport(false);
+      setShowReportLost(true);
+    }
   };
 
   // Foto de perfil: sube, guarda y comprueba contra Supabase antes de decir que quedó guardada
@@ -1426,8 +1434,9 @@ function App() {
               setShowNotifications(true);
             }}
             onNotListed={() => {
+              // Una alerta sin mascota salía sin datos: primero se inscribe y luego se vuelve aquí
+              setEnrollForReport(true);
               setShowReportLost(false);
-              setActiveTab("profile");
               setShowAddPet(true);
             }}
             onSubmit={(report) => publishAlert("lost", report)}
@@ -1613,6 +1622,11 @@ function App() {
     const closePetForm = () => {
       setShowAddPet(false);
       setEditingPet(null);
+      // Cancelar la inscripción hecha desde el reporte: vuelve al reporte
+      if (enrollForReport) {
+        setEnrollForReport(false);
+        setShowReportLost(true);
+      }
     };
     return (
       <div className="phone-frame">

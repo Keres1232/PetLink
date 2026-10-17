@@ -44,3 +44,7 @@
   transform: none;
   z-index: 0;
 }
+/* En los pop-ups las huellas van más suaves (0.22 → 0.1): adornan sin competir con el texto */
+.paw-bg--contained .paw-bg__paw {
+  opacity: 0.1;
+}

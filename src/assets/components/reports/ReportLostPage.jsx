@@ -45,7 +45,7 @@ function ReportLostPage({ city = "Bogotá", pets = [], onBack, onNotifications, 
   const [error, setError] = useState("");
 
   const selectedPet = pets.find((p) => p.id === petId);
-  const canSubmit = petId !== null && place.trim() !== "" && !busy;
+  const canSubmit = Boolean(selectedPet) && place.trim() !== "" && !busy;
 
   const [cropFile, setCropFile] = useState(null); // primera foto, esperando que el usuario la ajuste
 
@@ -93,6 +93,20 @@ function ReportLostPage({ city = "Bogotá", pets = [], onBack, onNotifications, 
 
         <h2 className="report-lost__label">¿Cuál de tus mascotas se perdió?</h2>
         <PetPicker pets={pets} value={petId} onChange={setPetId} onNotListed={onNotListed} />
+
+        {/* Sin mascota elegida no se publica: la alerta saldría sin foto ni datos */}
+        {!selectedPet && (
+          <div className="report-lost__enroll">
+            <p>
+              {pets.length
+                ? "Elige cuál de tus mascotas se perdió. Si no está en la lista, inscríbela primero: así la alerta sale con su foto y sus datos."
+                : "Para publicar la alerta, primero inscribe a tu mascota con su foto y sus datos. Luego volverás aquí para terminar el reporte."}
+            </p>
+            <button type="button" className="report-lost__enroll-btn" onClick={onNotListed}>
+              Inscribir mi mascota ›
+            </button>
+          </div>
+        )}
 
         <div className="report-lost__row">
           <IconInputField label="Fecha" icon={<CalendarIcon />} type="date" value={date} onChange={setDate} />
