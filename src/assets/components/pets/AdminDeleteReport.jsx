@@ -36,7 +36,8 @@ function AdminDeleteReport({ kind = "report", targetId, onDeleted }) {
       onDeleted?.();
     } catch (e) {
       console.error(e);
-      setError(e?.message?.includes("supabase/sql") ? e.message : t.error);
+      // Se muestra lo que respondió Supabase (función que falta, regla que lo bloquea…) para saber qué arreglar
+      setError(e?.message ? `${t.error} (${e.message})` : t.error);
       setConfirming(false);
       setBusy(false);
     }

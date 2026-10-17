@@ -1,5 +1,5 @@
 -- =====================================================================
--- Admin: quitar una mascota de otra persona (2026-10-15)
+-- Admin: quitar una mascota de otra persona (2026-10-15, ajustado 2026-10-16)
 --
 -- La app ya deja al admin borrar alertas y publicaciones (admin_delete_report / admin_delete_post,
 -- migración 0055). Para las mascotas (p. ej. una publicación de adopción que no corresponde) no había
@@ -8,6 +8,11 @@
 -- admin_delete_pet hace un BORRADO LÓGICO (deleted_at), igual que cuando el dueño borra su mascota:
 -- deja de verse en "En adopción", en los perfiles y en las búsquedas, pero no se pierden los datos
 -- (sus alertas y publicaciones viejas siguen funcionando). Solo la puede usar un admin.
+--
+-- Ajuste 2026-10-16: si la mascota estaba EN ADOPCIÓN, también se saca de ese estado (status 'active').
+-- Motivo: el trigger enforce_adoption_verified (migración 0046) revisa cualquier cambio de una fila
+-- con status 'for_adoption' y solo lo permite a veterinarias/refugios verificados, así que bloqueaba
+-- al admin. Una mascota quitada ya no está publicada en adopción, así que el cambio es correcto.
 --
 -- Supabase → SQL Editor → pegar y ejecutar. Se puede ejecutar más de una vez.
 -- =====================================================================
@@ -24,7 +29,8 @@ begin
   end if;
 
   update public.pets
-     set deleted_at = coalesce(deleted_at, now())
+     set deleted_at = coalesce(deleted_at, now()),
+         status     = case when status = 'for_adoption' then 'active' else status end
    where id = p_pet_id;
 
   if not found then

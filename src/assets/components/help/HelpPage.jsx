@@ -36,7 +36,7 @@ const normalize = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLo
  * "¿No encontraste tu respuesta?": envía el mensaje a soporte@petclue.co (sendSupportMessage, como la web).
  * La captura opcional se sube a Storage y su enlace va dentro del mensaje (la función no recibe archivos).
  */
-function HelpPage({ onBack, defaultEmail = "" }) {
+function HelpPage({ onBack, defaultEmail = "", onOpenGuide }) {
   const [query, setQuery] = useState("");
   const [openId, setOpenId] = useState(null);
   const [problem, setProblem] = useState("");
@@ -98,6 +98,17 @@ function HelpPage({ onBack, defaultEmail = "" }) {
       <AppHeader title="Ayuda y soporte" leftIcon={backIcon} onLeft={onBack} />
 
       <div className="help">
+        {/* Volver a ver la guía de bienvenida */}
+        {onOpenGuide && (
+          <button type="button" className="help__guide" onClick={onOpenGuide}>
+            <span className="help__guide-text">
+              <strong>Guía de PetClue</strong>
+              <span>Repasa en un minuto todo lo que puedes hacer en la app</span>
+            </span>
+            <span className="help__guide-go" aria-hidden="true">›</span>
+          </button>
+        )}
+
         <SearchBar value={query} onChange={setQuery} placeholder="Busca tu duda..." />
 
         <h2 className="help__title">Preguntas frecuentes</h2>

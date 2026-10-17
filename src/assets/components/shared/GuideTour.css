@@ -1,0 +1,269 @@
+/* Guía de la app: tarjeta centrada con el lila y las huellas de PetClue */
+.guide__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 330;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+
+  background: rgba(20, 16, 28, 0.55);
+  box-sizing: border-box;
+
+  overscroll-behavior: contain;
+}
+
+.guide__card {
+  position: relative;
+
+  display: flex;
+  width: 100%;
+  max-width: 380px;
+  min-height: 520px;
+  max-height: 92vh;
+  padding: 26px 22px 22px;
+
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+
+  border-radius: 28px;
+  background: #ede8ff;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+  box-sizing: border-box;
+  overflow: hidden;
+
+  animation: guide-in 0.25s ease-out;
+}
+
+/* El contenido va por encima de las huellas */
+.guide__card > *:not(.paw-bg) {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes guide-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+.guide__skip {
+  align-self: flex-end;
+  margin: -10px -6px 0 0;
+  padding: 4px 8px;
+
+  border: none;
+  background: transparent;
+
+  color: var(--desctivado, #66557e);
+  font-family: "Kodchasan", sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.guide__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+
+  width: 100%;
+  overflow-y: auto;
+  text-align: center;
+
+  animation: guide-step 0.25s ease-out;
+}
+
+@keyframes guide-step {
+  from { opacity: 0; transform: translateX(14px); }
+  to { opacity: 1; transform: none; }
+}
+
+.guide__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 96px;
+  height: 96px;
+  margin-top: 4px;
+
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 6px 18px rgba(117, 25, 255, 0.18);
+}
+
+.guide__icon--logo img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+}
+
+/* El ícono se pinta de morado con una máscara (sirve para cualquier SVG de la app) */
+.guide__mask {
+  width: 44px;
+  height: 44px;
+
+  background: var(--titulos, #7519ff);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+.guide__count {
+  margin: 4px 0 0;
+
+  color: var(--titulos, #7519ff);
+  font-family: "Kodchasan", sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.guide__title {
+  margin: 0;
+
+  color: #14101c;
+  font-family: "Kodchasan", sans-serif;
+  font-size: 22px;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.guide__text {
+  margin: 0;
+
+  color: #3b3150;
+  font-family: "Nata Sans", sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.guide__tips {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  width: 100%;
+  margin: 4px 0 0;
+  padding: 0;
+
+  list-style: none;
+  text-align: left;
+}
+
+.guide__tips li {
+  padding: 8px 12px;
+
+  border-radius: 12px;
+  background: #ffffff;
+
+  color: #14101c;
+  font-family: "Nata Sans", sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.guide__tips li::before {
+  content: "✓ ";
+  color: var(--titulos, #7519ff);
+  font-weight: 700;
+}
+
+.guide__dots {
+  display: flex;
+  gap: 6px;
+}
+
+.guide__dot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+
+  border: none;
+  border-radius: 4px;
+  background: #cdbff0;
+  cursor: pointer;
+
+  transition: width 0.2s ease;
+}
+
+.guide__dot.is-active {
+  width: 22px;
+  background: var(--titulos, #7519ff);
+}
+
+.guide__actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.guide__back,
+.guide__next {
+  height: 46px;
+
+  border-radius: 14px;
+
+  font-family: "Kodchasan", sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.guide__back {
+  flex: 0 0 34%;
+
+  border: 2px solid var(--activado, #ae77ff);
+  background: #ffffff;
+  color: var(--titulos, #7519ff);
+}
+
+.guide__next {
+  flex: 1;
+
+  border: none;
+  background: var(--titulos, #7519ff);
+  color: #ffffff;
+}
+
+.guide__back:active,
+.guide__next:active {
+  transform: scale(0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guide__card,
+  .guide__body {
+    animation: none;
+  }
+}
+
+/* Atajo dentro de una pantalla de la guía (p. ej. "Inscribir ahora") */
+.guide__shortcut {
+  margin-top: 4px;
+  padding: 8px 18px;
+
+  border: 2px solid var(--activado, #ae77ff);
+  border-radius: 20px;
+  background: #ffffff;
+
+  color: var(--titulos, #7519ff);
+  font-family: "Kodchasan", sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.guide__shortcut:active {
+  transform: scale(0.97);
+}

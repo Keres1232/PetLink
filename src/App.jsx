@@ -98,6 +98,7 @@ import backIcon from "./assets/svg/Back.svg";
 import "./App.css";
 import PawLoader from "./assets/components/shared/PawLoader.jsx";
 import PullToRefresh from "./assets/components/shared/PullToRefresh.jsx";
+import GuideTour from "./assets/components/shared/GuideTour.jsx";
 
 // "Mascotas encontradas" en Inicio busca al menos en 20 km, igual que el mapa
 const FOUND_MIN_RADIUS_M = 20000;
@@ -423,14 +424,64 @@ function App() {
       .catch((e) => console.warn("[alertas] no se pudieron completar las alertas viejas", e));
   }, [user?.id]);
 
+  const [petsLoaded, setPetsLoaded] = useState(false); // ya se sabe si la cuenta tiene mascotas
   const loadPets = useCallback(async () => {
     try {
       const rows = await myPets();
       setPets(rows.map((p) => petToCard(p, p.user_id)));
+      setPetsLoaded(true);
     } catch (e) {
       console.error("No se pudieron cargar las mascotas", e);
     }
   }, []);
+
+  /*
+   * Bienvenida para cuentas nuevas: si después de iniciar sesión no tiene mascotas registradas, se le
+   * dice dónde registrarlas. "Ir a mi perfil" lo lleva allí; "Más tarde" lo pospone 3 días (por cuenta,
+   * en este dispositivo). Cuando registra su primera mascota no vuelve a salir. No aparece al admin.
+   */
+  // Guía de la app: se muestra una vez por cuenta (en este dispositivo) y se puede volver a ver en Ayuda
+  const guideKey = user?.id ? `petclue:guide:${user.id}` : null;
+  const [guideOpen, setGuideOpen] = useState(false); // abierta a mano desde Ayuda y soporte
+  const [guideDone, setGuideDone] = useState(false); // ya la cerró en esta sesión
+  const guideSeen = () => {
+    if (guideDone) return true;
+    try {
+      return localStorage.getItem(guideKey) === "vista";
+    } catch {
+      return false;
+    }
+  };
+  const closeGuide = () => {
+    setGuideOpen(false);
+    setGuideDone(true);
+    try {
+      localStorage.setItem(guideKey, "vista");
+    } catch {
+      /* sin almacenamiento: solo por esta sesión */
+    }
+  };
+  const showGuideAuto = activeTab === "home" && Boolean(guideKey) && !guideSeen();
+
+  const WELCOME_SNOOZE_MS = 3 * 24 * 60 * 60 * 1000;
+  const welcomeKey = user?.id ? `petclue:welcome-pets:${user.id}` : null;
+  const [welcomeClosed, setWelcomeClosed] = useState(false); // cerrado en esta sesión
+  const welcomeSnoozed = () => {
+    try {
+      const at = Number(localStorage.getItem(welcomeKey) ?? 0);
+      return Date.now() - at < WELCOME_SNOOZE_MS;
+    } catch {
+      return false;
+    }
+  };
+  const snoozeWelcome = () => {
+    setWelcomeClosed(true);
+    try {
+      localStorage.setItem(welcomeKey, String(Date.now()));
+    } catch {
+      /* sin almacenamiento: solo se cierra en esta sesión */
+    }
+  };
 
   // "En adopción": mascotas reales con status for_adoption (antes eran ejemplos)
   const [adoptionPets, setAdoptionPets] = useState([]);
@@ -487,6 +538,10 @@ function App() {
         .catch((e) => console.error("No se pudo cargar species", e));
     } else {
       setPets([]);
+      setPetsLoaded(false); // la próxima cuenta vuelve a revisar si tiene mascotas
+      setWelcomeClosed(false);
+      setGuideDone(false);
+      setGuideOpen(false);
     }
   }, [user, loadPets]);
 
@@ -1340,7 +1395,16 @@ function App() {
       <div className="phone-frame">
         <main className="app">
           <PawBackground />
-          <HelpPage onBack={() => setShowHelp(false)} defaultEmail={user?.email ?? ""} />
+          <HelpPage onBack={() => setShowHelp(false)} defaultEmail={user?.email ?? ""} onOpenGuide={() => setGuideOpen(true)} />
+          <GuideTour
+            open={guideOpen}
+            onClose={closeGuide}
+            onEnroll={() => {
+              setShowHelp(false);
+              setActiveTab("profile");
+              setShowAddPet(true);
+            }}
+          />
           <NavBar active={activeTab} onNavigate={goTab(() => setShowHelp(false))} />
         </main>
       </div>
@@ -1578,6 +1642,40 @@ function App() {
       <main className="app">
         <PawBackground />
         <PullToRefresh onRefresh={pullRefresh} />
+
+        {/* Guía de la app: la primera vez que entra */}
+        <GuideTour
+          open={showGuideAuto || guideOpen}
+          onClose={closeGuide}
+          onEnroll={() => {
+            setActiveTab("profile");
+            setShowAddPet(true);
+          }}
+        />
+
+        {/* Bienvenida: dónde registrar sus mascotas (cuentas sin mascotas, no admin) */}
+        <ConfirmModal
+          open={
+            activeTab === "home" &&
+            Boolean(welcomeKey) &&
+            petsLoaded &&
+            pets.length === 0 &&
+            profile?.role !== "admin" &&
+            !welcomeClosed &&
+            !welcomeSnoozed() &&
+            !showGuideAuto &&
+            !guideOpen
+          }
+          title="¡Bienvenido a PetClue!"
+          description="Registra a tus mascotas en tu perfil, en «Mis mascotas». Así, si alguna se pierde, podrás publicar su alerta en segundos con su foto y sus datos."
+          confirmLabel="Ir a mi perfil"
+          cancelLabel="Más tarde"
+          onConfirm={() => {
+            snoozeWelcome();
+            setActiveTab("profile");
+          }}
+          onClose={snoozeWelcome}
+        />
 
         {activeTab === "home" && (
           <HomePage

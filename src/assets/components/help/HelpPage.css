@@ -115,3 +115,50 @@
   color: inherit;
   font-weight: 700;
 }
+
+/* Acceso a la guía de la app */
+.help__guide {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  width: 100%;
+  padding: 14px 16px;
+
+  border: none;
+  border-radius: 16px;
+  background: var(--titulos, #7519ff);
+  box-shadow: 0 4px 12px rgba(117, 25, 255, 0.25);
+
+  color: #ffffff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.help__guide:active {
+  transform: scale(0.99);
+}
+
+.help__guide-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.help__guide-text strong {
+  font-family: "Kodchasan", sans-serif;
+  font-size: 16px;
+}
+
+.help__guide-text span {
+  font-family: "Nata Sans", sans-serif;
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.help__guide-go {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+}
