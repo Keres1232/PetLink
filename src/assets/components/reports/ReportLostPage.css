@@ -268,3 +268,29 @@
 .report-lost__enroll-btn:active {
   transform: scale(0.97);
 }
+
+/* Mascota no inscrita: sus datos dentro del reporte */
+.report-lost__new-pet {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+
+  padding: 14px;
+
+  border: 1px solid #d9cdf5;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.report-lost__new-pet-note {
+  margin: 0;
+  padding: 10px 12px;
+
+  border-radius: 10px;
+  background: #ede3ff;
+
+  color: #3b2a5c;
+  font-family: "Nata Sans", sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+}

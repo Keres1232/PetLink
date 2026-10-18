@@ -7,6 +7,10 @@ import backIcon from "../../svg/Back.svg";
 import bellIcon from "../../svg/bell.svg";
 import PlaceField from "../shared/PlaceField.jsx";
 import PhotoCropModal from "../shared/PhotoCropModal.jsx";
+import ChipGroup from "../shared/ChipGroup.jsx";
+import TextInputField from "../shared/TextInputField.jsx";
+import SpeciesPicker from "../shared/SpeciesPicker.jsx";
+import { defaultSpeciesId } from "../../../lib/species";
 import "./ReportLostPage.css";
 
 const stroke = { stroke: "#66557E", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round", fill: "none" };
@@ -31,9 +35,25 @@ const PlusIcon = () => (
 );
 
 const MAX_EXTRA_PHOTOS = 3;
+const SEX = ["Macho", "Hembra", "No sé"];
+const SIZES = ["Pequeño", "Mediano", "Grande"];
 
-function ReportLostPage({ city = "Bogotá", pets = [], onBack, onNotifications, onNotListed, onSubmit }) {
+/**
+ * "Se perdió mi mascota". Si la mascota no está inscrita (o la cuenta no tiene ninguna), sus datos se
+ * llenan aquí mismo: al publicar se guarda en "Mis mascotas" y la alerta sale con su foto y sus datos.
+ */
+function ReportLostPage({ city = "Bogotá", pets = [], species = [], onBack, onNotifications, onSubmit }) {
   const [petId, setPetId] = useState(pets[0]?.id ?? null);
+  // Mascota nueva (no inscrita): se llena aquí y se guarda al publicar
+  const [newPetMode, setNewPetMode] = useState(pets.length === 0);
+  const [petName, setPetName] = useState("");
+  const [petSpecies, setPetSpecies] = useState("");
+  const [petSex, setPetSex] = useState("Macho");
+  const [petSize, setPetSize] = useState("Pequeño");
+  const [petBreed, setPetBreed] = useState("");
+  const [petAge, setPetAge] = useState("");
+  const [petColor, setPetColor] = useState("");
+  const currentSpecies = petSpecies || defaultSpeciesId(species);
   const [date, setDate] = useState(() => new Date().toLocaleDateString("en-CA"));
   const [time, setTime] = useState(() => new Date().toTimeString().slice(0, 5));
   const [place, setPlace] = useState("");
@@ -44,8 +64,18 @@ function ReportLostPage({ city = "Bogotá", pets = [], onBack, onNotifications, 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  const selectedPet = pets.find((p) => p.id === petId);
-  const canSubmit = Boolean(selectedPet) && place.trim() !== "" && !busy;
+  const selectedPet = newPetMode ? null : pets.find((p) => p.id === petId);
+  const newPetReady = newPetMode && petName.trim().length >= 2 && Boolean(currentSpecies);
+  const canSubmit = (Boolean(selectedPet) || newPetReady) && place.trim() !== "" && !busy;
+
+  const choosePet = (id) => {
+    setNewPetMode(false);
+    setPetId(id);
+  };
+  const startNewPet = () => {
+    setNewPetMode(true);
+    setPetId(null);
+  };
 
   const [cropFile, setCropFile] = useState(null); // primera foto, esperando que el usuario la ajuste
 
@@ -74,7 +104,27 @@ function ReportLostPage({ city = "Bogotá", pets = [], onBack, onNotifications, 
     setBusy(true);
     setError("");
     try {
-      await onSubmit?.({ petId, date, time, place, point: coords, traits, photoFiles });
+      await onSubmit?.({
+        petId: selectedPet?.id ?? null,
+        // Mascota no inscrita: App la guarda en "Mis mascotas" antes de publicar la alerta
+        newPet: newPetMode
+          ? {
+              name: petName.trim(),
+              speciesId: currentSpecies,
+              sex: petSex,
+              size: petSize,
+              breed: petBreed.trim(),
+              age: petAge.trim(),
+              color: petColor.trim(),
+            }
+          : null,
+        date,
+        time,
+        place,
+        point: coords,
+        traits,
+        photoFiles,
+      });
     } catch (err) {
       console.error(err);
       busyRef.current = false; // solo se libera si falló
@@ -92,20 +142,56 @@ function ReportLostPage({ city = "Bogotá", pets = [], onBack, onNotifications, 
         <InfoNotice>Publicaremos una alerta a los usuarios cerca de la ubicación que indiques.</InfoNotice>
 
         <h2 className="report-lost__label">¿Cuál de tus mascotas se perdió?</h2>
-        <PetPicker pets={pets} value={petId} onChange={setPetId} onNotListed={onNotListed} />
+        {pets.length > 0 && (
+          <PetPicker
+            pets={pets}
+            value={newPetMode ? null : petId}
+            onChange={choosePet}
+            onNotListed={startNewPet}
+            notListedActive={newPetMode}
+          />
+        )}
 
-        {/* Sin mascota elegida no se publica: la alerta saldría sin foto ni datos */}
-        {!selectedPet && (
-          <div className="report-lost__enroll">
-            <p>
+        {/* Mascota no inscrita: sus datos aquí mismo (se guarda en "Mis mascotas" al publicar) */}
+        {newPetMode && (
+          <div className="report-lost__new-pet">
+            <p className="report-lost__new-pet-note">
               {pets.length
-                ? "Elige cuál de tus mascotas se perdió. Si no está en la lista, inscríbela primero: así la alerta sale con su foto y sus datos."
-                : "Para publicar la alerta, primero inscribe a tu mascota con su foto y sus datos. Luego volverás aquí para terminar el reporte."}
+                ? "Llena los datos de tu mascota. Al publicar la guardaremos en «Mis mascotas» y la alerta saldrá con su información."
+                : "Aún no tienes mascotas inscritas. Llena sus datos aquí: al publicar la guardaremos en «Mis mascotas» y la alerta saldrá con su información."}
             </p>
-            <button type="button" className="report-lost__enroll-btn" onClick={onNotListed}>
-              Inscribir mi mascota ›
-            </button>
+
+            <TextInputField label="Nombre" value={petName} onChange={setPetName} />
+
+            <div className="report-lost__field">
+              <span className="report-lost__label">Especie</span>
+              {species.length > 0 ? (
+                <SpeciesPicker species={species} value={currentSpecies} onChange={setPetSpecies} />
+              ) : (
+                <p className="auth-error">No hay especies disponibles.</p>
+              )}
+            </div>
+
+            <div className="report-lost__field">
+              <span className="report-lost__label">Sexo</span>
+              <ChipGroup options={SEX} value={petSex} onChange={setPetSex} />
+            </div>
+
+            <div className="report-lost__field">
+              <span className="report-lost__label">Tamaño</span>
+              <ChipGroup options={SIZES} value={petSize} onChange={setPetSize} variant="plain" />
+            </div>
+
+            <div className="report-lost__row">
+              <TextInputField label="Raza" value={petBreed} onChange={setPetBreed} />
+              <TextInputField label="Edad (años)" value={petAge} onChange={setPetAge} />
+            </div>
+            <TextInputField label="Color" value={petColor} onChange={setPetColor} />
           </div>
+        )}
+
+        {!newPetMode && !selectedPet && (
+          <p className="report-lost__hint">Elige cuál de tus mascotas se perdió, o toca «No está en lista» para llenar sus datos aquí.</p>
         )}
 
         <div className="report-lost__row">
@@ -155,9 +241,11 @@ function ReportLostPage({ city = "Bogotá", pets = [], onBack, onNotifications, 
           </div>
 
           <p className="report-lost__hint">
-            {selectedPet?.photoUrl
-              ? `La primera foto ya es la de ${selectedPet.name} registrada. Puedes agregar hasta ${MAX_EXTRA_PHOTOS} más recientes.`
-              : `${selectedPet?.name ?? "Tu mascota"} no tiene foto registrada. Agrega hasta ${MAX_EXTRA_PHOTOS} fotos recientes para que sea más fácil reconocerla.`}
+            {newPetMode
+              ? `La primera foto será también la foto de ${petName.trim() || "tu mascota"} en «Mis mascotas». Puedes agregar hasta ${MAX_EXTRA_PHOTOS}.`
+              : selectedPet?.photoUrl
+                ? `La primera foto ya es la de ${selectedPet.name} registrada. Puedes agregar hasta ${MAX_EXTRA_PHOTOS} más recientes.`
+                : `${selectedPet?.name ?? "Tu mascota"} no tiene foto registrada. Agrega hasta ${MAX_EXTRA_PHOTOS} fotos recientes para que sea más fácil reconocerla.`}
           </p>
         </div>
 

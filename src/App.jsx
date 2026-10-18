@@ -424,9 +424,7 @@ function App() {
       .catch((e) => console.warn("[alertas] no se pudieron completar las alertas viejas", e));
   }, [user?.id]);
 
-  const [petsLoaded, setPetsLoaded] = useState(false);
-  // "Se perdió mi mascota" sin mascota elegida: se inscribe primero y se vuelve al reporte con ella
-  const [enrollForReport, setEnrollForReport] = useState(false); // ya se sabe si la cuenta tiene mascotas
+  const [petsLoaded, setPetsLoaded] = useState(false); // ya se sabe si la cuenta tiene mascotas
   const loadPets = useCallback(async () => {
     try {
       const rows = await myPets();
@@ -606,7 +604,6 @@ function App() {
     if (showChangePassword) return done(() => setShowChangePassword(false), () => setShowSettings(true));
     if (showChangeEmail) return done(() => setShowChangeEmail(false), () => setShowSettings(true));
     if (showSettings) return done(() => setShowSettings(false));
-    if (showAddPet && enrollForReport) return done(() => setShowAddPet(false), () => setEnrollForReport(false), () => setShowReportLost(true));
     if (showAddPet || editingPet) return done(() => setShowAddPet(false), () => setEditingPet(null));
 
     // 4. Otra pestaña → Inicio
@@ -714,11 +711,6 @@ function App() {
     await loadPets();
     setShowAddPet(false);
     setEditingPet(null);
-    // Venía de "Se perdió mi mascota": vuelve al reporte con la mascota nueva ya elegida (la más reciente)
-    if (enrollForReport && !pet.id) {
-      setEnrollForReport(false);
-      setShowReportLost(true);
-    }
   };
 
   // Foto de perfil: sube, guarda y comprueba contra Supabase antes de decir que quedó guardada
@@ -866,17 +858,47 @@ function App() {
     if (!point) {
       throw new Error("No encontramos ese lugar. Escríbelo más específico o usa tu ubicación actual.");
     }
-    const lostPet = type === "lost" ? pets.find((p) => p.id === r.petId) : null;
+    const uploaded = r.photoFiles?.length ? await uploadPhotos(r.photoFiles, "pet-photos") : [];
+
+    // Mascota no inscrita llenada en el reporte: se guarda primero en "Mis mascotas" (la primera foto
+    // es su foto) y la alerta queda ligada a ella con todos sus datos
+    let petId = type === "lost" ? r.petId : null;
+    let lostPet = type === "lost" ? pets.find((p) => p.id === r.petId) : null;
+    if (type === "lost" && r.newPet) {
+      const years = parseFloat(String(r.newPet.age).replace(",", "."));
+      const birthDate =
+        Number.isFinite(years) && years >= 0
+          ? new Date(Date.now() - years * 365.25 * 864e5).toISOString().slice(0, 10)
+          : null;
+      petId = await createPet({
+        name: r.newPet.name,
+        speciesId: r.newPet.speciesId,
+        description: details || null,
+        birthDate,
+        photoUrl: uploaded[0] ?? null,
+        sex: SEX_DB[r.newPet.sex] ?? "unknown",
+        breed: r.newPet.breed || null,
+        color: r.newPet.color || null,
+        size: SIZE_DB[r.newPet.size] ?? null,
+      });
+      lostPet = {
+        speciesId: r.newPet.speciesId,
+        sex: r.newPet.sex,
+        size: r.newPet.size,
+        breed: r.newPet.breed,
+        color: r.newPet.color,
+        age: ageFromBirthDate(birthDate) ?? (r.newPet.age || null),
+        photoUrl: null, // su foto ya va en las fotos subidas
+      };
+      void loadPets();
+    }
     const petPhoto = lostPet?.photoUrl ?? null;
-    const photos = [
-      ...(petPhoto ? [petPhoto] : []),
-      ...(r.photoFiles?.length ? await uploadPhotos(r.photoFiles, "pet-photos") : []),
-    ];
+    const photos = [...(petPhoto ? [petPhoto] : []), ...uploaded];
 
     // Perdida: los datos de la mascota se COPIAN en la alerta (como la web). Si solo se guarda pet_id,
     // las demás cuentas ven la ficha vacía: la tabla pets solo la puede leer su dueño (RLS).
     const payload = {
-      petId: type === "lost" ? r.petId : null,
+      petId,
       type,
       description,
       point,
@@ -1427,17 +1449,12 @@ function App() {
           <PawBackground />
           <ReportLostPage
             city={city ?? "Bogotá"}
-            pets={pets}
+            pets={pets.filter((p) => !p.isAdoption && !p.isAdopted)}
+            species={species}
             onBack={() => setShowReportLost(false)}
             onNotifications={() => {
               setShowReportLost(false);
               setShowNotifications(true);
-            }}
-            onNotListed={() => {
-              // Una alerta sin mascota salía sin datos: primero se inscribe y luego se vuelve aquí
-              setEnrollForReport(true);
-              setShowReportLost(false);
-              setShowAddPet(true);
             }}
             onSubmit={(report) => publishAlert("lost", report)}
           />
@@ -1622,11 +1639,6 @@ function App() {
     const closePetForm = () => {
       setShowAddPet(false);
       setEditingPet(null);
-      // Cancelar la inscripción hecha desde el reporte: vuelve al reporte
-      if (enrollForReport) {
-        setEnrollForReport(false);
-        setShowReportLost(true);
-      }
     };
     return (
       <div className="phone-frame">

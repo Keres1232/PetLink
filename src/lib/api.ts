@@ -327,26 +327,30 @@ export async function createPet(input: {
   color?: string | null;
   size?: "small" | "medium" | "large" | null;
   status?: "active" | "for_adoption";
-}): Promise<void> {
+}): Promise<string> {
   if (!input.speciesId.trim()) {
     throw new Error("Debes seleccionar una especie válida para la mascota.");
   }
   const userId = (await supabase.auth.getUser()).data.user?.id;
   if (!userId) throw new Error("No hay sesión activa.");
   await assertNotDuplicatePet(userId, input.name, input.speciesId, input.status ?? "active");
-  const { error } = await supabase.from("pets").insert({
-    user_id: userId,
-    name: input.name,
-    species_id: input.speciesId,
-    description: input.description,
-    birth_date: input.birthDate,
-    photo_url: input.photoUrl,
-    sex: input.sex ?? null,
-    breed: input.breed ?? null,
-    color: input.color ?? null,
-    size: input.size ?? null,
-    status: input.status ?? "active",
-  });
+  const { data, error } = await supabase
+    .from("pets")
+    .insert({
+      user_id: userId,
+      name: input.name,
+      species_id: input.speciesId,
+      description: input.description,
+      birth_date: input.birthDate,
+      photo_url: input.photoUrl,
+      sex: input.sex ?? null,
+      breed: input.breed ?? null,
+      color: input.color ?? null,
+      size: input.size ?? null,
+      status: input.status ?? "active",
+    })
+    .select("id")
+    .single();
   if (error) {
     if (input.status === "for_adoption") throw adoptionError(error);
     // Trigger prevent_duplicate_pet: mismo nombre y especie en los últimos 90 s (doble envío)
@@ -354,6 +358,8 @@ export async function createPet(input: {
       throw new Error("Esta mascota ya fue registrada hace un momento. Revisa tu perfil.");
     throw error;
   }
+  // Id de la mascota nueva (p. ej. para publicar su alerta de pérdida justo después)
+  return (data as { id: string }).id;
 }
 
 export async function getPrivateProfile(): Promise<PrivateProfile | null> {
