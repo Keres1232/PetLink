@@ -1,4 +1,5 @@
 import { Pencil } from "lucide-react";
+import AvatarPlaceholder from "./AvatarPlaceholder.jsx";
 import StatusTag from "./StatusTag.jsx";
 import { PUBLISHER_LABEL } from "../lib/publisher";
 import "./PetCard.css";
@@ -47,7 +48,7 @@ function PetCard({
         {photoUrl ? (
           <img src={photoUrl} alt={name} loading="lazy" decoding="async" />
         ) : (
-          <span>Foto</span>
+          <AvatarPlaceholder />
         )}
         {publisherLabel && (
           <span className={`pet-card__publisher pet-card__publisher--${publisherKind}`}>

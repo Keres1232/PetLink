@@ -1,7 +1,7 @@
 import logo from "../assets/svg/Logo.svg";
 
 function PawHeartLogo({ size = 120 }) {
-  return <img src={logo} alt="PetLink" width={size} style={{ height: "auto" }} />;
+  return <img src={logo} alt="PetClue" width={size} style={{ height: "auto" }} />;
 }
 
 export default PawHeartLogo;

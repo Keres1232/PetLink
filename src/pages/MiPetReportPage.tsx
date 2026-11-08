@@ -9,9 +9,10 @@ import ChipGroup from "../components/ui/ChipGroup";
 import SpeciesPicker from "../components/ui/SpeciesPicker";
 import { LoadingState } from "../components/ui/States";
 import { useUserLocation } from "../hooks/useUserLocation";
-import { createAlert, getPostByReportId, listSpecies, myPets, uploadPhotos } from "../lib/api";
+import { createAlert, createPet, getPostByReportId, listSpecies, myPets, uploadPhotos } from "../lib/api";
 import { approximatePoint } from "../lib/geo";
 import { searchPlace } from "../lib/geocode";
+import { yearsToBirthDate } from "../lib/format";
 import { COLOR_OPTIONS, SEX_OPTIONS, SIZE_OPTIONS } from "../lib/petOptions";
 import { usePrefs } from "../hooks/usePrefs";
 import type { GeoPoint, Pet, PetSex, PetSize, Species } from "../lib/types";
@@ -27,6 +28,11 @@ function nowTime(): string {
   return new Date().toTimeString().slice(0, 5);
 }
 
+function ageEstimateToBirthDate(value: string): string | null {
+  const match = value.replace(",", ".").match(/\d+(\.\d+)?/);
+  return match ? yearsToBirthDate(match[0]) : null;
+}
+
 export default function MiPetReportPage() {
   const navigate = useNavigate();
   const { point: userPoint, loading: locLoading } = useUserLocation();
@@ -36,6 +42,7 @@ export default function MiPetReportPage() {
   const [petsLoading, setPetsLoading] = useState(true);
   const [petId, setPetId] = useState<string | null>(null);
   const [notListed, setNotListed] = useState(false);
+  const [newPetName, setNewPetName] = useState("");
 
   const [species, setSpecies] = useState<Species[]>([]);
   const [speciesId, setSpeciesId] = useState<string | null>(null);
@@ -58,10 +65,19 @@ export default function MiPetReportPage() {
 
   useEffect(() => {
     void myPets()
-      .then(setPets)
+      .then((rows) => {
+        const active = rows.filter((p) => p.status === "active");
+        setPets(active);
+        if (active.length > 0) setPetId(active[0].id);
+      })
       .catch(() => setPets([]))
       .finally(() => setPetsLoading(false));
   }, []);
+
+  // Sin mascotas activas: el reporte se llena con los datos de la mascota nueva
+  useEffect(() => {
+    if (!petsLoading && pets.length === 0) setNotListed(true);
+  }, [petsLoading, pets.length]);
 
   useEffect(() => {
     void listSpecies()
@@ -96,6 +112,7 @@ export default function MiPetReportPage() {
     setColor(null);
     setBreed("");
     setAgeEstimate("");
+    setNewPetName("");
   }
 
   async function submit() {
@@ -113,6 +130,20 @@ export default function MiPetReportPage() {
       setError("Cuéntanos cómo iba tu mascota al momento de perderse.");
       return;
     }
+    if (!notListed && !selectedPet) {
+      setError("Elige una mascota o toca «No está en la lista».");
+      return;
+    }
+    if (notListed) {
+      if (newPetName.trim().length < 2) {
+        setError("Escribe el nombre de tu mascota.");
+        return;
+      }
+      if (!speciesId) {
+        setError("Selecciona la especie de tu mascota.");
+        return;
+      }
+    }
 
     busyRef.current = true;
     setBusy(true);
@@ -123,8 +154,23 @@ export default function MiPetReportPage() {
         .join(" · ");
       const lostAt = new Date(`${date}T${time}:00`).toISOString();
 
+      let effectivePetId = selectedPet?.id ?? petId;
+      if (notListed) {
+        effectivePetId = await createPet({
+          name: newPetName.trim(),
+          speciesId,
+          description: characteristics.trim() || null,
+          birthDate: ageEstimateToBirthDate(ageEstimate),
+          photoUrl: photoUrls[0] ?? null,
+          sex,
+          breed: breed.trim() || null,
+          color,
+          size,
+        });
+      }
+
       const reportId = await createAlert({
-        petId: petId || null,
+        petId: effectivePetId,
         type: "lost",
         description: description || "Mascota perdida",
         point: prefs.exactLocation ? finalPoint : approximatePoint(finalPoint),
@@ -145,7 +191,13 @@ export default function MiPetReportPage() {
         err && typeof err === "object" && "message" in err
           ? String((err as { message: unknown }).message)
           : "";
-      if (message.includes("alerta activa")) {
+      if (
+        message.includes("Ya registraste") ||
+        message.includes("ya fue registrada") ||
+        message.toLowerCase().includes("duplicate")
+      ) {
+        setError("Esta mascota ya fue registrada hace un momento. Revisa tu perfil.");
+      } else if (message.includes("alerta activa")) {
         setError(
           "Ya hay un anuncio de mascota perdida para esta mascota. No puedes crear otro mientras siga activo; puedes verlo en el mapa."
         );
@@ -199,11 +251,30 @@ export default function MiPetReportPage() {
         </div>
 
         <div className="pc-field">
-          <span className="pc-field-label">Detalles de tu mascota (opcional)</span>
+          <span className="pc-field-label">
+            {notListed ? "Datos de tu mascota" : "Detalles de tu mascota (opcional)"}
+          </span>
           <p className="pc-muted location-help">
-            Completarlos hace tu alerta más descriptiva para quien la vea en el mapa.
-            {selectedPet && " Ya tomamos los datos de tu mascota registrada."}
+            {notListed
+              ? "Al publicar la guardaremos en «Mis mascotas» y la alerta saldrá con su información."
+              : `Completarlos hace tu alerta más descriptiva para quien la vea en el mapa.${
+                  selectedPet ? " Ya tomamos los datos de tu mascota registrada." : ""
+                }`}
           </p>
+          {notListed && (
+            <div className="pc-field">
+              <label className="pc-field-label" htmlFor="lost-pet-name">
+                Nombre de tu mascota
+              </label>
+              <input
+                id="lost-pet-name"
+                className="pc-input"
+                placeholder="Ej: Luna"
+                value={newPetName}
+                onChange={(e) => setNewPetName(e.target.value)}
+              />
+            </div>
+          )}
           <div className="pc-field">
             <span className="pc-field-label">Especie</span>
             <SpeciesPicker species={species} value={speciesId} onChange={setSpeciesId} />
@@ -271,9 +342,13 @@ export default function MiPetReportPage() {
         <PhotoGridField
           label="Fotos adicionales"
           help={
-            selectedPet
-              ? `La primera foto ya es la de ${selectedPet.name} registrada. Puedes agregar hasta 3 más recientes.`
-              : "Puedes agregar hasta 3 fotos recientes."
+            notListed
+              ? `La primera foto será también la foto de ${
+                  newPetName.trim() || "tu mascota"
+                } en «Mis mascotas». Puedes agregar hasta 3.`
+              : selectedPet
+                ? `La primera foto ya es la de ${selectedPet.name} registrada. Puedes agregar hasta 3 más recientes.`
+                : "Puedes agregar hasta 3 fotos recientes."
           }
           max={MAX_EXTRA_PHOTOS}
           photos={photos}

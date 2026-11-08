@@ -190,23 +190,28 @@ export async function createPet(input: {
   color?: string | null;
   size?: "small" | "medium" | "large" | null;
   status?: "active" | "for_adoption";
-}): Promise<void> {
+}): Promise<string> {
   const userId = (await supabase.auth.getUser()).data.user?.id;
   if (!userId) throw new Error("No hay sesión activa.");
-  const { error } = await supabase.from("pets").insert({
-    user_id: userId,
-    name: input.name,
-    species_id: input.speciesId,
-    description: input.description,
-    birth_date: input.birthDate,
-    photo_url: input.photoUrl,
-    sex: input.sex ?? null,
-    breed: input.breed ?? null,
-    color: input.color ?? null,
-    size: input.size ?? null,
-    status: input.status ?? "active",
-  });
+  const { data, error } = await supabase
+    .from("pets")
+    .insert({
+      user_id: userId,
+      name: input.name,
+      species_id: input.speciesId,
+      description: input.description,
+      birth_date: input.birthDate,
+      photo_url: input.photoUrl,
+      sex: input.sex ?? null,
+      breed: input.breed ?? null,
+      color: input.color ?? null,
+      size: input.size ?? null,
+      status: input.status ?? "active",
+    })
+    .select("id")
+    .single();
   if (error) throw error;
+  return (data as { id: string }).id;
 }
 
 export async function updatePet(

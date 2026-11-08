@@ -5,6 +5,7 @@ import NavBar from "../NavBar.jsx";
 import PawHeartLogo from "../PawHeartLogo.jsx";
 import LogoutConfirm from "../ui/LogoutConfirm";
 import PawBackground from "../ui/PawBackground";
+import { GuideProvider } from "../../contexts/GuideContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { useUnreadNotifications } from "../../hooks/useUnreadNotifications";
 import "./AppLayout.css";
@@ -45,7 +46,8 @@ export default function AppLayout() {
   const active = ROUTE_TO_NAV[location.pathname] ?? "home";
 
   return (
-    <div className="pc-shell">
+    <GuideProvider>
+      <div className="pc-shell">
       <PawBackground />
       <aside className="pc-sidebar">
         <button
@@ -135,6 +137,7 @@ export default function AppLayout() {
       </div>
 
       {logoutOpen && <LogoutConfirm onClose={() => setLogoutOpen(false)} />}
-    </div>
+      </div>
+    </GuideProvider>
   );
 }

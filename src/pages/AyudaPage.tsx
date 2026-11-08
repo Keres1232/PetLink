@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, ShieldCheck } from "lucide-react";
+import { PawPrint, Search, ShieldCheck } from "lucide-react";
 import PrimaryButton from "../components/PrimaryButton.jsx";
 import { LoadingState } from "../components/ui/States";
 import { useAuth } from "../contexts/AuthContext";
+import { useGuide } from "../contexts/GuideContext";
 import { searchGuides, sendSupportMessage } from "../lib/api";
 import type { GuideRow } from "../lib/types";
 import "../styles/pages.css";
@@ -58,6 +59,7 @@ function matches(text: string, query: string): boolean {
 export default function AyudaPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { openGuide } = useGuide();
   const [query, setQuery] = useState("");
   const [guides, setGuides] = useState<GuideRow[]>([]);
   const [guidesLoading, setGuidesLoading] = useState(false);
@@ -128,6 +130,19 @@ export default function AyudaPage() {
         <h1 className="pc-title">Ayuda y soporte</h1>
         <span style={{ width: 42 }} />
       </div>
+
+      <button type="button" className="guide-tour__help-card" onClick={openGuide}>
+        <span className="guide-tour__help-card-icon">
+          <PawPrint size={20} />
+        </span>
+        <span className="guide-tour__help-card-text">
+          <strong>Guía de PetClue</strong>
+          <span>Repasa en un minuto todo lo que puedes hacer en la web y la app</span>
+        </span>
+        <span className="guide-tour__help-card-arrow" aria-hidden="true">
+          ›
+        </span>
+      </button>
 
       <div className="pc-input" style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <Search size={16} color="var(--pc-muted-soft)" />

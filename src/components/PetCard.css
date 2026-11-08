@@ -203,6 +203,17 @@
   background: #fed3ff;
 }
 
+/* Colores de especie del diseño de la app */
+.status-cat {
+  background: #d9cffb;
+  color: #6b4eff;
+}
+
+.status-dog {
+  background: #ffd3ed;
+  color: #d6368f;
+}
+
 /* Estado desconocido */
 .status-default {
   background: #e5e5e5;
